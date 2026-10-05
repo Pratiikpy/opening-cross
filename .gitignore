@@ -1,0 +1,40 @@
+# Allowlist: this folder also holds private strategy notes and third-party
+# research clones. Only the product itself is tracked.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/ENGINEERING_PRINCIPLES.md
+!/docs/
+!/programs/
+!/crates/
+!/packages/
+!/apps/
+!/services/
+!/scripts/
+!/tests/
+!/Cargo.toml
+!/Cargo.lock
+!/Anchor.toml
+!/rust-toolchain.toml
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+!/tsconfig.base.json
+!/.github/
+!/.gitattributes
+
+# Never tracked anywhere
+.keys/
+.secrets/
+.env
+.env.*
+!.env.example
+*-keypair.json
+node_modules/
+target/
+.next/
+dist/
+.anchor/
+test-ledger/
+*.log
