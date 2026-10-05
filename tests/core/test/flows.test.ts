@@ -50,8 +50,11 @@ describe('launch in mint mode, open book', () => {
     const proceedsBefore = await w.h.balanceOf(w.creator.address, w.quoteMint);
     const final = await w.finalize(cross);
     expect(final.data.state).toBe(CrossState.Finalized);
-    const totalFee = (paid * BigInt(FEES[0] + 20)) / 10_000n;
-    const protocolFee = (totalFee * BigInt(FEES[0])) / BigInt(FEES[0] + 20);
+    // ADR-0010: protocol bps = min(schedule, integrator / 4) = min(30, 20 / 4) = 5.
+    const protocolBps = Math.min(FEES[0], Math.floor(20 / 4));
+    expect(settled.data.protocolFeeBps).toBe(protocolBps);
+    const totalFee = (paid * BigInt(protocolBps + 20)) / 10_000n;
+    const protocolFee = (totalFee * BigInt(protocolBps)) / BigInt(protocolBps + 20);
     expect(await w.h.balanceOf(w.feeRecipient.address, w.quoteMint)).toBe(protocolFee);
     expect(await w.h.balanceOf(w.integrator.address, w.quoteMint)).toBe(totalFee - protocolFee);
     // Issuer receives buyers' payments less fees, plus the unused dust bond back.

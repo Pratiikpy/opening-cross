@@ -208,7 +208,10 @@ pub mod cross_core {
         c.reference_price = params.reference_price;
         c.min_matched = params.min_matched;
         c.max_imbalance_bps = params.max_imbalance_bps;
-        c.protocol_fee_bps = protocol.fee_bps[params.kind.index()];
+        // The protocol never takes more than 20% of a cross's total fees (ADR-0010):
+        // p ≤ 0.2 · (p + i)  ⇔  p ≤ i / 4. A cross with no integrator fee pays no protocol fee.
+        c.protocol_fee_bps =
+            protocol.fee_bps[params.kind.index()].min(params.integrator_fee_bps / 4);
         c.integrator_fee_bps = params.integrator_fee_bps;
         c.integrator = params.integrator;
         c.fee_recipient = protocol.fee_recipient;
