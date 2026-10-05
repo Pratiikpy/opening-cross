@@ -1,0 +1,12 @@
+[package]
+name = "clearing-core"
+version = "0.1.0"
+description = "Uniform-price call-auction clearing for Opening Cross: price discovery, pro-rata rationing and rounding (ADR-0003)."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+proptest = "1.11.0"

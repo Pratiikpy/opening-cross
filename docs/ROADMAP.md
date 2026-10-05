@@ -36,7 +36,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| C1 | `clearing-core` crate: uniform-price clearing, pro-rata, tie-breaks, integer maths | Deterministic; matches an independent reference on 10k random books | Unit, property and differential tests | TODO | |
+| C1 | `clearing-core` crate: uniform-price clearing, pro-rata, tie-breaks, integer maths | Deterministic; matches an independent reference on 10k random books | Unit, property and differential tests | DONE | `crates/clearing-core`; ADR-0003; 13 tests incl. 10,000-case match against an exhaustive reference, conservation, order independence, vault solvency (`cargo test -p clearing-core --release`) |
 | C2 | `cross_core` program: escrow, create, place/cancel, commit-reveal, close, sharded clear, allocation root, claim, refund | All invariants in ENGINEERING_PRINCIPLES §3.2 hold under fuzzing | LiteSVM unit + invariant + adversarial suites; devnet end-to-end | TODO | |
 | C3 | Print guards and no-print fallback | Thin, imbalanced or oracle-divergent crosses do not print; refunds succeed | Adversarial tests | TODO | |
 | C4 | `cross_fees`: per-cross fee snapshot and split | No fee on bids/cancels/refunds; protocol ≤ 20%; integrator 0–300 bps | Unit + property tests | TODO | |
