@@ -10,7 +10,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
-      - run: pnpm -r test
+      - run: pnpm test
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +21,22 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --release
+  programs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.96.1
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Agave 4.0.2 (cargo build-sbf)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v4.0.2/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - run: (cd programs/cross_gate && cargo build-sbf) && (cd programs/cross_core && cargo build-sbf)
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @opening-cross/core-tests test
   secrets:
     runs-on: ubuntu-latest
     steps:

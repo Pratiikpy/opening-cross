@@ -7,9 +7,11 @@ skip-lint = false
 
 [programs.localnet]
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
 
 [programs.devnet]
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
 
 [provider]
 cluster = "devnet"

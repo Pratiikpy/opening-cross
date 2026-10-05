@@ -1,0 +1,14 @@
+{
+  "name": "@opening-cross/codegen",
+  "private": true,
+  "description": "Generates the @solana/kit program clients from the Anchor IDLs kept in each client package's idl/ folder.",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "1.5.6",
+    "@codama/renderers-js": "2.5.0",
+    "codama": "1.11.0"
+  }
+}

@@ -1,0 +1,30 @@
+[package]
+name = "cross_core"
+version = "0.1.0"
+description = "Opening Cross core: escrow, commit-reveal order entry, sharded aggregation, uniform-price clearing, claims and refunds."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_core"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+clearing-core = { path = "../../crates/clearing-core" }
+cross_gate = { path = "../cross_gate", features = ["no-entrypoint"] }
+solana-sha256-hasher = "3"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

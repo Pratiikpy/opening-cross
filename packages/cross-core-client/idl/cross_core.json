@@ -1,0 +1,2476 @@
+{
+  "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ",
+  "metadata": {
+    "name": "cross_core",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross core: escrow, commit-reveal order entry, sharded aggregation, uniform-price clearing, claims and refunds.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "cancel_order",
+      "docs": [
+        "Withdraws an order during the call window. Full refund, no fee."
+      ],
+      "discriminator": [
+        95,
+        129,
+        237,
+        240,
+        8,
+        49,
+        223,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "cross",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_quote",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "owner_base",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim",
+      "docs": [
+        "Settles one order: pays its fill at the clearing price and refunds the rest. Anyone may",
+        "crank it; funds always go to the order owner. Closes the order account."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Anyone may crank; pays for any missing owner token account."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "owner_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "base_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "clear",
+      "docs": [
+        "Clears the cross once every shard is merged. Permissionless."
+      ],
+      "discriminator": [
+        250,
+        39,
+        28,
+        213,
+        123,
+        163,
+        133,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "book",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_order",
+      "docs": [
+        "Places an order and escrows its funds. Sealed crosses take a commitment; open crosses",
+        "take the plaintext `price` and `quantity` and add them to the book immediately."
+      ],
+      "discriminator": [
+        106,
+        167,
+        189,
+        186,
+        74,
+        113,
+        139,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "docs": [
+            "client-supplied bump, which `create_program_address` verifies (no bump search)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "docs": [
+            "Required for open disclosure (the order's shard); omitted for sealed crosses."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "pass",
+          "optional": true
+        },
+        {
+          "name": "escrow_mint",
+          "docs": [
+            "cross in the handler, decimals come from the cross."
+          ]
+        },
+        {
+          "name": "escrow_vault",
+          "docs": [
+            "handler and by the token program on transfer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "owner_escrow",
+          "docs": [
+            "owner signs for it and that its mint matches."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CommitOrderArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_cross",
+      "discriminator": [
+        177,
+        39,
+        54,
+        61,
+        231,
+        179,
+        233,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  111,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "params.cross_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator_quote",
+          "writable": true
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateCrossParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize",
+      "docs": [
+        "Distributes what is left once every order has been claimed: the issuer's proceeds and",
+        "fees in mint mode, accrued fees in escrow mode, the dust and bond remainder to",
+        "`proceeds_to`; then revokes the cross's mint authority in mint mode."
+      ],
+      "discriminator": [
+        171,
+        61,
+        218,
+        56,
+        127,
+        115,
+        12,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_recipient_quote",
+          "writable": true
+        },
+        {
+          "name": "integrator_quote",
+          "writable": true
+        },
+        {
+          "name": "proceeds_quote",
+          "writable": true
+        },
+        {
+          "name": "proceeds_base",
+          "writable": true
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_protocol",
+      "discriminator": [
+        3,
+        188,
+        141,
+        237,
+        225,
+        226,
+        232,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "guardian",
+          "type": "pubkey"
+        },
+        {
+          "name": "fee_recipient",
+          "type": "pubkey"
+        },
+        {
+          "name": "fee_bps",
+          "type": {
+            "array": [
+              "u16",
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "init_shard",
+      "discriminator": [
+        52,
+        43,
+        132,
+        208,
+        128,
+        105,
+        135,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "shard",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "merge_shard",
+      "docs": [
+        "Adds one shard into the book. Permissionless; each shard merges exactly once."
+      ],
+      "discriminator": [
+        74,
+        236,
+        235,
+        100,
+        9,
+        179,
+        1,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_order",
+      "docs": [
+        "Reveals a sealed order during the reveal window and adds it to its shard."
+      ],
+      "discriminator": [
+        25,
+        244,
+        42,
+        219,
+        17,
+        156,
+        211,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "cross",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "docs": [
+        "Guardian or admin pause of new crosses and new orders. Reveals, clears, claims and",
+        "refunds are never paused."
+      ],
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_protocol_fees",
+      "docs": [
+        "Fee changes apply to crosses created afterwards; existing crosses keep their snapshot."
+      ],
+      "discriminator": [
+        49,
+        143,
+        189,
+        18,
+        56,
+        206,
+        158,
+        226
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_recipient",
+          "type": "pubkey"
+        },
+        {
+          "name": "fee_bps",
+          "type": {
+            "array": [
+              "u16",
+              4
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Cross",
+      "discriminator": [
+        87,
+        211,
+        126,
+        176,
+        151,
+        205,
+        171,
+        235
+      ]
+    },
+    {
+      "name": "Levels",
+      "discriminator": [
+        232,
+        112,
+        238,
+        199,
+        175,
+        167,
+        191,
+        167
+      ]
+    },
+    {
+      "name": "Order",
+      "discriminator": [
+        134,
+        173,
+        223,
+        185,
+        77,
+        86,
+        28,
+        51
+      ]
+    },
+    {
+      "name": "Protocol",
+      "discriminator": [
+        45,
+        39,
+        101,
+        43,
+        115,
+        72,
+        131,
+        40
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CrossCleared",
+      "discriminator": [
+        169,
+        57,
+        48,
+        47,
+        134,
+        96,
+        223,
+        75
+      ]
+    },
+    {
+      "name": "CrossCreated",
+      "discriminator": [
+        168,
+        171,
+        108,
+        104,
+        151,
+        229,
+        150,
+        201
+      ]
+    },
+    {
+      "name": "CrossFinalized",
+      "discriminator": [
+        192,
+        129,
+        99,
+        179,
+        189,
+        135,
+        97,
+        133
+      ]
+    },
+    {
+      "name": "OrderCancelled",
+      "discriminator": [
+        108,
+        56,
+        128,
+        68,
+        168,
+        113,
+        168,
+        239
+      ]
+    },
+    {
+      "name": "OrderClaimed",
+      "discriminator": [
+        216,
+        186,
+        131,
+        38,
+        14,
+        138,
+        182,
+        248
+      ]
+    },
+    {
+      "name": "OrderCommitted",
+      "discriminator": [
+        120,
+        115,
+        67,
+        82,
+        131,
+        215,
+        13,
+        83
+      ]
+    },
+    {
+      "name": "OrderRevealed",
+      "discriminator": [
+        241,
+        84,
+        202,
+        173,
+        0,
+        48,
+        108,
+        91
+      ]
+    },
+    {
+      "name": "PauseChanged",
+      "discriminator": [
+        238,
+        188,
+        213,
+        78,
+        134,
+        209,
+        178,
+        218
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused",
+      "msg": "Protocol is paused for new crosses and orders"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Signer is not authorised"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidParams",
+      "msg": "Invalid parameters"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTimeline",
+      "msg": "Invalid timeline"
+    },
+    {
+      "code": 6004,
+      "name": "FeeTooHigh",
+      "msg": "Fee exceeds its cap"
+    },
+    {
+      "code": 6005,
+      "name": "OffGrid",
+      "msg": "Price is not on the cross's grid"
+    },
+    {
+      "code": 6006,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6007,
+      "name": "NotInCallWindow",
+      "msg": "Outside the call window"
+    },
+    {
+      "code": 6008,
+      "name": "NotInRevealWindow",
+      "msg": "Outside the reveal window"
+    },
+    {
+      "code": 6009,
+      "name": "CallNotOver",
+      "msg": "The call and reveal windows have not ended"
+    },
+    {
+      "code": 6010,
+      "name": "CrossFull",
+      "msg": "Cross has reached its order limit"
+    },
+    {
+      "code": 6011,
+      "name": "SellsNotAccepted",
+      "msg": "This cross does not accept sell orders"
+    },
+    {
+      "code": 6012,
+      "name": "NotEligible",
+      "msg": "Owner is not eligible for this cross"
+    },
+    {
+      "code": 6013,
+      "name": "ShardMissing",
+      "msg": "Shard account required"
+    },
+    {
+      "code": 6014,
+      "name": "WrongShard",
+      "msg": "Wrong shard for this order"
+    },
+    {
+      "code": 6015,
+      "name": "WrongCross",
+      "msg": "Order does not belong to this cross"
+    },
+    {
+      "code": 6016,
+      "name": "NotSealed",
+      "msg": "Cross is not sealed"
+    },
+    {
+      "code": 6017,
+      "name": "AlreadyRevealed",
+      "msg": "Order already revealed"
+    },
+    {
+      "code": 6018,
+      "name": "CommitmentMismatch",
+      "msg": "Reveal does not match the commitment"
+    },
+    {
+      "code": 6019,
+      "name": "InsufficientEscrow",
+      "msg": "Escrow does not cover the order"
+    },
+    {
+      "code": 6020,
+      "name": "AlreadyMerged",
+      "msg": "Shard already merged"
+    },
+    {
+      "code": 6021,
+      "name": "ShardsNotMerged",
+      "msg": "Not every shard has been merged"
+    },
+    {
+      "code": 6022,
+      "name": "WrongState",
+      "msg": "Cross is in the wrong state for this action"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidBook",
+      "msg": "Book is inconsistent"
+    },
+    {
+      "code": 6024,
+      "name": "OrdersOutstanding",
+      "msg": "Orders remain unclaimed"
+    },
+    {
+      "code": 6025,
+      "name": "MintAuthorityNotCross",
+      "msg": "Mint mode requires the cross PDA to hold the mint authority"
+    },
+    {
+      "code": 6026,
+      "name": "TokenAccountMissing",
+      "msg": "The token account for this order side is required"
+    },
+    {
+      "code": 6027,
+      "name": "WrongMint",
+      "msg": "Mint or token program does not match the cross"
+    },
+    {
+      "code": 6028,
+      "name": "WrongVault",
+      "msg": "Vault does not match the cross"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClearingSummary",
+      "docs": [
+        "Clearing summary stored on the cross; mirrors `clearing_core::Clearing`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "matched",
+            "type": "u128"
+          },
+          {
+            "name": "demand",
+            "type": "u128"
+          },
+          {
+            "name": "supply",
+            "type": "u128"
+          },
+          {
+            "name": "rationed",
+            "docs": [
+              "0 = none, 1 = buy, 2 = sell."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "marginal_quantity",
+            "type": "u128"
+          },
+          {
+            "name": "marginal_remaining",
+            "type": "u128"
+          },
+          {
+            "name": "marginal_orders",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitOrderArgs",
+      "docs": [
+        "Arguments for `commit_order`. Sealed crosses send the commitment and leave `price` and",
+        "`quantity` zero; open crosses send the plaintext order and a zero commitment."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "escrow",
+            "type": "u64"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "order_bump",
+            "docs": [
+              "Bump of the order PDA, computed by the client."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateCrossParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross_id",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CrossKind"
+              }
+            }
+          },
+          {
+            "name": "supply_mode",
+            "type": {
+              "defined": {
+                "name": "SupplyMode"
+              }
+            }
+          },
+          {
+            "name": "disclosure",
+            "type": {
+              "defined": {
+                "name": "Disclosure"
+              }
+            }
+          },
+          {
+            "name": "min_price",
+            "type": "u64"
+          },
+          {
+            "name": "tick",
+            "type": "u64"
+          },
+          {
+            "name": "ticks",
+            "type": "u16"
+          },
+          {
+            "name": "price_scale",
+            "type": "u64"
+          },
+          {
+            "name": "open_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_end_ts",
+            "docs": [
+              "Ignored (set to `close_ts`) for open disclosure."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "reference_price",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "min_matched",
+            "type": "u64"
+          },
+          {
+            "name": "max_imbalance_bps",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "integrator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "integrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "gate_mint",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "shards",
+            "type": "u8"
+          },
+          {
+            "name": "max_orders",
+            "type": "u32"
+          },
+          {
+            "name": "proceeds_to",
+            "type": "pubkey"
+          },
+          {
+            "name": "schedule",
+            "docs": [
+              "Mint mode only: the issuer's elastic supply schedule as sell levels."
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "SupplyLevel"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cross",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross_id",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CrossKind"
+              }
+            }
+          },
+          {
+            "name": "supply_mode",
+            "type": {
+              "defined": {
+                "name": "SupplyMode"
+              }
+            }
+          },
+          {
+            "name": "disclosure",
+            "type": {
+              "defined": {
+                "name": "Disclosure"
+              }
+            }
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "CrossState"
+              }
+            }
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_decimals",
+            "type": "u8"
+          },
+          {
+            "name": "quote_decimals",
+            "type": "u8"
+          },
+          {
+            "name": "proceeds_to",
+            "docs": [
+              "Receives the issuer's proceeds in mint mode and the dust/bond remainder in all modes."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "min_price",
+            "docs": [
+              "Price grid: `min_price + i * tick` for `i < ticks`. Prices are quote atoms per",
+              "`price_scale` base atoms."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tick",
+            "type": "u64"
+          },
+          {
+            "name": "ticks",
+            "type": "u16"
+          },
+          {
+            "name": "price_scale",
+            "type": "u64"
+          },
+          {
+            "name": "open_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "reference_price",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "min_matched",
+            "type": "u64"
+          },
+          {
+            "name": "max_imbalance_bps",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "integrator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "integrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gate_mint",
+            "docs": [
+              "When set, only owners holding a `cross_gate` pass for this mint may place orders."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "shards",
+            "type": "u8"
+          },
+          {
+            "name": "max_orders",
+            "type": "u32"
+          },
+          {
+            "name": "dust_bond",
+            "type": "u64"
+          },
+          {
+            "name": "orders_total",
+            "type": "u32"
+          },
+          {
+            "name": "orders_open",
+            "type": "u32"
+          },
+          {
+            "name": "merged_mask",
+            "type": "u32"
+          },
+          {
+            "name": "clearing",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "ClearingSummary"
+                }
+              }
+            }
+          },
+          {
+            "name": "no_print_reason",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "NoPrintReason"
+                }
+              }
+            }
+          },
+          {
+            "name": "buyer_paid",
+            "docs": [
+              "Running settlement totals."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "base_bought",
+            "type": "u64"
+          },
+          {
+            "name": "base_sold",
+            "type": "u64"
+          },
+          {
+            "name": "seller_paid",
+            "type": "u64"
+          },
+          {
+            "name": "fees_accrued",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "quote_vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "base_vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "book_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossCleared",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "printed",
+            "type": "bool"
+          },
+          {
+            "name": "clearing",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "ClearingSummary"
+                }
+              }
+            }
+          },
+          {
+            "name": "no_print_reason",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "NoPrintReason"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CrossKind"
+              }
+            }
+          },
+          {
+            "name": "supply_mode",
+            "type": {
+              "defined": {
+                "name": "SupplyMode"
+              }
+            }
+          },
+          {
+            "name": "disclosure",
+            "type": {
+              "defined": {
+                "name": "Disclosure"
+              }
+            }
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "open_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "integrator_fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee",
+            "type": "u64"
+          },
+          {
+            "name": "integrator_fee",
+            "type": "u64"
+          },
+          {
+            "name": "proceeds_quote",
+            "type": "u64"
+          },
+          {
+            "name": "dust_base",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Launch"
+          },
+          {
+            "name": "Reopen"
+          },
+          {
+            "name": "Tender"
+          },
+          {
+            "name": "Recurring"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Live"
+          },
+          {
+            "name": "Cleared"
+          },
+          {
+            "name": "NoPrint"
+          },
+          {
+            "name": "Finalized"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Disclosure",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Sealed"
+          },
+          {
+            "name": "Open"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Levels",
+      "docs": [
+        "Per-tick aggregates. Used both for shards (written by orders) and the merged book."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "buy",
+            "type": {
+              "array": [
+                "u64",
+                256
+              ]
+            }
+          },
+          {
+            "name": "sell",
+            "type": {
+              "array": [
+                "u64",
+                256
+              ]
+            }
+          },
+          {
+            "name": "buy_orders",
+            "type": {
+              "array": [
+                "u32",
+                256
+              ]
+            }
+          },
+          {
+            "name": "sell_orders",
+            "type": {
+              "array": [
+                "u32",
+                256
+              ]
+            }
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "_pad",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NoPrintReason",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NoCross"
+          },
+          {
+            "name": "BelowMinimumVolume"
+          },
+          {
+            "name": "ImbalanceTooHigh"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Order",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "OrderState"
+              }
+            }
+          },
+          {
+            "name": "commitment",
+            "docs": [
+              "Sealed crosses: `sha256(cross ‖ owner ‖ nonce ‖ side ‖ price ‖ quantity ‖ salt)`."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "escrow",
+            "docs": [
+              "Quote atoms (buys) or base atoms (sells) held in the vault for this order."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "fill",
+            "type": "u64"
+          },
+          {
+            "name": "quote_out",
+            "type": "u64"
+          },
+          {
+            "name": "base_out",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "escrow",
+            "type": "u64"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "sealed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderSide",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Buy"
+          },
+          {
+            "name": "Sell"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Committed"
+          },
+          {
+            "name": "Revealed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PauseChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Protocol",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "guardian",
+            "docs": [
+              "May pause new crosses and orders; can never block claims or refunds."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "docs": [
+              "Protocol fee in bps of filled notional, indexed by [`CrossKind`]."
+            ],
+            "type": {
+              "array": [
+                "u16",
+                4
+              ]
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupplyLevel",
+      "docs": [
+        "One step of an issuer's pre-committed supply schedule."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupplyMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Escrow"
+          },
+          {
+            "name": "Mint"
+          }
+        ]
+      }
+    }
+  ]
+}

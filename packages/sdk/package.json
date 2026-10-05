@@ -1,0 +1,25 @@
+{
+  "name": "@opening-cross/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Opening Cross: addresses, commitments and instruction builders for every step of a cross.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/cross-gate-client": "workspace:*",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

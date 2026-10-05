@@ -3,3 +3,10 @@ packages:
   - "apps/*"
   - "services/*"
   - "tests/*"
+
+# Install native optional dependencies for Windows and Linux so the same tree runs tests in
+# WSL/CI (LiteSVM ships no Windows binary).
+supportedArchitectures:
+  os: [current, linux]
+  cpu: [current, x64]
+  libc: [current, glibc]

@@ -489,6 +489,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross_core"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+ "clearing-core",
+ "cross_gate",
+ "solana-sha256-hasher",
+]
+
+[[package]]
 name = "cross_gate"
 version = "0.1.0"
 dependencies = [

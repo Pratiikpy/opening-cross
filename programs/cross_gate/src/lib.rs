@@ -75,7 +75,11 @@ pub mod cross_gate {
         config.authority = authority;
         config.mode = mode;
         config.bump = ctx.bumps.config;
-        emit!(ConfigCreated { mint: mint.key(), authority, mode });
+        emit!(ConfigCreated {
+            mint: mint.key(),
+            authority,
+            mode
+        });
         Ok(())
     }
 
@@ -111,7 +115,12 @@ pub mod cross_gate {
             GateError::NotTransferring
         );
         require!(
-            is_transferring(&ctx.accounts.destination.to_account_info().try_borrow_data()?)?,
+            is_transferring(
+                &ctx.accounts
+                    .destination
+                    .to_account_info()
+                    .try_borrow_data()?
+            )?,
             GateError::NotTransferring
         );
 
@@ -124,7 +133,8 @@ pub mod cross_gate {
             );
         }
 
-        if let Some(lock) = read_lock(&ctx.accounts.source_lock, &mint, &ctx.accounts.source.owner)? {
+        if let Some(lock) = read_lock(&ctx.accounts.source_lock, &mint, &ctx.accounts.source.owner)?
+        {
             if Clock::get()?.unix_timestamp < lock.unlock_ts {
                 // Balances are already updated when Token-2022 invokes the hook.
                 require!(ctx.accounts.source.amount >= lock.amount, GateError::Locked);
@@ -139,7 +149,11 @@ pub mod cross_gate {
     pub fn can_thaw_permissionless(ctx: Context<GateCheck>) -> Result<()> {
         ctx.accounts.check_called_by_token_acl()?;
         let allowed = ctx.accounts.config.mode == Mode::Open
-            || holds_pass(&ctx.accounts.pass, &ctx.accounts.mint.key(), &ctx.accounts.owner.key())?;
+            || holds_pass(
+                &ctx.accounts.pass,
+                &ctx.accounts.mint.key(),
+                &ctx.accounts.owner.key(),
+            )?;
         require!(allowed, GateError::RecipientNotAllowed);
         Ok(())
     }
@@ -150,7 +164,11 @@ pub mod cross_gate {
     pub fn can_freeze_permissionless(ctx: Context<GateCheck>) -> Result<()> {
         ctx.accounts.check_called_by_token_acl()?;
         let blocked = ctx.accounts.config.mode == Mode::Allowlist
-            && !holds_pass(&ctx.accounts.pass, &ctx.accounts.mint.key(), &ctx.accounts.owner.key())?;
+            && !holds_pass(
+                &ctx.accounts.pass,
+                &ctx.accounts.mint.key(),
+                &ctx.accounts.owner.key(),
+            )?;
         require!(blocked, GateError::OwnerAllowed);
         Ok(())
     }
@@ -161,19 +179,32 @@ pub mod cross_gate {
         pass.mint = ctx.accounts.config.mint;
         pass.owner = owner;
         pass.bump = ctx.bumps.pass;
-        emit!(PassChanged { mint: pass.mint, owner, granted: true });
+        emit!(PassChanged {
+            mint: pass.mint,
+            owner,
+            granted: true
+        });
         Ok(())
     }
 
     /// Revokes a pass and returns its rent to the authority.
     pub fn revoke_pass(ctx: Context<RevokePass>) -> Result<()> {
-        emit!(PassChanged { mint: ctx.accounts.pass.mint, owner: ctx.accounts.pass.owner, granted: false });
+        emit!(PassChanged {
+            mint: ctx.accounts.pass.mint,
+            owner: ctx.accounts.pass.owner,
+            granted: false
+        });
         Ok(())
     }
 
     /// Creates or strengthens a lock. While a lock is active its amount can only rise and its
     /// unlock time can only move later; once expired it may be replaced freely.
-    pub fn set_lock(ctx: Context<SetLock>, owner: Pubkey, amount: u64, unlock_ts: i64) -> Result<()> {
+    pub fn set_lock(
+        ctx: Context<SetLock>,
+        owner: Pubkey,
+        amount: u64,
+        unlock_ts: i64,
+    ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let lock = &mut ctx.accounts.lock;
         let fresh = lock.owner == Pubkey::default();
@@ -188,7 +219,12 @@ pub mod cross_gate {
         lock.amount = amount;
         lock.unlock_ts = unlock_ts;
         lock.bump = ctx.bumps.lock;
-        emit!(LockChanged { mint: lock.mint, owner, amount, unlock_ts });
+        emit!(LockChanged {
+            mint: lock.mint,
+            owner,
+            amount,
+            unlock_ts
+        });
         Ok(())
     }
 
@@ -198,19 +234,30 @@ pub mod cross_gate {
             Clock::get()?.unix_timestamp >= ctx.accounts.lock.unlock_ts,
             GateError::LockActive
         );
-        emit!(LockChanged { mint: ctx.accounts.lock.mint, owner: ctx.accounts.lock.owner, amount: 0, unlock_ts: 0 });
+        emit!(LockChanged {
+            mint: ctx.accounts.lock.mint,
+            owner: ctx.accounts.lock.owner,
+            amount: 0,
+            unlock_ts: 0
+        });
         Ok(())
     }
 
     pub fn set_mode(ctx: Context<AuthorityOnly>, mode: Mode) -> Result<()> {
         ctx.accounts.config.mode = mode;
-        emit!(ModeChanged { mint: ctx.accounts.config.mint, mode });
+        emit!(ModeChanged {
+            mint: ctx.accounts.config.mint,
+            mode
+        });
         Ok(())
     }
 
     pub fn set_authority(ctx: Context<AuthorityOnly>, new_authority: Pubkey) -> Result<()> {
         ctx.accounts.config.authority = new_authority;
-        emit!(AuthorityChanged { mint: ctx.accounts.config.mint, authority: new_authority });
+        emit!(AuthorityChanged {
+            mint: ctx.accounts.config.mint,
+            authority: new_authority
+        });
         Ok(())
     }
 }
@@ -226,7 +273,11 @@ pub fn hook_extra_metas() -> Result<Vec<ExtraAccountMeta>> {
     let mint = Seed::AccountKey { index: 1 };
     Ok(vec![
         ExtraAccountMeta::new_with_seeds(&[literal(CONFIG_SEED), mint.clone()], false, false)?,
-        ExtraAccountMeta::new_with_seeds(&[literal(PASS_SEED), mint.clone(), owner_of(2)], false, false)?,
+        ExtraAccountMeta::new_with_seeds(
+            &[literal(PASS_SEED), mint.clone(), owner_of(2)],
+            false,
+            false,
+        )?,
         ExtraAccountMeta::new_with_seeds(&[literal(LOCK_SEED), mint, owner_of(0)], false, false)?,
     ])
 }
@@ -237,12 +288,18 @@ pub fn gate_extra_metas() -> Result<Vec<ExtraAccountMeta>> {
     let mint = Seed::AccountKey { index: 2 };
     Ok(vec![
         ExtraAccountMeta::new_with_seeds(&[literal(CONFIG_SEED), mint.clone()], false, false)?,
-        ExtraAccountMeta::new_with_seeds(&[literal(PASS_SEED), mint, Seed::AccountKey { index: 3 }], false, false)?,
+        ExtraAccountMeta::new_with_seeds(
+            &[literal(PASS_SEED), mint, Seed::AccountKey { index: 3 }],
+            false,
+            false,
+        )?,
     ])
 }
 
 fn literal(bytes: &[u8]) -> Seed {
-    Seed::Literal { bytes: bytes.to_vec() }
+    Seed::Literal {
+        bytes: bytes.to_vec(),
+    }
 }
 
 /// Marker types so the TLV lists are keyed by the sRFC-37 discriminators.
@@ -423,7 +480,8 @@ impl GateCheck<'_> {
         let metas = self.extra_metas.key();
         let mint = self.mint.key();
         let thaw = Pubkey::find_program_address(&[THAW_METAS_SEED, mint.as_ref()], &crate::ID).0;
-        let freeze = Pubkey::find_program_address(&[FREEZE_METAS_SEED, mint.as_ref()], &crate::ID).0;
+        let freeze =
+            Pubkey::find_program_address(&[FREEZE_METAS_SEED, mint.as_ref()], &crate::ID).0;
         require!(metas == thaw || metas == freeze, GateError::WrongMetaList);
         Ok(())
     }

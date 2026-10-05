@@ -28,7 +28,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | DP10 | Reopen-cross novelty evidence | Documented search of Jupiter, Ondo, Kraken, xStocks, Backpack | Sources cited with dates | TODO | |
 | DP11 | Presale vault partner-mint path | Base supply minted by partner authority before revoke | Devnet run | TODO | |
 | DP12 | Genesis third-party bucket | Callable from our program or NO-GO | Read Genesis source + devnet call | TODO | |
-| DP13 | Performance targets | bid ≤ 25k CU; throughput, landing latency, 100k-bid settlement measured | LiteSVM CU + devnet load test | TODO | |
+| DP13 | Performance targets | bid ≤ 25k CU; throughput, landing latency, 100k-bid settlement measured | LiteSVM CU + devnet load test | IN PROGRESS | Bid ≤ 25k CU **PASS**: commit 20.3–21.1k, reveal 5.6k, merge 20.4k, clear (256 ticks) 11.3k, claim 27.7k (`tests/core/test/compute.test.ts`). Throughput, landing latency and 100k-bid settlement not yet measured |
 | DP14 | Stock-token safeguards | Pause, permanent delegate, scaled-UI multiplier detected per mint on mainnet | Mainnet RPC reads of xStocks/Backpack mints | DONE | [`docs/evidence/DP14.md`](evidence/DP14.md); `packages/token-safety` 11/11 tests |
 | DP15 | Oracle feeds for the price band | Pyth feeds read for target stocks; divergence guard triggers | Mainnet/devnet reads + unit test | TODO | |
 
@@ -37,8 +37,8 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
 | C1 | `clearing-core` crate: uniform-price clearing, pro-rata, tie-breaks, integer maths | Deterministic; matches an independent reference on 10k random books | Unit, property and differential tests | DONE | `crates/clearing-core`; ADR-0003; 13 tests incl. 10,000-case match against an exhaustive reference, conservation, order independence, vault solvency (`cargo test -p clearing-core --release`) |
-| C2 | `cross_core` program: escrow, create, place/cancel, commit-reveal, close, sharded clear, allocation root, claim, refund | All invariants in ENGINEERING_PRINCIPLES §3.2 hold under fuzzing | LiteSVM unit + invariant + adversarial suites; devnet end-to-end | TODO | |
-| C3 | Print guards and no-print fallback | Thin, imbalanced or oracle-divergent crosses do not print; refunds succeed | Adversarial tests | TODO | |
+| C2 | `cross_core` program: escrow, create, place/cancel, commit-reveal, close, sharded clear, allocation root, claim, refund | All invariants in ENGINEERING_PRINCIPLES §3.2 hold under fuzzing | LiteSVM unit + invariant + adversarial suites; devnet end-to-end | IN PROGRESS | `programs/cross_core` (ADR-0005); `tests/core`: 46 tests — flows, 15 attack cases, 25 randomized runs (200-run stress passed) vs independent reference with exact conservation. Devnet end-to-end pending |
+| C3 | Print guards and no-print fallback | Thin, imbalanced or oracle-divergent crosses do not print; refunds succeed | Adversarial tests | IN PROGRESS | No-print and min-volume guard tested (`tests/core/test/flows.test.ts`); imbalance and oracle-divergence guards pending |
 | C4 | `cross_fees`: per-cross fee snapshot and split | No fee on bids/cancels/refunds; protocol ≤ 20%; integrator 0–300 bps | Unit + property tests | TODO | |
 | C5 | `cross_gate`: SAS credential, allowlist-Merkle, open | Gated wallet blocked, credentialed wallet passes | Devnet with real SAS attestation | IN PROGRESS | `programs/cross_gate` deployed: passes + locks as hook and Token ACL gate (DP5, DP8 evidence); SAS-credential pass issuance and Merkle allowlist still to build |
 | C6 | `cross_calendar`: UTC calendar, oracle-set registry, timelocked admin | Timelock enforced; crosses scheduled from calendar | Unit + devnet | TODO | |
