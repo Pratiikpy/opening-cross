@@ -1,6 +1,6 @@
 // A ready-made protocol deployment inside LiteSVM, plus helpers to drive a cross end to end
 // through the SDK exactly as a client would.
-import type { Address, KeyPairSigner } from '@solana/kit';
+import { type Address, type KeyPairSigner, lamports } from '@solana/kit';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import {
   CROSS_CORE_PROGRAM_ADDRESS,
@@ -89,6 +89,19 @@ export class World {
     }
     await w.h.fund(w.quoteMint, w.admin, w.creator.address, 1_000_000_000_000n);
     return w;
+  }
+
+  /** Switches the world to a new pair of mints (fresh supplies), with the creator funded as in
+   *  `create`. Lets one VM run many independent books without any mint's supply overflowing. */
+  async freshMints(): Promise<void> {
+    for (const who of [this.admin, this.creator]) this.h.svm.airdrop(who.address, lamports(10_000_000_000n));
+    this.quoteMint = await this.h.mint(this.admin, 6);
+    this.baseMint = await this.h.mint(this.admin, 6);
+    for (const who of [this.feeRecipient, this.integrator, this.creator]) {
+      await this.h.ata(who.address, this.quoteMint, this.admin);
+      await this.h.ata(who.address, this.baseMint, this.admin);
+    }
+    await this.h.fund(this.quoteMint, this.admin, this.creator.address, 1_000_000_000_000n);
   }
 
   async newCross(o: CrossOptions = {}): Promise<CrossView> {

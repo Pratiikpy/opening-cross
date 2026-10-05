@@ -8,6 +8,7 @@ import { CrossState, NoPrintReason, OrderSide, orderAddress } from '@opening-cro
 import { decodeLogs } from '@opening-cross/indexer';
 import { type ConformanceCase, loadVectors } from '@opening-cross/verifier';
 import { World, SCALE } from '../src/world.js';
+import { T0 } from '../src/harness.js';
 
 const MAX_TICKS = 256;
 const U64 = (1n << 64n) - 1n;
@@ -32,9 +33,12 @@ describe('cross_core against conformance v1', () => {
     const vectors = loadVectors();
     const skipped = vectors.cases.flatMap((c) => { const why = unsupported(c); return why ? [`${c.name}: ${why}`] : []; });
     const cases = vectors.cases.filter((c) => !unsupported(c));
+    const w = await World.create();
     const mismatches: string[] = [];
     for (const c of cases) {
-      const w = await World.create(); // fresh mints per case: supplies across 500 books exceed u64
+      // Fresh mints per case: supplies summed across 500 books exceed u64.
+      await w.freshMints();
+      w.h.setTime(T0);
       const cross = await w.newCross({
         minPrice: BigInt(c.grid.min), tick: BigInt(c.grid.tick), ticks: c.grid.ticks,
         reference: c.reference === null ? null : BigInt(c.reference),
