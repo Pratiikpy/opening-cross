@@ -417,6 +417,14 @@
               }
             ]
           }
+        },
+        {
+          "name": "oracle_price",
+          "docs": [
+            "pinned feed (typically posted by the keeper in the same transaction); ownership, feed,",
+            "verification level and freshness are checked in `oracle_verdict`."
+          ],
+          "optional": true
         }
       ],
       "args": []
@@ -1491,6 +1499,11 @@
       "code": 6031,
       "name": "DeadlineNotReached",
       "msg": "Settlement deadline has not passed"
+    },
+    {
+      "code": 6032,
+      "name": "OracleAccountMissing",
+      "msg": "This cross needs a Pyth price update account"
     }
   ],
   "types": [
@@ -1700,6 +1713,16 @@
             "name": "gate_mint",
             "type": {
               "option": "pubkey"
+            }
+          },
+          {
+            "name": "oracle",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "OracleGuard"
+                }
+              }
             }
           },
           {
@@ -1961,6 +1984,19 @@
           {
             "name": "fees_accrued",
             "type": "u64"
+          },
+          {
+            "name": "oracle",
+            "docs": [
+              "Optional oracle divergence guard (reopens of assets with a reference market)."
+            ],
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "OracleGuard"
+                }
+              }
+            }
           },
           {
             "name": "settler",
@@ -2272,6 +2308,46 @@
           },
           {
             "name": "SettlementExpired"
+          },
+          {
+            "name": "OracleDivergence"
+          },
+          {
+            "name": "OracleUnavailable"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleGuard",
+      "docs": [
+        "Pyth price guard: the cross does not print if P* differs from the oracle by more than",
+        "`max_divergence_bps`, or if no fully verified price newer than `max_staleness_secs` exists.",
+        "",
+        "The guard pins the Pyth **feed id**, not an account: Pyth's sponsored push accounts for US",
+        "equities were 24–40 days stale on mainnet (DP15), so the clearing keeper posts a fresh update",
+        "through the Pyth receiver (pull model) and passes that account. The receiver verifies the",
+        "Wormhole signatures; the guard accepts only fully verified updates for the pinned feed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "max_divergence_bps",
+            "type": "u32"
+          },
+          {
+            "name": "max_staleness_secs",
+            "type": "u32"
           }
         ]
       }

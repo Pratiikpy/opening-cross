@@ -10,7 +10,7 @@ import { combineCodec, fixDecoderSize, fixEncoderSize, getAddressDecoder, getAdd
 import { getAccountMetaFactory, getAddressFromResolvedInstructionAccount, type InstructionAccountInput, type InstructionAccountInputAddress, type InstructionSignerInput, type ResolvedInstructionAccount, type ResolvedInstructionAccountMeta } from '@solana/program-client-core';
 import { findBaseVaultPda, findBookPda, findProtocolPda, findQuoteVaultPda } from '../pdas/index.js';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '../programs/index.js';
-import { getCrossKindDecoder, getCrossKindEncoder, getDisclosureDecoder, getDisclosureEncoder, getSupplyLevelDecoder, getSupplyLevelEncoder, getSupplyModeDecoder, getSupplyModeEncoder, type CrossKind, type CrossKindArgs, type Disclosure, type DisclosureArgs, type SupplyLevel, type SupplyLevelArgs, type SupplyMode, type SupplyModeArgs } from '../types/index.js';
+import { getCrossKindDecoder, getCrossKindEncoder, getDisclosureDecoder, getDisclosureEncoder, getOracleGuardDecoder, getOracleGuardEncoder, getSupplyLevelDecoder, getSupplyLevelEncoder, getSupplyModeDecoder, getSupplyModeEncoder, type CrossKind, type CrossKindArgs, type Disclosure, type DisclosureArgs, type OracleGuard, type OracleGuardArgs, type SupplyLevel, type SupplyLevelArgs, type SupplyMode, type SupplyModeArgs } from '../types/index.js';
 
 export const CREATE_CROSS_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([177, 39, 54, 61, 231, 179, 233, 2]);
 
@@ -21,7 +21,7 @@ Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array> & InstructionWit
 
 export type CreateCrossInstructionData = { discriminator: ReadonlyUint8Array; crossId: bigint; kind: CrossKind; supplyMode: SupplyMode; disclosure: Disclosure; minPrice: bigint; tick: bigint; ticks: number; priceScale: bigint; openTs: bigint; closeTs: bigint; 
 /** Ignored (set to `close_ts`) for open disclosure. */
-revealEndTs: bigint; referencePrice: Option<bigint>; minMatched: bigint; maxImbalanceBps: Option<number>; integratorFeeBps: number; integrator: Address; gateMint: Option<Address>; shards: number; maxOrders: number; proceedsTo: Address; 
+revealEndTs: bigint; referencePrice: Option<bigint>; minMatched: bigint; maxImbalanceBps: Option<number>; integratorFeeBps: number; integrator: Address; gateMint: Option<Address>; oracle: Option<OracleGuard>; shards: number; maxOrders: number; proceedsTo: Address; 
 /** Mint modes only: the issuer's elastic supply schedule as sell levels. */
 schedule: Array<SupplyLevel>; 
 /** Deferred-mint mode only: the adapter authority allowed to bind the base mint. */
@@ -31,7 +31,7 @@ settleDeadlineTs: bigint;  };
 
 export type CreateCrossInstructionDataArgs = { crossId: number | bigint; kind: CrossKindArgs; supplyMode: SupplyModeArgs; disclosure: DisclosureArgs; minPrice: number | bigint; tick: number | bigint; ticks: number; priceScale: number | bigint; openTs: number | bigint; closeTs: number | bigint; 
 /** Ignored (set to `close_ts`) for open disclosure. */
-revealEndTs: number | bigint; referencePrice: OptionOrNullable<number | bigint>; minMatched: number | bigint; maxImbalanceBps: OptionOrNullable<number>; integratorFeeBps: number; integrator: Address; gateMint: OptionOrNullable<Address>; shards: number; maxOrders: number; proceedsTo: Address; 
+revealEndTs: number | bigint; referencePrice: OptionOrNullable<number | bigint>; minMatched: number | bigint; maxImbalanceBps: OptionOrNullable<number>; integratorFeeBps: number; integrator: Address; gateMint: OptionOrNullable<Address>; oracle: OptionOrNullable<OracleGuardArgs>; shards: number; maxOrders: number; proceedsTo: Address; 
 /** Mint modes only: the issuer's elastic supply schedule as sell levels. */
 schedule: Array<SupplyLevelArgs>; 
 /** Deferred-mint mode only: the adapter authority allowed to bind the base mint. */
@@ -40,11 +40,11 @@ settler: OptionOrNullable<Address>;
 settleDeadlineTs: number | bigint;  };
 
 export function getCreateCrossInstructionDataEncoder(): Encoder<CreateCrossInstructionDataArgs> {
-    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['crossId', getU64Encoder()], ['kind', getCrossKindEncoder()], ['supplyMode', getSupplyModeEncoder()], ['disclosure', getDisclosureEncoder()], ['minPrice', getU64Encoder()], ['tick', getU64Encoder()], ['ticks', getU16Encoder()], ['priceScale', getU64Encoder()], ['openTs', getI64Encoder()], ['closeTs', getI64Encoder()], ['revealEndTs', getI64Encoder()], ['referencePrice', getOptionEncoder(getU64Encoder())], ['minMatched', getU64Encoder()], ['maxImbalanceBps', getOptionEncoder(getU32Encoder())], ['integratorFeeBps', getU16Encoder()], ['integrator', getAddressEncoder()], ['gateMint', getOptionEncoder(getAddressEncoder())], ['shards', getU8Encoder()], ['maxOrders', getU32Encoder()], ['proceedsTo', getAddressEncoder()], ['schedule', getArrayEncoder(getSupplyLevelEncoder())], ['settler', getOptionEncoder(getAddressEncoder())], ['settleDeadlineTs', getI64Encoder()]]), (value) => ({ ...value, discriminator: CREATE_CROSS_DISCRIMINATOR }));
+    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['crossId', getU64Encoder()], ['kind', getCrossKindEncoder()], ['supplyMode', getSupplyModeEncoder()], ['disclosure', getDisclosureEncoder()], ['minPrice', getU64Encoder()], ['tick', getU64Encoder()], ['ticks', getU16Encoder()], ['priceScale', getU64Encoder()], ['openTs', getI64Encoder()], ['closeTs', getI64Encoder()], ['revealEndTs', getI64Encoder()], ['referencePrice', getOptionEncoder(getU64Encoder())], ['minMatched', getU64Encoder()], ['maxImbalanceBps', getOptionEncoder(getU32Encoder())], ['integratorFeeBps', getU16Encoder()], ['integrator', getAddressEncoder()], ['gateMint', getOptionEncoder(getAddressEncoder())], ['oracle', getOptionEncoder(getOracleGuardEncoder())], ['shards', getU8Encoder()], ['maxOrders', getU32Encoder()], ['proceedsTo', getAddressEncoder()], ['schedule', getArrayEncoder(getSupplyLevelEncoder())], ['settler', getOptionEncoder(getAddressEncoder())], ['settleDeadlineTs', getI64Encoder()]]), (value) => ({ ...value, discriminator: CREATE_CROSS_DISCRIMINATOR }));
 }
 
 export function getCreateCrossInstructionDataDecoder(): Decoder<CreateCrossInstructionData> {
-    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['crossId', getU64Decoder()], ['kind', getCrossKindDecoder()], ['supplyMode', getSupplyModeDecoder()], ['disclosure', getDisclosureDecoder()], ['minPrice', getU64Decoder()], ['tick', getU64Decoder()], ['ticks', getU16Decoder()], ['priceScale', getU64Decoder()], ['openTs', getI64Decoder()], ['closeTs', getI64Decoder()], ['revealEndTs', getI64Decoder()], ['referencePrice', getOptionDecoder(getU64Decoder())], ['minMatched', getU64Decoder()], ['maxImbalanceBps', getOptionDecoder(getU32Decoder())], ['integratorFeeBps', getU16Decoder()], ['integrator', getAddressDecoder()], ['gateMint', getOptionDecoder(getAddressDecoder())], ['shards', getU8Decoder()], ['maxOrders', getU32Decoder()], ['proceedsTo', getAddressDecoder()], ['schedule', getArrayDecoder(getSupplyLevelDecoder())], ['settler', getOptionDecoder(getAddressDecoder())], ['settleDeadlineTs', getI64Decoder()]]);
+    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['crossId', getU64Decoder()], ['kind', getCrossKindDecoder()], ['supplyMode', getSupplyModeDecoder()], ['disclosure', getDisclosureDecoder()], ['minPrice', getU64Decoder()], ['tick', getU64Decoder()], ['ticks', getU16Decoder()], ['priceScale', getU64Decoder()], ['openTs', getI64Decoder()], ['closeTs', getI64Decoder()], ['revealEndTs', getI64Decoder()], ['referencePrice', getOptionDecoder(getU64Decoder())], ['minMatched', getU64Decoder()], ['maxImbalanceBps', getOptionDecoder(getU32Decoder())], ['integratorFeeBps', getU16Decoder()], ['integrator', getAddressDecoder()], ['gateMint', getOptionDecoder(getAddressDecoder())], ['oracle', getOptionDecoder(getOracleGuardDecoder())], ['shards', getU8Decoder()], ['maxOrders', getU32Decoder()], ['proceedsTo', getAddressDecoder()], ['schedule', getArrayDecoder(getSupplyLevelDecoder())], ['settler', getOptionDecoder(getAddressDecoder())], ['settleDeadlineTs', getI64Decoder()]]);
 }
 
 export function getCreateCrossInstructionDataCodec(): Codec<CreateCrossInstructionDataArgs, CreateCrossInstructionData> {
@@ -82,6 +82,7 @@ maxImbalanceBps: CreateCrossInstructionDataArgs["maxImbalanceBps"];
 integratorFeeBps: CreateCrossInstructionDataArgs["integratorFeeBps"];
 integrator: CreateCrossInstructionDataArgs["integrator"];
 gateMint: CreateCrossInstructionDataArgs["gateMint"];
+oracle: CreateCrossInstructionDataArgs["oracle"];
 shards: CreateCrossInstructionDataArgs["shards"];
 maxOrders: CreateCrossInstructionDataArgs["maxOrders"];
 proceedsTo: CreateCrossInstructionDataArgs["proceedsTo"];
@@ -157,6 +158,7 @@ maxImbalanceBps: CreateCrossInstructionDataArgs["maxImbalanceBps"];
 integratorFeeBps: CreateCrossInstructionDataArgs["integratorFeeBps"];
 integrator: CreateCrossInstructionDataArgs["integrator"];
 gateMint: CreateCrossInstructionDataArgs["gateMint"];
+oracle: CreateCrossInstructionDataArgs["oracle"];
 shards: CreateCrossInstructionDataArgs["shards"];
 maxOrders: CreateCrossInstructionDataArgs["maxOrders"];
 proceedsTo: CreateCrossInstructionDataArgs["proceedsTo"];

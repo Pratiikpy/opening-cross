@@ -99,6 +99,24 @@ pub enum NoPrintReason {
     ImbalanceTooHigh,
     /// Deferred-mint cross whose settlement adapter did not bind a mint before the deadline.
     SettlementExpired,
+    /// The clearing price strayed too far from the oracle.
+    OracleDivergence,
+    /// No fresh, fully verified oracle price was available at the clear.
+    OracleUnavailable,
+}
+
+/// Pyth price guard: the cross does not print if P* differs from the oracle by more than
+/// `max_divergence_bps`, or if no fully verified price newer than `max_staleness_secs` exists.
+///
+/// The guard pins the Pyth **feed id**, not an account: Pyth's sponsored push accounts for US
+/// equities were 24–40 days stale on mainnet (DP15), so the clearing keeper posts a fresh update
+/// through the Pyth receiver (pull model) and passes that account. The receiver verifies the
+/// Wormhole signatures; the guard accepts only fully verified updates for the pinned feed.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
+pub struct OracleGuard {
+    pub feed_id: [u8; 32],
+    pub max_divergence_bps: u32,
+    pub max_staleness_secs: u32,
 }
 
 #[account]
@@ -225,6 +243,9 @@ pub struct Cross {
     pub base_sold: u64,
     pub seller_paid: u64,
     pub fees_accrued: u64,
+
+    /// Optional oracle divergence guard (reopens of assets with a reference market).
+    pub oracle: Option<OracleGuard>,
 
     /// Deferred-mint crosses: the only signer allowed to bind the base mint, and the deadline
     /// after which anyone may abandon settlement and refund every order.

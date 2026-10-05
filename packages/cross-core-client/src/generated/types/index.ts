@@ -11,6 +11,7 @@ export * from './crossKind.js';
 export * from './crossState.js';
 export * from './disclosure.js';
 export * from './noPrintReason.js';
+export * from './oracleGuard.js';
 export * from './orderSide.js';
 export * from './orderState.js';
 export * from './supplyLevel.js';

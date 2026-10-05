@@ -10,5 +10,10 @@
     "test": "pnpm -r --filter=!@opening-cross/core-tests test",
     "typecheck": "pnpm -r typecheck",
     "test:programs": "pnpm --filter @opening-cross/core-tests test"
+  },
+  "pnpm": {
+    "overrides": {
+      "@solana/web3.js": "1.98.4"
+    }
   }
 }

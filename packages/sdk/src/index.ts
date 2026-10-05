@@ -213,15 +213,18 @@ export async function buildReveal(cross: CrossView, owner: TransactionSigner, no
   });
 }
 
-/** Merge instructions for every shard not yet merged, then the clear. */
-export async function buildSettleBook(cross: CrossView): Promise<Instruction[]> {
+/** Merge instructions for every shard not yet merged, then the clear. Oracle-guarded crosses
+ *  need `oraclePrice`: a Pyth `PriceUpdateV2` account for the pinned feed, normally posted in the
+ *  same transaction (see Pyth's receiver SDK). */
+export async function buildSettleBook(cross: CrossView, opts: { oraclePrice?: Address } = {}): Promise<Instruction[]> {
   const book = await bookAddress(cross.address);
   const ixs: Instruction[] = [];
   for (let i = 0; i < cross.data.shards; i++) {
     if ((cross.data.mergedMask >>> i) & 1) continue;
     ixs.push(getMergeShardInstruction({ cross: cross.address, book, shard: await shardAddress(cross.address, i) }));
   }
-  ixs.push(getClearInstruction({ cross: cross.address, book }));
+  if (cross.data.oracle.__option === 'Some' && !opts.oraclePrice) throw new Error('this cross has an oracle guard: pass a Pyth price update account');
+  ixs.push(getClearInstruction({ cross: cross.address, book, ...(opts.oraclePrice ? { oraclePrice: opts.oraclePrice } : {}) }));
   return ixs;
 }
 
@@ -274,3 +277,4 @@ export async function buildFinalize(cross: CrossView, payer: TransactionSigner):
 export function isSettled(state: CrossState): boolean {
   return state === CrossState.Cleared || state === CrossState.NoPrint;
 }
+export * from './oracle.js';

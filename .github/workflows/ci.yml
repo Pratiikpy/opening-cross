@@ -32,6 +32,8 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v4.0.2/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
       - run: (cd programs/cross_gate && cargo build-sbf) && (cd programs/cross_core && cargo build-sbf) && (cd programs/cross_settle && cargo build-sbf)
+      - name: Adapter IDL copies match the programs' IDLs
+        run: diff idls/cross_core.json packages/cross-core-client/idl/cross_core.json && diff idls/cross_gate.json packages/cross-gate-client/idl/cross_gate.json
       - run: sh tests/fixtures/fetch.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

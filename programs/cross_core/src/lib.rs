@@ -18,6 +18,7 @@ use anchor_spl::{
     },
 };
 
+pub mod oracle;
 pub mod state;
 use state::*;
 
@@ -43,6 +44,7 @@ pub struct CreateCrossParams {
     pub integrator_fee_bps: u16,
     pub integrator: Pubkey,
     pub gate_mint: Option<Pubkey>,
+    pub oracle: Option<OracleGuard>,
     pub shards: u8,
     pub max_orders: u32,
     pub proceeds_to: Pubkey,
@@ -211,6 +213,14 @@ pub mod cross_core {
         c.integrator = params.integrator;
         c.fee_recipient = protocol.fee_recipient;
         c.gate_mint = params.gate_mint;
+        if let Some(g) = params.oracle {
+            // The guard needs real base decimals; deferred-mint launches have no reference market.
+            require!(
+                !deferred && g.max_divergence_bps > 0 && g.max_staleness_secs > 0,
+                CrossError::InvalidParams
+            );
+        }
+        c.oracle = params.oracle;
         c.shards = params.shards;
         c.max_orders = params.max_orders;
         c.bump = ctx.bumps.cross;
@@ -678,8 +688,16 @@ pub mod cross_core {
                     c.no_print_reason = Some(NoPrintReason::ImbalanceTooHigh);
                 }
                 Ok(()) => {
-                    c.state = CrossState::Cleared;
-                    c.clearing = Some(ClearingSummary::from_core(&clearing));
+                    match oracle_verdict(c, ctx.accounts.oracle_price.as_ref(), clearing.price)? {
+                        Some(reason) => {
+                            c.state = CrossState::NoPrint;
+                            c.no_print_reason = Some(reason);
+                        }
+                        None => {
+                            c.state = CrossState::Cleared;
+                            c.clearing = Some(ClearingSummary::from_core(&clearing));
+                        }
+                    }
                 }
             },
         }
@@ -1022,6 +1040,35 @@ pub mod cross_core {
     }
 }
 
+/// Applies the oracle guard, if any. `Ok(Some(reason))` means the cross must not print.
+fn oracle_verdict(
+    c: &Cross,
+    account: Option<&UncheckedAccount>,
+    price: u64,
+) -> Result<Option<NoPrintReason>> {
+    let Some(g) = c.oracle else { return Ok(None) };
+    let account = account.ok_or(CrossError::OracleAccountMissing)?;
+    if !oracle::is_pyth_receiver(account.owner) {
+        return Ok(Some(NoPrintReason::OracleUnavailable));
+    }
+    let data = account.try_borrow_data()?;
+    let Some(o) = oracle::parse_price_update(&data) else {
+        return Ok(Some(NoPrintReason::OracleUnavailable));
+    };
+    let now = Clock::get()?.unix_timestamp;
+    let fresh = now.saturating_sub(o.publish_time) <= i64::from(g.max_staleness_secs);
+    if o.feed_id != g.feed_id || !o.fully_verified || !fresh {
+        return Ok(Some(NoPrintReason::OracleUnavailable));
+    }
+    let Some(reference) =
+        oracle::to_cross_units(&o, c.quote_decimals, c.base_decimals, c.price_scale)
+    else {
+        return Ok(Some(NoPrintReason::OracleUnavailable));
+    };
+    Ok(oracle::diverges(price, reference, g.max_divergence_bps)
+        .then_some(NoPrintReason::OracleDivergence))
+}
+
 fn validate_order(
     c: &Cross,
     side: OrderSide,
@@ -1274,6 +1321,10 @@ pub struct Clear<'info> {
     pub cross: Box<Account<'info, Cross>>,
     #[account(seeds = [BOOK_SEED, cross.key().as_ref()], bump = cross.book_bump)]
     pub book: AccountLoader<'info, Levels>,
+    /// CHECK: required when the cross has an oracle guard: a Pyth `PriceUpdateV2` account for the
+    /// pinned feed (typically posted by the keeper in the same transaction); ownership, feed,
+    /// verification level and freshness are checked in `oracle_verdict`.
+    pub oracle_price: Option<UncheckedAccount<'info>>,
 }
 
 #[derive(Accounts)]
@@ -1505,4 +1556,6 @@ pub enum CrossError {
     NotSettler,
     #[msg("Settlement deadline has not passed")]
     DeadlineNotReached,
+    #[msg("This cross needs a Pyth price update account")]
+    OracleAccountMissing,
 }

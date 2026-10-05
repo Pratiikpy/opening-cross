@@ -15,8 +15,8 @@ export const CLEAR_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([250, 39, 
 
 export function getClearDiscriminatorBytes(): ReadonlyUint8Array { return fixEncoderSize(getBytesEncoder(), 8).encode(CLEAR_DISCRIMINATOR); }
 
-export type ClearInstruction<TProgram extends string = typeof CROSS_CORE_PROGRAM_ADDRESS, TAccountCross extends string | AccountMeta<string> = string, TAccountBook extends string | AccountMeta<string> = string, TRemainingAccounts extends readonly AccountMeta<string>[] = []> =
-Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array> & InstructionWithAccounts<[TAccountCross extends string ? WritableAccount<TAccountCross> : TAccountCross, TAccountBook extends string ? ReadonlyAccount<TAccountBook> : TAccountBook, ...TRemainingAccounts]>;
+export type ClearInstruction<TProgram extends string = typeof CROSS_CORE_PROGRAM_ADDRESS, TAccountCross extends string | AccountMeta<string> = string, TAccountBook extends string | AccountMeta<string> = string, TAccountOraclePrice extends string | AccountMeta<string> = string, TRemainingAccounts extends readonly AccountMeta<string>[] = []> =
+Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array> & InstructionWithAccounts<[TAccountCross extends string ? WritableAccount<TAccountCross> : TAccountCross, TAccountBook extends string ? ReadonlyAccount<TAccountBook> : TAccountBook, TAccountOraclePrice extends string ? ReadonlyAccount<TAccountOraclePrice> : TAccountOraclePrice, ...TRemainingAccounts]>;
 
 export type ClearInstructionData = { discriminator: ReadonlyUint8Array;  };
 
@@ -34,12 +34,17 @@ export function getClearInstructionDataCodec(): FixedSizeCodec<ClearInstructionD
     return combineCodec(getClearInstructionDataEncoder(), getClearInstructionDataDecoder());
 }
 
-export type ClearAsyncInput<TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBook extends InstructionAccountInput = InstructionAccountInput> =  {
+export type ClearAsyncInput<TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBook extends InstructionAccountInput = InstructionAccountInput, TAccountOraclePrice extends InstructionAccountInput = InstructionAccountInput> =  {
   cross: TAccountCross;
 book?: TAccountBook;
+/**
+ * pinned feed (typically posted by the keeper in the same transaction); ownership, feed,
+ * verification level and freshness are checked in `oracle_verdict`.
+ */
+oraclePrice?: TAccountOraclePrice;
 }
 
-export async function getClearInstructionAsync<TAccountCross extends InstructionAccountInput, TAccountBook extends InstructionAccountInput, TProgramAddress extends Address = typeof CROSS_CORE_PROGRAM_ADDRESS>(input: ClearAsyncInput<TAccountCross, TAccountBook>, config?: { programAddress?: TProgramAddress } ): Promise<ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>>> {
+export async function getClearInstructionAsync<TAccountCross extends InstructionAccountInput, TAccountBook extends InstructionAccountInput, TAccountOraclePrice extends InstructionAccountInput, TProgramAddress extends Address = typeof CROSS_CORE_PROGRAM_ADDRESS>(input: ClearAsyncInput<TAccountCross, TAccountBook, TAccountOraclePrice>, config?: { programAddress?: TProgramAddress } ): Promise<ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>, ResolvedInstructionAccountMeta<TAccountOraclePrice, InstructionAccountInputAddress<TAccountOraclePrice>>>> {
   // Program address.
 const programAddress = config?.programAddress ?? CROSS_CORE_PROGRAM_ADDRESS;
 
@@ -47,7 +52,7 @@ const programAddress = config?.programAddress ?? CROSS_CORE_PROGRAM_ADDRESS;
 const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
 
  // Original accounts.
-const originalAccounts = { cross: { value: input.cross ?? null, isSigner: false, isWritable: true }, book: { value: input.book ?? null, isSigner: false, isWritable: false } }
+const originalAccounts = { cross: { value: input.cross ?? null, isSigner: false, isWritable: true }, book: { value: input.book ?? null, isSigner: false, isWritable: false }, oraclePrice: { value: input.oraclePrice ?? null, isSigner: false, isWritable: false } }
 const accounts = originalAccounts as Record<keyof typeof originalAccounts, ResolvedInstructionAccount>;
 
 
@@ -56,15 +61,20 @@ if (!accounts.book.value) {
 accounts.book.value = await findBookPda({ cross: getAddressFromResolvedInstructionAccount("cross", accounts.cross.value) }, { programAddress });
 }
 
-return Object.freeze({ accounts: [getAccountMeta("cross", accounts.cross), getAccountMeta("book", accounts.book)], data: getClearInstructionDataEncoder().encode({}), programAddress } as ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>>);
+return Object.freeze({ accounts: [getAccountMeta("cross", accounts.cross), getAccountMeta("book", accounts.book), getAccountMeta("oraclePrice", accounts.oraclePrice)], data: getClearInstructionDataEncoder().encode({}), programAddress } as ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>, ResolvedInstructionAccountMeta<TAccountOraclePrice, InstructionAccountInputAddress<TAccountOraclePrice>>>);
 }
 
-export type ClearInput<TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBook extends InstructionAccountInput = InstructionAccountInput> =  {
+export type ClearInput<TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBook extends InstructionAccountInput = InstructionAccountInput, TAccountOraclePrice extends InstructionAccountInput = InstructionAccountInput> =  {
   cross: TAccountCross;
 book: TAccountBook;
+/**
+ * pinned feed (typically posted by the keeper in the same transaction); ownership, feed,
+ * verification level and freshness are checked in `oracle_verdict`.
+ */
+oraclePrice?: TAccountOraclePrice;
 }
 
-export function getClearInstruction<TAccountCross extends InstructionAccountInput, TAccountBook extends InstructionAccountInput, TProgramAddress extends Address = typeof CROSS_CORE_PROGRAM_ADDRESS>(input: ClearInput<TAccountCross, TAccountBook>, config?: { programAddress?: TProgramAddress } ): ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>> {
+export function getClearInstruction<TAccountCross extends InstructionAccountInput, TAccountBook extends InstructionAccountInput, TAccountOraclePrice extends InstructionAccountInput, TProgramAddress extends Address = typeof CROSS_CORE_PROGRAM_ADDRESS>(input: ClearInput<TAccountCross, TAccountBook, TAccountOraclePrice>, config?: { programAddress?: TProgramAddress } ): ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>, ResolvedInstructionAccountMeta<TAccountOraclePrice, InstructionAccountInputAddress<TAccountOraclePrice>>> {
   // Program address.
 const programAddress = config?.programAddress ?? CROSS_CORE_PROGRAM_ADDRESS;
 
@@ -72,25 +82,30 @@ const programAddress = config?.programAddress ?? CROSS_CORE_PROGRAM_ADDRESS;
 const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
 
  // Original accounts.
-const originalAccounts = { cross: { value: input.cross ?? null, isSigner: false, isWritable: true }, book: { value: input.book ?? null, isSigner: false, isWritable: false } }
+const originalAccounts = { cross: { value: input.cross ?? null, isSigner: false, isWritable: true }, book: { value: input.book ?? null, isSigner: false, isWritable: false }, oraclePrice: { value: input.oraclePrice ?? null, isSigner: false, isWritable: false } }
 const accounts = originalAccounts as Record<keyof typeof originalAccounts, ResolvedInstructionAccount>;
 
 
 
 
-return Object.freeze({ accounts: [getAccountMeta("cross", accounts.cross), getAccountMeta("book", accounts.book)], data: getClearInstructionDataEncoder().encode({}), programAddress } as ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>>);
+return Object.freeze({ accounts: [getAccountMeta("cross", accounts.cross), getAccountMeta("book", accounts.book), getAccountMeta("oraclePrice", accounts.oraclePrice)], data: getClearInstructionDataEncoder().encode({}), programAddress } as ClearInstruction<TProgramAddress, ResolvedInstructionAccountMeta<TAccountCross, InstructionAccountInputAddress<TAccountCross>>, ResolvedInstructionAccountMeta<TAccountBook, InstructionAccountInputAddress<TAccountBook>>, ResolvedInstructionAccountMeta<TAccountOraclePrice, InstructionAccountInputAddress<TAccountOraclePrice>>>);
 }
 
 export type ParsedClearInstruction<TProgram extends string = typeof CROSS_CORE_PROGRAM_ADDRESS, TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[]> = { programAddress: Address<TProgram>;
 accounts: {
 cross: TAccountMetas[0];
 book: TAccountMetas[1];
+/**
+ * pinned feed (typically posted by the keeper in the same transaction); ownership, feed,
+ * verification level and freshness are checked in `oracle_verdict`.
+ */
+oraclePrice?: TAccountMetas[2] | undefined;
 };
 data: ClearInstructionData; };
 
 export function parseClearInstruction<TProgram extends string, TAccountMetas extends readonly AccountMeta[]>(instruction: Instruction<TProgram> & InstructionWithAccounts<TAccountMetas> & InstructionWithData<ReadonlyUint8Array>): ParsedClearInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
-  throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS, { actualAccountMetas: instruction.accounts.length, expectedAccountMetas: 2 });
+  if (instruction.accounts.length < 3) {
+  throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS, { actualAccountMetas: instruction.accounts.length, expectedAccountMetas: 3 });
 }
 let accountIndex = 0;
 const getNextAccount = () => {
@@ -98,5 +113,9 @@ const getNextAccount = () => {
   accountIndex += 1;
   return accountMeta;
 }
-  return { programAddress: instruction.programAddress, accounts: { cross: getNextAccount(), book: getNextAccount() }, data: getClearInstructionDataDecoder().decode(instruction.data) };
+const getNextOptionalAccount = () => {
+  const accountMeta = getNextAccount();
+  return accountMeta.address === CROSS_CORE_PROGRAM_ADDRESS ? undefined : accountMeta;
+};
+  return { programAddress: instruction.programAddress, accounts: { cross: getNextAccount(), book: getNextAccount(), oraclePrice: getNextOptionalAccount() }, data: getClearInstructionDataDecoder().decode(instruction.data) };
 }

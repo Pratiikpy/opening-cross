@@ -150,7 +150,7 @@ async function main() {
     crossId, kind: CrossKind.Launch, supplyMode: SupplyMode.Mint, disclosure: Disclosure.Open,
     minPrice: GRID.min, tick: GRID.tick, ticks: GRID.ticks, priceScale: SCALE, openTs: now - 5n, closeTs, revealEndTs: closeTs,
     referencePrice: null, minMatched: 0n, maxImbalanceBps: null, integratorFeeBps: 20, integrator: operator.address, gateMint: null,
-    shards: 2, maxOrders: 16, proceedsTo: operator.address, schedule, settler: null, settleDeadlineTs: 0n,
+    shards: 2, maxOrders: 16, proceedsTo: operator.address, schedule, settler: null, settleDeadlineTs: 0n, oracle: null,
   });
   const createSig = await send([built.create], operator);
   for (const s of built.shards) await send([s], operator);
@@ -207,7 +207,7 @@ async function main() {
     crossId: id2, kind: CrossKind.Reopen, supplyMode: SupplyMode.Escrow, disclosure: Disclosure.Sealed,
     minPrice: GRID.min, tick: GRID.tick, ticks: GRID.ticks, priceScale: SCALE, openTs: now2 - 5n, closeTs: close2, revealEndTs: reveal2,
     referencePrice: 1_500_000n, minMatched: 0n, maxImbalanceBps: null, integratorFeeBps: 0, integrator: operator.address, gateMint: null,
-    shards: 1, maxOrders: 8, proceedsTo: operator.address, schedule: [], settler: null, settleDeadlineTs: 0n,
+    shards: 1, maxOrders: 8, proceedsTo: operator.address, schedule: [], settler: null, settleDeadlineTs: 0n, oracle: null,
   });
   const c2Sig = await send([b2.create, ...b2.shards], operator);
   ev.check('sealed-create', 'sealed escrow-mode cross created', true, `cross ${cross2}`, c2Sig);

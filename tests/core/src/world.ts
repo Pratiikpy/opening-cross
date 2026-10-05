@@ -44,6 +44,7 @@ export type CrossOptions = {
   gateMint?: Address | null;
   schedule?: { price: bigint; quantity: bigint }[];
   settler?: Address | null;
+  oracle?: { feedId: Uint8Array; maxDivergenceBps: number; maxStalenessSecs: number } | null;
   settleDeadlineTs?: bigint;
 };
 
@@ -125,6 +126,7 @@ export class World {
       maxOrders: o.maxOrders ?? 64,
       proceedsTo: this.creator.address,
       schedule: o.schedule ?? [],
+      oracle: o.oracle ?? null,
       settler: o.settler ?? null,
       settleDeadlineTs: o.settleDeadlineTs ?? 0n,
     });
@@ -166,9 +168,9 @@ export class World {
     }
   }
 
-  async settle(cross: CrossView): Promise<CrossView> {
+  async settle(cross: CrossView, oraclePrice?: Address): Promise<CrossView> {
     this.h.setTime(cross.data.revealEndTs + 1n);
-    for (const ix of await buildSettleBook(this.view(cross.address))) await this.h.send([ix], this.admin);
+    for (const ix of await buildSettleBook(this.view(cross.address), oraclePrice ? { oraclePrice } : {})) await this.h.send([ix], this.admin);
     return this.view(cross.address);
   }
 
