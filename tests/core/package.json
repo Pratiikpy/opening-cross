@@ -11,6 +11,7 @@
     "@coral-xyz/anchor": "0.31.1",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@opening-cross/adapters": "workspace:*",
+    "@opening-cross/api": "workspace:*",
     "@opening-cross/cross-calendar-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
@@ -28,11 +29,13 @@
     "@types/bn.js": "^5.2.0",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
     "bn.js": "5.2.2",
     "litesvm": "1.5.0",
     "pg": "^8.23.1",
     "sas-lib": "1.0.10",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.3",
+    "ws": "^8.22.0"
   }
 }

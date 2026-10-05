@@ -10,6 +10,9 @@ import {
   type TransactionSigner,
   appendTransactionMessageInstructions,
   getSignatureFromTransaction,
+  getBase64Encoder,
+  getTransactionDecoder,
+  signTransaction,
   createTransactionMessage,
   generateKeyPairSigner,
   lamports,
@@ -93,6 +96,16 @@ export class Harness {
     const clock = this.svm.getClock();
     this.landed.push({ signature: getSignatureFromTransaction(tx), slot: clock.slot, blockTime: clock.unixTimestamp, logs: res.logs(), err: null });
     return res.computeUnitsConsumed();
+  }
+
+  /** Signs and lands a wire transaction built elsewhere (the API), exactly as a wallet would. */
+  async sendWire(base64: string, signers: KeyPairSigner[]): Promise<string> {
+    const tx = await signTransaction(signers.map((k) => k.keyPair), getTransactionDecoder().decode(getBase64Encoder().encode(base64)));
+    const res = this.svm.sendTransaction(tx as Parameters<LiteSVM['sendTransaction']>[0]);
+    if (res instanceof FailedTransactionMetadata) throw new TxError(res.meta().logs(), res.toString());
+    const clock = this.svm.getClock();
+    this.landed.push({ signature: getSignatureFromTransaction(tx), slot: clock.slot, blockTime: clock.unixTimestamp, logs: res.logs(), err: null });
+    return getSignatureFromTransaction(tx);
   }
 
   /** Sends and asserts failure; returns the logs joined for matching. */

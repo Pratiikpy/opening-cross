@@ -3,6 +3,7 @@
 Newest first. Every entry names what was done, the evidence, what is not verified, and what is next.
 
 ## 2026-10-05
+- **D3 done.** REST + WebSocket API in `services/api`; every user action returns an unsigned transaction. Contract test runs a sealed cross end to end through it and refuses 20+ malformed or hostile requests. Red-team fix: decode only accounts owned by cross_core. Evidence `docs/evidence/D3-api.md`. Next: D4 SDK publishing + Rust CPI crate.
 - **D2 built, devnet pending.** Keeper in `services/keeper` (pure planner, chain-verified execution, indexer or program-account discovery). Racing-keeper chaos test passes locally. A devnet pass found the deployed cross_core is older than the current layout; upgrade needs H10. Evidence `docs/evidence/D2-keeper.md`. Next: D3 API.
 - **D1 done.** Indexer in `services/indexer` (decode with invoke-stack attribution, idempotent Postgres ingest, finalized RPC poller with backoff, reconciler). Devnet history indexed with zero drift; evidence `docs/evidence/D1-indexer.md`. Not covered: Yellowstone source (H7). Next: D2 keepers.
 - **M0.1 done.** Repository `Pratiikpy/opening-cross` (private until first public release), allowlist `.gitignore`, gitleaks commit guard (tested: blocks staged key files and tokens), CI with typecheck, tests and secret scan — first run green (37282531078).

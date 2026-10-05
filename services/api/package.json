@@ -1,0 +1,31 @@
+{
+  "name": "@opening-cross/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Opening Cross REST and WebSocket API: indexed reads checked against chain, fairness proofs, and unsigned transactions for every user action.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@fastify/websocket": "11.3.3",
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/verifier": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "fastify": "5.12.5",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

@@ -4,10 +4,10 @@
 // and truncated streams. The Postgres part needs DATABASE_URL (CI starts a postgres service).
 import { describe, expect, it } from 'vitest';
 import type { Address } from '@solana/kit';
-import pg from 'pg';
 import { CROSS_CORE_PROGRAM_ADDRESS, Disclosure, getOrderClaimedEventEncoder } from '@opening-cross/cross-core-client';
 import { OrderSide } from '@opening-cross/sdk';
-import { UnattributableLogs, decodeLogs, ingestTransaction, migrate, reconcile } from '@opening-cross/indexer';
+import { UnattributableLogs, decodeLogs, ingestTransaction, reconcile } from '@opening-cross/indexer';
+import { freshDb } from '../src/db.js';
 import { World } from '../src/world.js';
 
 const OTHER = '7Kb2feBGE34ck7F7dovaEgKVJRLJ2JeUFxCyo4bamZJD';
@@ -43,9 +43,7 @@ describe('log attribution', () => {
 
 describe.skipIf(!process.env.DATABASE_URL)('indexer against Postgres', () => {
   it('projects a full sealed cross lifecycle exactly, idempotently, and reconciles to zero drift', async () => {
-    const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-    await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
-    await migrate(db);
+    const { db } = await freshDb();
 
     const w = await World.create();
     const cross = await w.newCross({ disclosure: Disclosure.Sealed });
@@ -107,7 +105,7 @@ describe.skipIf(!process.env.DATABASE_URL)('indexer against Postgres', () => {
   });
 
   it('ignores failed transactions', async () => {
-    const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const { db } = await freshDb();
     const w = await World.create();
     await w.newCross();
     const tx = w.h.landed.at(-2)!;
