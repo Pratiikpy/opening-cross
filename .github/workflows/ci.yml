@@ -39,7 +39,7 @@ jobs:
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v4.0.2/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
-      - run: (cd programs/cross_gate && cargo build-sbf) && (cd programs/cross_calendar && cargo build-sbf) && (cd programs/cross_core && cargo build-sbf) && (cd programs/cross_settle && cargo build-sbf) && (cd examples/venue && cargo build-sbf)
+      - run: sh scripts/build-programs.sh
       - name: Adapter IDL copies match the programs' IDLs
         run: diff idls/cross_core.json packages/cross-core-client/idl/cross_core.json && diff idls/cross_gate.json packages/cross-gate-client/idl/cross_gate.json && diff idls/cross_core.json crates/opening-cross-cpi/idls/cross_core.json && diff idls/cross_gate.json crates/opening-cross-cpi/idls/cross_gate.json
       - run: sh tests/fixtures/fetch.sh
