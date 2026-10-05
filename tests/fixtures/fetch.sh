@@ -10,3 +10,4 @@ solana program dump -u "${RPC_URL:-mainnet-beta}" CPMMoo8L3F4NbTegBCKVNunggL7H1Z
 # Raydium-owned accounts CPMM pool creation reads: AMM config index 0 and the pool-fee receiver.
 solana account -u "${RPC_URL:-mainnet-beta}" D4FPEruKEHrG5TenZ2mpDGEfu1iUvTiqBxvpU8HLBvC2 --output json -o "$dir/raydium_amm_config_0.json"
 solana account -u "${RPC_URL:-mainnet-beta}" DNXgeM9EiiaAbaWvwjHj9fQQLAX5ZsfHyvmYUNRAdNC8 --output json -o "$dir/raydium_create_pool_fee.json"
+solana program dump -u "${RPC_URL:-mainnet-beta}" 22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG "$dir/solana_attestation_service.so"

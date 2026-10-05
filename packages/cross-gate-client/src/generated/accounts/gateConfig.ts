@@ -6,29 +6,43 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { assertAccountExists, assertAccountsExist, combineCodec, decodeAccount, fetchEncodedAccount, fetchEncodedAccounts, fixDecoderSize, fixEncoderSize, getAddressDecoder, getAddressEncoder, getBytesDecoder, getBytesEncoder, getStructDecoder, getStructEncoder, getU8Decoder, getU8Encoder, transformEncoder, type Account, type Address, type EncodedAccount, type FetchAccountConfig, type FetchAccountsConfig, type FixedSizeCodec, type FixedSizeDecoder, type FixedSizeEncoder, type MaybeAccount, type MaybeEncodedAccount, type ReadonlyUint8Array } from '@solana/kit';
-import { getModeDecoder, getModeEncoder, type Mode, type ModeArgs } from '../types/index.js';
+import { assertAccountExists, assertAccountsExist, combineCodec, decodeAccount, fetchEncodedAccount, fetchEncodedAccounts, fixDecoderSize, fixEncoderSize, getAddressDecoder, getAddressEncoder, getBytesDecoder, getBytesEncoder, getOptionDecoder, getOptionEncoder, getStructDecoder, getStructEncoder, getU8Decoder, getU8Encoder, transformEncoder, type Account, type Address, type Codec, type Decoder, type EncodedAccount, type Encoder, type FetchAccountConfig, type FetchAccountsConfig, type MaybeAccount, type MaybeEncodedAccount, type Option, type OptionOrNullable, type ReadonlyUint8Array } from '@solana/kit';
+import { getModeDecoder, getModeEncoder, getSasRequirementDecoder, getSasRequirementEncoder, type Mode, type ModeArgs, type SasRequirement, type SasRequirementArgs } from '../types/index.js';
 
 export const GATE_CONFIG_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([161, 200, 10, 61, 185, 120, 92, 21]);
 
 export function getGateConfigDiscriminatorBytes(): ReadonlyUint8Array { return fixEncoderSize(getBytesEncoder(), 8).encode(GATE_CONFIG_DISCRIMINATOR); }
 
-export type GateConfig = { discriminator: ReadonlyUint8Array; mint: Address; authority: Address; mode: Mode; bump: number;  };
+export type GateConfig = { discriminator: ReadonlyUint8Array; mint: Address; authority: Address; mode: Mode; bump: number; 
+/**
+ * Solana Attestation Service credential and schema whose attestations entitle a wallet to a
+ * pass (`claim_pass`). `None` disables self-service passes.
+ */
+sas: Option<SasRequirement>; 
+/** Merkle root of an allowlist; leaves are `sha256(0x00 ‖ mint ‖ owner)` (`claim_pass_merkle`). */
+allowlistRoot: Option<ReadonlyUint8Array>;  };
 
-export type GateConfigArgs = { mint: Address; authority: Address; mode: ModeArgs; bump: number;  };
+export type GateConfigArgs = { mint: Address; authority: Address; mode: ModeArgs; bump: number; 
+/**
+ * Solana Attestation Service credential and schema whose attestations entitle a wallet to a
+ * pass (`claim_pass`). `None` disables self-service passes.
+ */
+sas: OptionOrNullable<SasRequirementArgs>; 
+/** Merkle root of an allowlist; leaves are `sha256(0x00 ‖ mint ‖ owner)` (`claim_pass_merkle`). */
+allowlistRoot: OptionOrNullable<ReadonlyUint8Array>;  };
 
 /** Gets the encoder for {@link GateConfigArgs} account data. */
-export function getGateConfigEncoder(): FixedSizeEncoder<GateConfigArgs> {
-    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['mint', getAddressEncoder()], ['authority', getAddressEncoder()], ['mode', getModeEncoder()], ['bump', getU8Encoder()]]), (value) => ({ ...value, discriminator: GATE_CONFIG_DISCRIMINATOR }));
+export function getGateConfigEncoder(): Encoder<GateConfigArgs> {
+    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['mint', getAddressEncoder()], ['authority', getAddressEncoder()], ['mode', getModeEncoder()], ['bump', getU8Encoder()], ['sas', getOptionEncoder(getSasRequirementEncoder())], ['allowlistRoot', getOptionEncoder(fixEncoderSize(getBytesEncoder(), 32))]]), (value) => ({ ...value, discriminator: GATE_CONFIG_DISCRIMINATOR }));
 }
 
 /** Gets the decoder for {@link GateConfig} account data. */
-export function getGateConfigDecoder(): FixedSizeDecoder<GateConfig> {
-    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['mint', getAddressDecoder()], ['authority', getAddressDecoder()], ['mode', getModeDecoder()], ['bump', getU8Decoder()]]);
+export function getGateConfigDecoder(): Decoder<GateConfig> {
+    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['mint', getAddressDecoder()], ['authority', getAddressDecoder()], ['mode', getModeDecoder()], ['bump', getU8Decoder()], ['sas', getOptionDecoder(getSasRequirementDecoder())], ['allowlistRoot', getOptionDecoder(fixDecoderSize(getBytesDecoder(), 32))]]);
 }
 
 /** Gets the codec for {@link GateConfig} account data. */
-export function getGateConfigCodec(): FixedSizeCodec<GateConfigArgs, GateConfig> {
+export function getGateConfigCodec(): Codec<GateConfigArgs, GateConfig> {
     return combineCodec(getGateConfigEncoder(), getGateConfigDecoder());
 }
 
@@ -74,8 +88,4 @@ export async function fetchAllMaybeGateConfig(
 ): Promise<MaybeAccount<GateConfig>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeGateConfig(maybeAccount));
-}
-
-export function getGateConfigSize(): number {
-  return 74;
 }

@@ -77,6 +77,8 @@ pub mod cross_gate {
         config.authority = authority;
         config.mode = mode;
         config.bump = ctx.bumps.config;
+        config.sas = None;
+        config.allowlist_root = None;
         emit!(ConfigCreated {
             mint: mint.key(),
             authority,
@@ -254,6 +256,103 @@ pub mod cross_gate {
         Ok(())
     }
 
+    /// Sets (or clears) the SAS credential and schema that entitle wallets to passes.
+    pub fn set_sas_requirement(
+        ctx: Context<AuthorityOnly>,
+        sas: Option<SasRequirement>,
+    ) -> Result<()> {
+        ctx.accounts.config.sas = sas;
+        emit!(SasRequirementChanged {
+            mint: ctx.accounts.config.mint,
+            sas
+        });
+        Ok(())
+    }
+
+    /// Self-service pass: anyone may submit a wallet's SAS attestation; if it was issued under the
+    /// gate's credential and schema for that wallet and has not expired, the wallet gets a pass.
+    pub fn claim_pass(ctx: Context<ClaimPass>) -> Result<()> {
+        let req = ctx.accounts.config.sas.ok_or(GateError::SasNotConfigured)?;
+        let owner = ctx.accounts.owner.key();
+        require!(
+            sas::attestation_valid(
+                &ctx.accounts.attestation,
+                &req,
+                &owner,
+                Clock::get()?.unix_timestamp
+            )?,
+            GateError::AttestationInvalid
+        );
+        let pass = &mut ctx.accounts.pass;
+        pass.mint = ctx.accounts.config.mint;
+        pass.owner = owner;
+        pass.bump = ctx.bumps.pass;
+        emit!(PassChanged {
+            mint: pass.mint,
+            owner,
+            granted: true
+        });
+        Ok(())
+    }
+
+    /// Anyone may revoke a pass whose SAS attestation has expired or been closed. The rent goes
+    /// back to the pass owner. Passes granted directly by the authority are unaffected unless the
+    /// gate requires SAS and the owner has no valid attestation.
+    pub fn revoke_unattested(ctx: Context<RevokeUnattested>) -> Result<()> {
+        let req = ctx.accounts.config.sas.ok_or(GateError::SasNotConfigured)?;
+        let owner = ctx.accounts.pass.owner;
+        require!(
+            !sas::attestation_valid(
+                &ctx.accounts.attestation,
+                &req,
+                &owner,
+                Clock::get()?.unix_timestamp
+            )?,
+            GateError::AttestationStillValid
+        );
+        emit!(PassChanged {
+            mint: ctx.accounts.pass.mint,
+            owner,
+            granted: false
+        });
+        Ok(())
+    }
+
+    /// Sets (or clears) the allowlist Merkle root.
+    pub fn set_allowlist_root(ctx: Context<AuthorityOnly>, root: Option<[u8; 32]>) -> Result<()> {
+        ctx.accounts.config.allowlist_root = root;
+        emit!(AllowlistRootChanged {
+            mint: ctx.accounts.config.mint,
+            root
+        });
+        Ok(())
+    }
+
+    /// Self-service pass from an allowlist: anyone may submit the proof for a wallet.
+    pub fn claim_pass_merkle(ctx: Context<ClaimPassMerkle>, proof: Vec<[u8; 32]>) -> Result<()> {
+        let root = ctx
+            .accounts
+            .config
+            .allowlist_root
+            .ok_or(GateError::AllowlistNotConfigured)?;
+        let owner = ctx.accounts.owner.key();
+        let mint = ctx.accounts.config.mint;
+        require!(
+            merkle::verify(&proof, &root, &merkle::leaf(&mint, &owner)),
+            GateError::NotOnAllowlist
+        );
+        let pass = &mut ctx.accounts.pass;
+        pass.mint = mint;
+        pass.owner = owner;
+        pass.bump = ctx.bumps.pass;
+        emit!(PassChanged {
+            mint,
+            owner,
+            granted: true
+        });
+        Ok(())
+    }
+
     pub fn set_authority(ctx: Context<AuthorityOnly>, new_authority: Pubkey) -> Result<()> {
         ctx.accounts.config.authority = new_authority;
         emit!(AuthorityChanged {
@@ -363,6 +462,17 @@ pub struct GateConfig {
     pub authority: Pubkey,
     pub mode: Mode,
     pub bump: u8,
+    /// Solana Attestation Service credential and schema whose attestations entitle a wallet to a
+    /// pass (`claim_pass`). `None` disables self-service passes.
+    pub sas: Option<SasRequirement>,
+    /// Merkle root of an allowlist; leaves are `sha256(0x00 ‖ mint ‖ owner)` (`claim_pass_merkle`).
+    pub allowlist_root: Option<[u8; 32]>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
+pub struct SasRequirement {
+    pub credential: Pubkey,
+    pub schema: Pubkey,
 }
 
 #[account]
@@ -540,6 +650,150 @@ pub struct AuthorityOnly<'info> {
     pub config: Account<'info, GateConfig>,
 }
 
+#[derive(Accounts)]
+pub struct ClaimPass<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: the wallet receiving the pass; bound to the attestation's nonce.
+    pub owner: UncheckedAccount<'info>,
+    pub config: Account<'info, GateConfig>,
+    /// CHECK: SAS attestation; owner, address and contents checked in `sas::attestation_valid`.
+    pub attestation: UncheckedAccount<'info>,
+    #[account(init, payer = payer, space = 8 + Pass::INIT_SPACE, seeds = [PASS_SEED, config.mint.as_ref(), owner.key().as_ref()], bump)]
+    pub pass: Account<'info, Pass>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevokeUnattested<'info> {
+    pub config: Account<'info, GateConfig>,
+    /// CHECK: the pass owner's SAS attestation address (may be closed); checked in the handler.
+    pub attestation: UncheckedAccount<'info>,
+    /// CHECK: receives the pass rent; bound to the pass by constraint.
+    #[account(mut, address = pass.owner @ GateError::Unauthorized)]
+    pub owner: UncheckedAccount<'info>,
+    #[account(mut, close = owner, constraint = pass.mint == config.mint @ GateError::Unauthorized)]
+    pub pass: Account<'info, Pass>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimPassMerkle<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: the wallet receiving the pass; bound by the Merkle leaf.
+    pub owner: UncheckedAccount<'info>,
+    pub config: Account<'info, GateConfig>,
+    #[account(init, payer = payer, space = 8 + Pass::INIT_SPACE, seeds = [PASS_SEED, config.mint.as_ref(), owner.key().as_ref()], bump)]
+    pub pass: Account<'info, Pass>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Sorted-pair SHA-256 Merkle tree. Leaves are domain-separated from inner nodes (`0x00` vs
+/// `0x01` prefix) so an inner node can never be presented as a leaf.
+pub mod merkle {
+    use super::*;
+
+    pub fn leaf(mint: &Pubkey, owner: &Pubkey) -> [u8; 32] {
+        solana_sha256_hasher::hashv(&[&[0u8], mint.as_ref(), owner.as_ref()]).to_bytes()
+    }
+
+    pub fn node(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
+        let (l, r) = if a <= b { (a, b) } else { (b, a) };
+        solana_sha256_hasher::hashv(&[&[1u8], l, r]).to_bytes()
+    }
+
+    pub fn verify(proof: &[[u8; 32]], root: &[u8; 32], leaf: &[u8; 32]) -> bool {
+        proof.len() <= 32 && proof.iter().fold(*leaf, |acc, p| node(&acc, p)) == *root
+    }
+}
+
+/// Solana Attestation Service account checks (layout from solana-attestation-service
+/// `program/src/state/attestation.rs`, MIT).
+pub mod sas {
+    use super::*;
+
+    pub const SAS_PROGRAM_ID: Pubkey = pubkey!("22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG");
+    /// `AttestationAccountDiscriminators::AttestationDiscriminator`.
+    pub const ATTESTATION_DISCRIMINATOR: u8 = 2;
+    pub const ATTESTATION_SEED: &[u8] = b"attestation";
+
+    /// `true` if `info` is the SAS attestation `[attestation, credential, schema, owner]`, owned
+    /// by SAS, with matching fields and not expired (`expiry == 0` never expires). A missing,
+    /// closed or foreign account is simply invalid.
+    pub fn attestation_valid(
+        info: &UncheckedAccount,
+        req: &SasRequirement,
+        owner: &Pubkey,
+        now: i64,
+    ) -> Result<bool> {
+        let expected = Pubkey::find_program_address(
+            &[
+                ATTESTATION_SEED,
+                req.credential.as_ref(),
+                req.schema.as_ref(),
+                owner.as_ref(),
+            ],
+            &SAS_PROGRAM_ID,
+        )
+        .0;
+        require_keys_eq!(info.key(), expected, GateError::AttestationInvalid);
+        if info.owner != &SAS_PROGRAM_ID || info.data_is_empty() {
+            return Ok(false);
+        }
+        let data = info.try_borrow_data()?;
+        let Some(a) = parse(&data) else {
+            return Ok(false);
+        };
+        Ok(a.nonce == *owner
+            && a.credential == req.credential
+            && a.schema == req.schema
+            && (a.expiry == 0 || a.expiry > now))
+    }
+
+    pub struct Parsed {
+        pub nonce: Pubkey,
+        pub credential: Pubkey,
+        pub schema: Pubkey,
+        pub expiry: i64,
+    }
+
+    /// discriminator u8 · nonce · credential · schema · data (u32 length + bytes) · signer · expiry
+    /// i64 · token_account.
+    pub fn parse(d: &[u8]) -> Option<Parsed> {
+        if *d.first()? != ATTESTATION_DISCRIMINATOR {
+            return None;
+        }
+        let key = |at: usize| -> Option<Pubkey> {
+            Some(Pubkey::new_from_array(d.get(at..at + 32)?.try_into().ok()?))
+        };
+        let nonce = key(1)?;
+        let credential = key(33)?;
+        let schema = key(65)?;
+        let len = usize::try_from(u32::from_le_bytes(d.get(97..101)?.try_into().ok()?)).ok()?;
+        let after_data = 101usize.checked_add(len)?;
+        let expiry_at = after_data.checked_add(32)?;
+        let expiry = i64::from_le_bytes(d.get(expiry_at..expiry_at + 8)?.try_into().ok()?);
+        Some(Parsed {
+            nonce,
+            credential,
+            schema,
+            expiry,
+        })
+    }
+}
+
+#[event]
+pub struct AllowlistRootChanged {
+    pub mint: Pubkey,
+    pub root: Option<[u8; 32]>,
+}
+
+#[event]
+pub struct SasRequirementChanged {
+    pub mint: Pubkey,
+    pub sas: Option<SasRequirement>,
+}
+
 #[event]
 pub struct ConfigCreated {
     pub mint: Pubkey,
@@ -592,6 +846,16 @@ pub enum GateError {
     NotCalledByTokenAcl,
     #[msg("Extra-account-meta list is not this mint's thaw or freeze list")]
     WrongMetaList,
+    #[msg("This gate has no allowlist")]
+    AllowlistNotConfigured,
+    #[msg("Proof does not place this wallet on the allowlist")]
+    NotOnAllowlist,
+    #[msg("This gate does not accept SAS attestations")]
+    SasNotConfigured,
+    #[msg("Attestation is missing, foreign, expired or not for this wallet")]
+    AttestationInvalid,
+    #[msg("Attestation is still valid")]
+    AttestationStillValid,
     #[msg("Owner holds a pass; permissionless freeze is not allowed")]
     OwnerAllowed,
 }

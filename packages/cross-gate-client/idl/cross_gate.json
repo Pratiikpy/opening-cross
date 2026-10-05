@@ -135,6 +135,142 @@
       "args": []
     },
     {
+      "name": "claim_pass",
+      "docs": [
+        "Self-service pass: anyone may submit a wallet's SAS attestation; if it was issued under the",
+        "gate's credential and schema for that wallet and has not expired, the wallet gets a pass."
+      ],
+      "discriminator": [
+        142,
+        248,
+        188,
+        66,
+        234,
+        101,
+        198,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "attestation"
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_pass_merkle",
+      "docs": [
+        "Self-service pass from an allowlist: anyone may submit the proof for a wallet."
+      ],
+      "discriminator": [
+        115,
+        66,
+        49,
+        97,
+        62,
+        72,
+        13,
+        222
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "close_lock",
       "docs": [
         "Closes an expired lock. Anyone may call; rent returns to the gate authority."
@@ -674,6 +810,83 @@
       "args": []
     },
     {
+      "name": "revoke_unattested",
+      "docs": [
+        "Anyone may revoke a pass whose SAS attestation has expired or been closed. The rent goes",
+        "back to the pass owner. Passes granted directly by the authority are unaffected unless the",
+        "gate requires SAS and the owner has no valid attestation."
+      ],
+      "discriminator": [
+        85,
+        27,
+        202,
+        178,
+        37,
+        73,
+        111,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "attestation"
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "pass",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_allowlist_root",
+      "docs": [
+        "Sets (or clears) the allowlist Merkle root."
+      ],
+      "discriminator": [
+        145,
+        238,
+        252,
+        173,
+        15,
+        3,
+        94,
+        23
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "root",
+          "type": {
+            "option": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "set_authority",
       "discriminator": [
         133,
@@ -814,6 +1027,47 @@
           }
         }
       ]
+    },
+    {
+      "name": "set_sas_requirement",
+      "docs": [
+        "Sets (or clears) the SAS credential and schema that entitle wallets to passes."
+      ],
+      "discriminator": [
+        136,
+        163,
+        19,
+        207,
+        82,
+        166,
+        155,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "sas",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SasRequirement"
+              }
+            }
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -858,6 +1112,19 @@
     }
   ],
   "events": [
+    {
+      "name": "AllowlistRootChanged",
+      "discriminator": [
+        134,
+        114,
+        85,
+        91,
+        151,
+        131,
+        59,
+        201
+      ]
+    },
     {
       "name": "AuthorityChanged",
       "discriminator": [
@@ -922,6 +1189,19 @@
         92,
         174
       ]
+    },
+    {
+      "name": "SasRequirementChanged",
+      "discriminator": [
+        98,
+        165,
+        4,
+        198,
+        137,
+        113,
+        106,
+        101
+      ]
     }
   ],
   "errors": [
@@ -977,11 +1257,59 @@
     },
     {
       "code": 6010,
+      "name": "AllowlistNotConfigured",
+      "msg": "This gate has no allowlist"
+    },
+    {
+      "code": 6011,
+      "name": "NotOnAllowlist",
+      "msg": "Proof does not place this wallet on the allowlist"
+    },
+    {
+      "code": 6012,
+      "name": "SasNotConfigured",
+      "msg": "This gate does not accept SAS attestations"
+    },
+    {
+      "code": 6013,
+      "name": "AttestationInvalid",
+      "msg": "Attestation is missing, foreign, expired or not for this wallet"
+    },
+    {
+      "code": 6014,
+      "name": "AttestationStillValid",
+      "msg": "Attestation is still valid"
+    },
+    {
+      "code": 6015,
       "name": "OwnerAllowed",
       "msg": "Owner holds a pass; permissionless freeze is not allowed"
     }
   ],
   "types": [
+    {
+      "name": "AllowlistRootChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "root",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "AuthorityChanged",
       "type": {
@@ -1046,6 +1374,34 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "sas",
+            "docs": [
+              "Solana Attestation Service credential and schema whose attestations entitle a wallet to a",
+              "pass (`claim_pass`). `None` disables self-service passes."
+            ],
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "SasRequirement"
+                }
+              }
+            }
+          },
+          {
+            "name": "allowlist_root",
+            "docs": [
+              "Merkle root of an allowlist; leaves are `sha256(0x00 ‖ mint ‖ owner)` (`claim_pass_merkle`)."
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
           }
         ]
       }
@@ -1172,6 +1528,44 @@
           {
             "name": "granted",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SasRequirement",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "schema",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SasRequirementChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "sas",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "SasRequirement"
+                }
+              }
+            }
           }
         ]
       }

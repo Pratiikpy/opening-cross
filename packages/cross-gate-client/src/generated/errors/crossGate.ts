@@ -29,14 +29,24 @@ export const CROSS_GATE_ERROR__LOCK_ACTIVE = 0x1777; // 6007
 export const CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL = 0x1778; // 6008
 /** WrongMetaList: Extra-account-meta list is not this mint's thaw or freeze list */
 export const CROSS_GATE_ERROR__WRONG_META_LIST = 0x1779; // 6009
+/** AllowlistNotConfigured: This gate has no allowlist */
+export const CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED = 0x177a; // 6010
+/** NotOnAllowlist: Proof does not place this wallet on the allowlist */
+export const CROSS_GATE_ERROR__NOT_ON_ALLOWLIST = 0x177b; // 6011
+/** SasNotConfigured: This gate does not accept SAS attestations */
+export const CROSS_GATE_ERROR__SAS_NOT_CONFIGURED = 0x177c; // 6012
+/** AttestationInvalid: Attestation is missing, foreign, expired or not for this wallet */
+export const CROSS_GATE_ERROR__ATTESTATION_INVALID = 0x177d; // 6013
+/** AttestationStillValid: Attestation is still valid */
+export const CROSS_GATE_ERROR__ATTESTATION_STILL_VALID = 0x177e; // 6014
 /** OwnerAllowed: Owner holds a pass; permissionless freeze is not allowed */
-export const CROSS_GATE_ERROR__OWNER_ALLOWED = 0x177a; // 6010
+export const CROSS_GATE_ERROR__OWNER_ALLOWED = 0x177f; // 6015
 
-export type CrossGateError = typeof CROSS_GATE_ERROR__LOCK_ACTIVE | typeof CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN | typeof CROSS_GATE_ERROR__LOCKED | typeof CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL | typeof CROSS_GATE_ERROR__NOT_MINT_AUTHORITY | typeof CROSS_GATE_ERROR__NOT_TRANSFERRING | typeof CROSS_GATE_ERROR__OWNER_ALLOWED | typeof CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED | typeof CROSS_GATE_ERROR__UNAUTHORIZED | typeof CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM | typeof CROSS_GATE_ERROR__WRONG_META_LIST;
+export type CrossGateError = typeof CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__ATTESTATION_INVALID | typeof CROSS_GATE_ERROR__ATTESTATION_STILL_VALID | typeof CROSS_GATE_ERROR__LOCK_ACTIVE | typeof CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN | typeof CROSS_GATE_ERROR__LOCKED | typeof CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL | typeof CROSS_GATE_ERROR__NOT_MINT_AUTHORITY | typeof CROSS_GATE_ERROR__NOT_ON_ALLOWLIST | typeof CROSS_GATE_ERROR__NOT_TRANSFERRING | typeof CROSS_GATE_ERROR__OWNER_ALLOWED | typeof CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED | typeof CROSS_GATE_ERROR__SAS_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__UNAUTHORIZED | typeof CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM | typeof CROSS_GATE_ERROR__WRONG_META_LIST;
 
 let crossGateErrorMessages: Record<CrossGateError, string> | undefined;
 if (process.env['NODE_ENV'] !== 'production') {
-  crossGateErrorMessages = { [CROSS_GATE_ERROR__LOCK_ACTIVE]: `Lock has not expired`, [CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN]: `An active lock can only be raised or extended`, [CROSS_GATE_ERROR__LOCKED]: `Transfer would take the balance below an active lock`, [CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL]: `Gate check was not invoked by Token ACL`, [CROSS_GATE_ERROR__NOT_MINT_AUTHORITY]: `Signer is not the mint authority`, [CROSS_GATE_ERROR__NOT_TRANSFERRING]: `Hook executed outside a Token-2022 transfer`, [CROSS_GATE_ERROR__OWNER_ALLOWED]: `Owner holds a pass; permissionless freeze is not allowed`, [CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED]: `Owner does not hold a pass for this token`, [CROSS_GATE_ERROR__UNAUTHORIZED]: `Signer is not the gate authority`, [CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM]: `Mint's transfer hook does not point at this program`, [CROSS_GATE_ERROR__WRONG_META_LIST]: `Extra-account-meta list is not this mint's thaw or freeze list` };
+  crossGateErrorMessages = { [CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED]: `This gate has no allowlist`, [CROSS_GATE_ERROR__ATTESTATION_INVALID]: `Attestation is missing, foreign, expired or not for this wallet`, [CROSS_GATE_ERROR__ATTESTATION_STILL_VALID]: `Attestation is still valid`, [CROSS_GATE_ERROR__LOCK_ACTIVE]: `Lock has not expired`, [CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN]: `An active lock can only be raised or extended`, [CROSS_GATE_ERROR__LOCKED]: `Transfer would take the balance below an active lock`, [CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL]: `Gate check was not invoked by Token ACL`, [CROSS_GATE_ERROR__NOT_MINT_AUTHORITY]: `Signer is not the mint authority`, [CROSS_GATE_ERROR__NOT_ON_ALLOWLIST]: `Proof does not place this wallet on the allowlist`, [CROSS_GATE_ERROR__NOT_TRANSFERRING]: `Hook executed outside a Token-2022 transfer`, [CROSS_GATE_ERROR__OWNER_ALLOWED]: `Owner holds a pass; permissionless freeze is not allowed`, [CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED]: `Owner does not hold a pass for this token`, [CROSS_GATE_ERROR__SAS_NOT_CONFIGURED]: `This gate does not accept SAS attestations`, [CROSS_GATE_ERROR__UNAUTHORIZED]: `Signer is not the gate authority`, [CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM]: `Mint's transfer hook does not point at this program`, [CROSS_GATE_ERROR__WRONG_META_LIST]: `Extra-account-meta list is not this mint's thaw or freeze list` };
 }
 
 export function getCrossGateErrorMessage(code: CrossGateError): string {

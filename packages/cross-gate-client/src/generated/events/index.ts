@@ -6,8 +6,10 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './allowlistRootChanged.js';
 export * from './authorityChanged.js';
 export * from './configCreated.js';
 export * from './lockChanged.js';
 export * from './modeChanged.js';
 export * from './passChanged.js';
+export * from './sasRequirementChanged.js';

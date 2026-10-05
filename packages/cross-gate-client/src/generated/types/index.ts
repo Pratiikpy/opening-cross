@@ -7,3 +7,4 @@
  */
 
 export * from './mode.js';
+export * from './sasRequirement.js';

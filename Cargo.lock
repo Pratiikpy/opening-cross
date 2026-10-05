@@ -491,6 +491,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "solana-sha256-hasher",
  "spl-discriminator",
  "spl-tlv-account-resolution",
  "spl-token-2022-interface",

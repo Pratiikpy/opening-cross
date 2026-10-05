@@ -8,6 +8,8 @@
 
 export * from './canFreezePermissionless.js';
 export * from './canThawPermissionless.js';
+export * from './claimPass.js';
+export * from './claimPassMerkle.js';
 export * from './closeLock.js';
 export * from './createConfig.js';
 export * from './execute.js';
@@ -15,6 +17,9 @@ export * from './grantPass.js';
 export * from './initGateMetas.js';
 export * from './initHookMetas.js';
 export * from './revokePass.js';
+export * from './revokeUnattested.js';
+export * from './setAllowlistRoot.js';
 export * from './setAuthority.js';
 export * from './setLock.js';
 export * from './setMode.js';
+export * from './setSasRequirement.js';
