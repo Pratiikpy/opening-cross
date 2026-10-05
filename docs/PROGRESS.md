@@ -19,3 +19,5 @@ Newest first. Every entry names what was done, the evidence, what is not verifie
 - **Tests** `tests/core` on LiteSVM (WSL/CI): 46/46 — mint launch, sealed reopen with a non-revealer, no-print, guards, 15 attack cases, 25 randomized end-to-end runs (200-run stress 200/200) against an independent TypeScript implementation of ADR-0003 with exact conservation of every atom.
 - **Compute:** bid placement cut from 46k to 20–21k CU (client-supplied order bump, stored vault bumps, side-specific accounts, no instruction-name logs).
 - Next: deploy cross_core to devnet and run the same flows there; Meteora DBC continuation adapter (A1).
+- **Devnet run of cross_core** found a real bug: `finalize` failed when one wallet was issuer, integrator and fee recipient. Fixed (aliasing allowed on payout accounts, base ≠ quote enforced), regression tests added — 48/48. Anchor macro crates were silently resolving to 1.2.0; pinned back to 1.0.2 per ADR-0001. Devnet re-deploy of the fix waits on H10 (devnet SOL top-up).
+- Machine: disk was full (121 MB free) and a power loss interrupted the session; build cache cleared, 36 GB free now.

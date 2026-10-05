@@ -7,6 +7,8 @@
 //! Every order can always be refunded: pauses, no-print outcomes and unrevealed orders all end
 //! in a full refund.
 #![allow(unexpected_cfgs)]
+// Anchor 1.0.2's `#[program]` expansion trips this lint; it is not in our code.
+#![allow(clippy::diverging_sub_expression)]
 
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -142,6 +144,7 @@ pub mod cross_core {
             CrossError::InvalidParams
         );
         require!(params.max_orders > 0, CrossError::InvalidParams);
+        require_keys_neq!(ctx.accounts.base_mint.key(), ctx.accounts.quote_mint.key(), CrossError::InvalidParams);
         let now = Clock::get()?.unix_timestamp;
         require!(
             params.open_ts < params.close_ts && params.close_ts > now,
@@ -1186,11 +1189,17 @@ pub struct Finalize<'info> {
     pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, seeds = [BASE_VAULT_SEED, cross.key().as_ref()], bump = cross.base_vault_bump)]
     pub base_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(mut, token::mint = quote_mint, token::authority = cross.fee_recipient, token::token_program = quote_token_program)]
+    /// May be the same account as the other payout accounts (e.g. an issuer acting as its own
+    /// integrator); Anchor never writes token accounts back, so aliasing is safe.
+    #[account(mut, dup, token::mint = quote_mint, token::authority = cross.fee_recipient, token::token_program = quote_token_program)]
     pub fee_recipient_quote: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(mut, token::mint = quote_mint, token::authority = cross.integrator, token::token_program = quote_token_program)]
+    /// May be the same account as the other payout accounts (e.g. an issuer acting as its own
+    /// integrator); Anchor never writes token accounts back, so aliasing is safe.
+    #[account(mut, dup, token::mint = quote_mint, token::authority = cross.integrator, token::token_program = quote_token_program)]
     pub integrator_quote: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(mut, token::mint = quote_mint, token::authority = cross.proceeds_to, token::token_program = quote_token_program)]
+    /// May be the same account as the other payout accounts (e.g. an issuer acting as its own
+    /// integrator); Anchor never writes token accounts back, so aliasing is safe.
+    #[account(mut, dup, token::mint = quote_mint, token::authority = cross.proceeds_to, token::token_program = quote_token_program)]
     pub proceeds_quote: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, token::mint = base_mint, token::authority = cross.proceeds_to, token::token_program = base_token_program)]
     pub proceeds_base: Box<InterfaceAccount<'info, TokenAccount>>,

@@ -774,14 +774,26 @@
         },
         {
           "name": "fee_recipient_quote",
+          "docs": [
+            "May be the same account as the other payout accounts (e.g. an issuer acting as its own",
+            "integrator); Anchor never writes token accounts back, so aliasing is safe."
+          ],
           "writable": true
         },
         {
           "name": "integrator_quote",
+          "docs": [
+            "May be the same account as the other payout accounts (e.g. an issuer acting as its own",
+            "integrator); Anchor never writes token accounts back, so aliasing is safe."
+          ],
           "writable": true
         },
         {
           "name": "proceeds_quote",
+          "docs": [
+            "May be the same account as the other payout accounts (e.g. an issuer acting as its own",
+            "integrator); Anchor never writes token accounts back, so aliasing is safe."
+          ],
           "writable": true
         },
         {

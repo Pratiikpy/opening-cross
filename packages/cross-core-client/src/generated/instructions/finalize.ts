@@ -41,8 +41,20 @@ baseMint: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault?: TAccountQuoteVault;
 baseVault?: TAccountBaseVault;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 feeRecipientQuote: TAccountFeeRecipientQuote;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 integratorQuote: TAccountIntegratorQuote;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 proceedsQuote: TAccountProceedsQuote;
 proceedsBase: TAccountProceedsBase;
 baseTokenProgram: TAccountBaseTokenProgram;
@@ -79,8 +91,20 @@ baseMint: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault: TAccountQuoteVault;
 baseVault: TAccountBaseVault;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 feeRecipientQuote: TAccountFeeRecipientQuote;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 integratorQuote: TAccountIntegratorQuote;
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 proceedsQuote: TAccountProceedsQuote;
 proceedsBase: TAccountProceedsBase;
 baseTokenProgram: TAccountBaseTokenProgram;
@@ -112,8 +136,20 @@ baseMint: TAccountMetas[2];
 quoteMint: TAccountMetas[3];
 quoteVault: TAccountMetas[4];
 baseVault: TAccountMetas[5];
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 feeRecipientQuote: TAccountMetas[6];
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 integratorQuote: TAccountMetas[7];
+/**
+ * May be the same account as the other payout accounts (e.g. an issuer acting as its own
+ * integrator); Anchor never writes token accounts back, so aliasing is safe.
+ */
 proceedsQuote: TAccountMetas[8];
 proceedsBase: TAccountMetas[9];
 baseTokenProgram: TAccountMetas[10];

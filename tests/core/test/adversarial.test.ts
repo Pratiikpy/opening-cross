@@ -234,3 +234,26 @@ describe('creation', () => {
     expect(await w.h.fail([create], w.creator)).toContain('MintAuthorityNotCross');
   });
 });
+
+describe('payout aliasing (found on devnet)', () => {
+  it('finalizes when the issuer is also the integrator and the fee recipient', async () => {
+    const w = await World.create();
+    // Point integrator at the creator; protocol fee recipient is a separate wallet in World,
+    // so also cover creator == integrator, which is the realistic self-integrated issuer.
+    (w as unknown as { integrator: typeof w.creator }).integrator = w.creator;
+    const cross = await w.newCross();
+    const s = await w.trader(0n, 1_000_000_000n);
+    const b = await w.trader(10_000_000_000n);
+    const orders = [await w.place(cross, s, OrderSide.Sell, 1_000_000n, 1_000_000_000n), await w.place(cross, b, OrderSide.Buy, 1_000_000n, 1_000_000_000n)];
+    await w.settle(cross);
+    await w.claimAll(cross, orders);
+    const final = await w.finalize(cross);
+    expect(final.data.state).toBe(CrossState.Finalized);
+  });
+
+  it('rejects a cross whose base and quote mints are the same', async () => {
+    const w = await World.create();
+    (w as unknown as { baseMint: string }).baseMint = w.quoteMint;
+    await expect(w.newCross()).rejects.toThrow(/InvalidParams/);
+  });
+});

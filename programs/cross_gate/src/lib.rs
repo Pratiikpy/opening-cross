@@ -19,6 +19,8 @@
 //! The gate authority (normally the cross program's PDA) manages passes and locks. It is set
 //! once, by whoever holds the mint authority, when the [`GateConfig`] is created.
 #![allow(unexpected_cfgs)]
+// Anchor 1.0.2's `#[program]` expansion trips this lint; it is not in our code.
+#![allow(clippy::diverging_sub_expression)]
 
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount};

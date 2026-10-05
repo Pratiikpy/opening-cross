@@ -11,12 +11,24 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { type Address, type Instruction, AccountRole, address, createSolanaRpc } from '@solana/kit';
+import { type Address, type Instruction, AccountRole, address, createDefaultRpcTransport, createSolanaRpcFromTransport } from '@solana/kit';
 
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const RPC = process.env.RPC_URL ?? 'https://api.devnet.solana.com';
 export const connection = new Connection(RPC, 'confirmed');
-export const rpc = createSolanaRpc(RPC);
+/** Public devnet RPC answers bursts with HTTP 429; retry with exponential backoff. */
+const baseTransport = createDefaultRpcTransport({ url: RPC });
+const retryingTransport = (async (...args: Parameters<typeof baseTransport>) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await baseTransport(...args);
+    } catch (e) {
+      if (attempt >= 8 || !String(e).includes('429')) throw e;
+      await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+    }
+  }
+}) as typeof baseTransport;
+export const rpc = createSolanaRpcFromTransport(retryingTransport);
 
 /** The devnet operations key (git-ignored, see docs/HUMAN_TASKS.md for funding). */
 export const operator = Keypair.fromSecretKey(
