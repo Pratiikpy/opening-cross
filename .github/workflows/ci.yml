@@ -21,6 +21,8 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --release
+      - name: Conformance vectors are exactly what clearing-core generates
+        run: cargo run -q --release -p clearing-core --example conformance_vectors > /tmp/v1.json && diff /tmp/v1.json packages/verifier/conformance/v1.json
   programs:
     runs-on: ubuntu-latest
     services:

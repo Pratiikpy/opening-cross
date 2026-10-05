@@ -48,6 +48,38 @@ impl TickGrid for LinearGrid {
     }
 }
 
+/// A cross's price grid: `ticks` prices starting at `min`, `tick` apart.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OffsetGrid {
+    pub min: u64,
+    pub tick: u64,
+    pub ticks: u16,
+}
+
+impl TickGrid for OffsetGrid {
+    fn next(&self, price: u64) -> Option<u64> {
+        if price < self.min {
+            return Some(self.min);
+        }
+        let i = (price.checked_sub(self.min)?)
+            .checked_div(self.tick)?
+            .checked_add(1)?;
+        (i < u64::from(self.ticks))
+            .then(|| self.min.checked_add(i.checked_mul(self.tick)?))
+            .flatten()
+    }
+
+    fn prev(&self, price: u64) -> Option<u64> {
+        if price <= self.min {
+            return None;
+        }
+        let offset = price.checked_sub(self.min)?;
+        let i = offset.checked_sub(1)?.checked_div(self.tick)?;
+        let i = i.min(u64::from(self.ticks).checked_sub(1)?);
+        self.min.checked_add(i.checked_mul(self.tick)?)
+    }
+}
+
 /// Order side.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Side {

@@ -15,6 +15,7 @@ import {
 import { type RefOrder, referenceClear } from './reference.js';
 
 export * from './reference.js';
+export * from './conformance.js';
 
 export const PROOF_SCHEMA = 'opening-cross/fairness-proof/v1';
 

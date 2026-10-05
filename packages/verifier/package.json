@@ -15,10 +15,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "bin": {
-    "opening-cross-verify": "src/cli.ts"
+    "opening-cross-verify": "src/cli.ts",
+    "opening-cross-conformance": "src/conformance-cli.ts"
   },
   "files": [
     "dist",
+    "conformance",
     "README.md"
   ],
   "publishConfig": {
@@ -32,7 +34,8 @@
       }
     },
     "bin": {
-      "opening-cross-verify": "dist/cli.js"
+      "opening-cross-verify": "dist/cli.js",
+      "opening-cross-conformance": "dist/conformance-cli.js"
     }
   },
   "scripts": {
