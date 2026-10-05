@@ -622,6 +622,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example_venue"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "bytemuck",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

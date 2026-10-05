@@ -13,6 +13,7 @@
 !/services/
 !/scripts/
 !/tests/
+!/examples/
 !/Cargo.toml
 !/Cargo.lock
 !/Anchor.toml
