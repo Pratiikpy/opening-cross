@@ -37,6 +37,7 @@ import { existsSync } from 'node:fs';
 import { address } from '@solana/kit';
 
 export const DBC_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_bonding_curve.so`;
+export const DAMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}cp_amm.so`;
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const T0 = 1_800_000_000n;
@@ -50,6 +51,7 @@ export class Harness {
     this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_settle.so`);
     // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
+    if (existsSync(DAMM_FIXTURE)) this.svm.addProgramFromFile(address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'), DAMM_FIXTURE);
     this.setTime(T0);
   }
 

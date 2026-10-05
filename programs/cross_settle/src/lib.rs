@@ -20,6 +20,7 @@ use anchor_spl::token_interface::{self, Mint, SetAuthority, TokenInterface};
 declare_program!(dynamic_bonding_curve);
 declare_program!(cross_core);
 declare_program!(cross_gate);
+declare_program!(cp_amm);
 
 use cross_core::accounts::Cross;
 
@@ -28,6 +29,7 @@ declare_id!("2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ");
 pub const SETTLER_SEED: &[u8] = b"settler";
 pub const DBC_CONFIG_SEED: &[u8] = b"dbc_config";
 pub const BASE_MINT_SEED: &[u8] = b"base_mint";
+pub const DAMM_POSITION_SEED: &[u8] = b"damm_position";
 
 /// DBC's `PartnerUpdateAndMintAuthority`: the partner (`fee_claimer`) receives the mint authority.
 const PARTNER_UPDATE_AND_MINT_AUTHORITY: u8 = 4;
@@ -227,6 +229,80 @@ pub mod cross_settle {
         });
         Ok(())
     }
+    /// DAMM v2 adapter: seeds a Meteora DAMM v2 pool for the cross's market at exactly P*.
+    /// Token A is the base asset and token B the quote, so DAMM's price (B per A) is the cross's
+    /// price. The issuer supplies the liquidity from its own accounts and receives the position
+    /// NFT; the adapter guarantees only that the pool opens at the price the cross discovered.
+    pub fn seed_damm_v2(
+        ctx: Context<SeedDammV2>,
+        params: cp_amm::types::InitializeCustomizablePoolParameters,
+    ) -> Result<()> {
+        let cross = read_cross(&ctx.accounts.cross)?;
+        require_keys_eq!(
+            cross.creator,
+            ctx.accounts.creator.key(),
+            SettleError::NotCreator
+        );
+        require!(cross.base_bound, SettleError::PoolNotOpened);
+        require_keys_eq!(
+            cross.base_mint,
+            ctx.accounts.base_mint.key(),
+            SettleError::WrongMint
+        );
+        require_keys_eq!(
+            cross.quote_mint,
+            ctx.accounts.quote_mint.key(),
+            SettleError::WrongMint
+        );
+        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+        let expected =
+            sqrt_price_q64(clearing.price, cross.price_scale).ok_or(SettleError::Overflow)?;
+        require!(
+            params.sqrt_price.abs_diff(expected) <= 1,
+            SettleError::StartPriceNotClearingPrice
+        );
+
+        let cross_key = ctx.accounts.cross.key();
+        let nft_bump = [ctx.bumps.position_nft_mint];
+        let nft_seeds: &[&[u8]] = &[DAMM_POSITION_SEED, cross_key.as_ref(), &nft_bump];
+        let liquidity = params.liquidity;
+        cp_amm::cpi::initialize_customizable_pool(
+            CpiContext::new_with_signer(
+                ctx.accounts.damm_program.key(),
+                cp_amm::cpi::accounts::InitializeCustomizablePool {
+                    creator: ctx.accounts.creator.to_account_info(),
+                    position_nft_mint: ctx.accounts.position_nft_mint.to_account_info(),
+                    position_nft_account: ctx.accounts.position_nft_account.to_account_info(),
+                    payer: ctx.accounts.creator.to_account_info(),
+                    pool_authority: ctx.accounts.damm_pool_authority.to_account_info(),
+                    pool: ctx.accounts.pool.to_account_info(),
+                    position: ctx.accounts.position.to_account_info(),
+                    token_a_mint: ctx.accounts.base_mint.to_account_info(),
+                    token_b_mint: ctx.accounts.quote_mint.to_account_info(),
+                    token_a_vault: ctx.accounts.token_a_vault.to_account_info(),
+                    token_b_vault: ctx.accounts.token_b_vault.to_account_info(),
+                    payer_token_a: ctx.accounts.creator_base.to_account_info(),
+                    payer_token_b: ctx.accounts.creator_quote.to_account_info(),
+                    token_a_program: ctx.accounts.base_token_program.to_account_info(),
+                    token_b_program: ctx.accounts.quote_token_program.to_account_info(),
+                    token_2022_program: ctx.accounts.token_2022_program.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    event_authority: ctx.accounts.damm_event_authority.to_account_info(),
+                    program: ctx.accounts.damm_program.to_account_info(),
+                },
+                &[nft_seeds],
+            ),
+            params,
+        )?;
+        emit!(DammV2Seeded {
+            cross: cross_key,
+            pool: ctx.accounts.pool.key(),
+            clearing_price: clearing.price,
+            sqrt_price: expected,
+            liquidity
+        });
+        Ok(())
+    }
 }
 
 /// `floor(sqrt(price / price_scale) · 2⁶⁴)` — DBC's Q64.64 square-root price for a price given
@@ -343,6 +419,62 @@ pub struct DbcPoolOpened {
     pub clearing_price: u64,
     pub sqrt_start_price: u128,
 }
+#[derive(Accounts)]
+pub struct SeedDammV2<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    /// CHECK: owner and contents checked in `read_cross`.
+    pub cross: UncheckedAccount<'info>,
+    /// CHECK: created by DAMM v2; this PDA signs as the position-NFT mint keypair.
+    #[account(mut, seeds = [DAMM_POSITION_SEED, cross.key().as_ref()], bump)]
+    pub position_nft_mint: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2 PDA, validated by DAMM v2.
+    #[account(mut)]
+    pub position_nft_account: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2 PDA, validated by DAMM v2.
+    #[account(mut)]
+    pub pool: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2 PDA, validated by DAMM v2.
+    #[account(mut)]
+    pub position: UncheckedAccount<'info>,
+    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
+    /// CHECK: DAMM v2 PDA, validated by DAMM v2.
+    #[account(mut)]
+    pub token_a_vault: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2 PDA, validated by DAMM v2.
+    #[account(mut)]
+    pub token_b_vault: UncheckedAccount<'info>,
+    /// CHECK: creator's base account; the token program enforces ownership on transfer.
+    #[account(mut)]
+    pub creator_base: UncheckedAccount<'info>,
+    /// CHECK: creator's quote account; the token program enforces ownership on transfer.
+    #[account(mut)]
+    pub creator_quote: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2's constant pool authority, validated by DAMM v2.
+    pub damm_pool_authority: UncheckedAccount<'info>,
+    /// CHECK: DAMM v2's event authority, validated by DAMM v2.
+    pub damm_event_authority: UncheckedAccount<'info>,
+    /// CHECK: the DAMM v2 program.
+    #[account(address = cp_amm::ID)]
+    pub damm_program: UncheckedAccount<'info>,
+    pub base_token_program: Interface<'info, TokenInterface>,
+    pub quote_token_program: Interface<'info, TokenInterface>,
+    /// CHECK: Token-2022 (position NFT program).
+    #[account(address = anchor_spl::token_2022::ID)]
+    pub token_2022_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[event]
+pub struct DammV2Seeded {
+    pub cross: Pubkey,
+    pub pool: Pubkey,
+    pub clearing_price: u64,
+    pub sqrt_price: u128,
+    pub liquidity: u128,
+}
+
 #[event]
 pub struct DbcMintBound {
     pub cross: Pubkey,

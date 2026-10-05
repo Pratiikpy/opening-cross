@@ -6,5 +6,6 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './dammV2Seeded.js';
 export * from './dbcMintBound.js';
 export * from './dbcPoolOpened.js';

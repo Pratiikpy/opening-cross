@@ -8,3 +8,4 @@
 
 export * from './bindDbcMint.js';
 export * from './openDbcPool.js';
+export * from './seedDammV2.js';

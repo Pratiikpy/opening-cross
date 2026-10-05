@@ -48,7 +48,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
 | A1 | `meteora_dbc_continuation` (flagship) | Cross clears at P\*, Q\* allocated, DBC pool continues, migrates to DAMM v2 | Devnet end-to-end with real DBC program | IN PROGRESS | ADR-0006; `programs/cross_settle`, `packages/dbc-adapter`; local end-to-end against mainnet DBC binary passes (54/54). Devnet deploy blocked on H10 |
-| A2 | `damm_v2` adapter | Pool seeded at P\* | Devnet | TODO | |
+| A2 | `damm_v2` adapter | Pool seeded at P\* | Devnet | IN PROGRESS | ADR-0007; `cross_settle::seed_damm_v2` + `meteora-adapters` `buildSeedDammV2`; LiteSVM vs mainnet cp-amm: pool `sqrt_price` = P\* exactly, real swap 10 base → 11.94 quote vs 12.00 at P\* (`tests/core/test/damm.test.ts`). Devnet run pending H10 |
 | A3 | `dlmm` adapter | Bins seeded around P\* | Devnet | TODO | |
 | A4 | `raydium_cpmm`, `external_cpi`, `none` adapters | Each settles a devnet cross | Devnet | TODO | |
 | A5 | Treasury / ownership-coin template | Allowance, attestation-gated release, holder liquidation | Devnet + adversarial | TODO | |

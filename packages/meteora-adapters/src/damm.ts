@@ -1,0 +1,103 @@
+// DAMM v2 adapter: seed a Meteora DAMM v2 pool for a cross's market at exactly P*.
+// Token A = base, token B = quote, so DAMM's price (B per A) is the cross's price.
+import BN from 'bn.js';
+import { type Address, type Instruction, type TransactionSigner, address, getProgramDerivedAddress } from '@solana/kit';
+import { PublicKey } from '@solana/web3.js';
+import {
+  BaseFeeMode,
+  MAX_SQRT_PRICE,
+  MIN_SQRT_PRICE,
+  deriveCustomizablePoolAddress,
+  derivePoolAuthority,
+  derivePositionAddress,
+  derivePositionNftAccount,
+  deriveTokenVaultAddress,
+  getBaseFeeParams,
+  getLiquidityDeltaFromAmountA,
+  getLiquidityDeltaFromAmountB,
+} from '@meteora-ag/cp-amm-sdk';
+import { CROSS_SETTLE_PROGRAM_ADDRESS, getSeedDammV2Instruction } from '@opening-cross/cross-settle-client';
+import { type CrossView, ata } from '@opening-cross/sdk';
+import { TOKEN_2022, sqrtPriceQ64 } from './index.js';
+
+export const DAMM_V2_PROGRAM_ADDRESS = address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG');
+/** DAMM v2 collect-fee modes (cp-amm `CollectFeeMode`). */
+export const DammCollectFeeMode = { BothToken: 0, OnlyB: 1 } as const;
+
+const toKit = (k: PublicKey): Address => address(k.toBase58());
+const w3 = (a: Address) => new PublicKey(a);
+
+export async function dammPositionMintAddress(cross: Address): Promise<Address> {
+  return (await getProgramDerivedAddress({ programAddress: CROSS_SETTLE_PROGRAM_ADDRESS, seeds: [new TextEncoder().encode('damm_position'), new PublicKey(cross).toBytes()] }))[0];
+}
+
+export async function dammAddresses(cross: Address, baseMint: Address, quoteMint: Address) {
+  const nft = await dammPositionMintAddress(cross);
+  const pool = deriveCustomizablePoolAddress(w3(baseMint), w3(quoteMint));
+  return {
+    positionNftMint: nft,
+    positionNftAccount: toKit(derivePositionNftAccount(w3(nft))),
+    position: toKit(derivePositionAddress(w3(nft))),
+    pool: toKit(pool),
+    tokenAVault: toKit(deriveTokenVaultAddress(w3(baseMint), pool)),
+    tokenBVault: toKit(deriveTokenVaultAddress(w3(quoteMint), pool)),
+    poolAuthority: toKit(derivePoolAuthority()),
+    eventAuthority: (await getProgramDerivedAddress({ programAddress: DAMM_V2_PROGRAM_ADDRESS, seeds: [new TextEncoder().encode('__event_authority')] }))[0],
+  };
+}
+
+export type SeedDammInput = {
+  cross: CrossView;
+  creator: TransactionSigner;
+  /** Maximum base and quote atoms to deposit; liquidity is the largest both can cover. */
+  baseAmount: bigint;
+  quoteAmount: bigint;
+  /** Flat trading fee for the pool, in bps. */
+  feeBps: number;
+  collectFeeMode?: number;
+};
+
+/** Full-range DAMM v2 pool at P* (constant-product behaviour). */
+export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instruction: Instruction; liquidity: bigint; sqrtPrice: bigint; addresses: Awaited<ReturnType<typeof dammAddresses>> }> {
+  const c = input.cross.data;
+  if (c.clearing.__option !== 'Some') throw new Error('cross has not cleared');
+  if (!c.baseBound) throw new Error('cross has no base mint yet');
+  const sqrtPrice = sqrtPriceQ64(c.clearing.value.price, c.priceScale);
+  const mode = input.collectFeeMode ?? DammCollectFeeMode.OnlyB;
+  const sp = new BN(sqrtPrice.toString());
+  const la = getLiquidityDeltaFromAmountA(new BN(input.baseAmount.toString()), sp, MAX_SQRT_PRICE, mode);
+  const lb = getLiquidityDeltaFromAmountB(new BN(input.quoteAmount.toString()), MIN_SQRT_PRICE, sp, mode);
+  const liquidity = BigInt((la.lt(lb) ? la : lb).toString());
+  if (liquidity === 0n) throw new Error('amounts too small for any liquidity');
+  const baseFee = getBaseFeeParams({ baseFeeMode: BaseFeeMode.FeeTimeSchedulerLinear, feeTimeSchedulerParam: { startingFeeBps: input.feeBps, endingFeeBps: input.feeBps, numberOfPeriod: 0, totalDuration: 0 } });
+  const a = await dammAddresses(input.cross.address, c.baseMint, c.quoteMint);
+  const instruction = getSeedDammV2Instruction({
+    creator: input.creator,
+    cross: input.cross.address,
+    positionNftMint: a.positionNftMint,
+    positionNftAccount: a.positionNftAccount,
+    pool: a.pool,
+    position: a.position,
+    baseMint: c.baseMint,
+    quoteMint: c.quoteMint,
+    tokenAVault: a.tokenAVault,
+    tokenBVault: a.tokenBVault,
+    creatorBase: await ata(input.creator.address, c.baseMint, c.baseTokenProgram),
+    creatorQuote: await ata(input.creator.address, c.quoteMint, c.quoteTokenProgram),
+    dammPoolAuthority: a.poolAuthority,
+    dammEventAuthority: a.eventAuthority,
+    baseTokenProgram: c.baseTokenProgram,
+    quoteTokenProgram: c.quoteTokenProgram,
+    token2022Program: TOKEN_2022,
+    poolFees: { baseFee: { data: Uint8Array.from(baseFee.data as number[]) }, compoundingFeeBps: 0, padding: 0, dynamicFee: null },
+    sqrtMinPrice: BigInt(MIN_SQRT_PRICE.toString()),
+    sqrtMaxPrice: BigInt(MAX_SQRT_PRICE.toString()),
+    hasAlphaVault: false,
+    liquidity,
+    sqrtPrice,
+    activationType: 1,
+    collectFeeMode: mode,
+    activationPoint: null,
+  });
+  return { instruction, liquidity, sqrtPrice, addresses: a };
+}

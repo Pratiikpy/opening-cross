@@ -6,13 +6,16 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from './baseFeeParameters.js';
-export * from './dynamicFeeParameters.js';
+export * from './crossSettleCpAmmTypesBaseFeeParameters.js';
+export * from './crossSettleCpAmmTypesDynamicFeeParameters.js';
+export * from './crossSettleCpAmmTypesPoolFeeParameters.js';
+export * from './crossSettleDynamicBondingCurveTypesBaseFeeParameters.js';
+export * from './crossSettleDynamicBondingCurveTypesDynamicFeeParameters.js';
+export * from './crossSettleDynamicBondingCurveTypesPoolFeeParameters.js';
 export * from './liquidityDistributionParameters.js';
 export * from './liquidityVestingInfoParams.js';
 export * from './lockedVestingParams.js';
 export * from './migratedPoolFee.js';
 export * from './migratedPoolMarketCapFeeSchedulerParams.js';
 export * from './migrationFee.js';
-export * from './poolFeeParameters.js';
 export * from './tokenSupplyParams.js';

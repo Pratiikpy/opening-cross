@@ -272,9 +272,149 @@
           }
         }
       ]
+    },
+    {
+      "name": "seed_damm_v2",
+      "docs": [
+        "DAMM v2 adapter: seeds a Meteora DAMM v2 pool for the cross's market at exactly P*.",
+        "Token A is the base asset and token B the quote, so DAMM's price (B per A) is the cross's",
+        "price. The issuer supplies the liquidity from its own accounts and receives the position",
+        "NFT; the adapter guarantees only that the pool opens at the price the cross discovered."
+      ],
+      "discriminator": [
+        10,
+        132,
+        97,
+        55,
+        204,
+        60,
+        73,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "position_nft_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  109,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_account",
+          "writable": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "token_a_vault",
+          "writable": true
+        },
+        {
+          "name": "token_b_vault",
+          "writable": true
+        },
+        {
+          "name": "creator_base",
+          "writable": true
+        },
+        {
+          "name": "creator_quote",
+          "writable": true
+        },
+        {
+          "name": "damm_pool_authority"
+        },
+        {
+          "name": "damm_event_authority"
+        },
+        {
+          "name": "damm_program",
+          "address": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "token_2022_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeCustomizablePoolParameters"
+            }
+          }
+        }
+      ]
     }
   ],
   "events": [
+    {
+      "name": "DammV2Seeded",
+      "discriminator": [
+        87,
+        80,
+        127,
+        106,
+        194,
+        124,
+        244,
+        244
+      ]
+    },
     {
       "name": "DbcMintBound",
       "discriminator": [
@@ -356,34 +496,6 @@
   ],
   "types": [
     {
-      "name": "BaseFeeParameters",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "cliff_fee_numerator",
-            "type": "u64"
-          },
-          {
-            "name": "first_factor",
-            "type": "u16"
-          },
-          {
-            "name": "second_factor",
-            "type": "u64"
-          },
-          {
-            "name": "third_factor",
-            "type": "u64"
-          },
-          {
-            "name": "base_fee_mode",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "ConfigParameters",
       "type": {
         "kind": "struct",
@@ -392,7 +504,7 @@
             "name": "pool_fees",
             "type": {
               "defined": {
-                "name": "PoolFeeParameters"
+                "name": "cross_settle::dynamic_bonding_curve::types::PoolFeeParameters"
               }
             }
           },
@@ -549,6 +661,34 @@
       }
     },
     {
+      "name": "DammV2Seeded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_price",
+            "type": "u64"
+          },
+          {
+            "name": "sqrt_price",
+            "type": "u128"
+          },
+          {
+            "name": "liquidity",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
       "name": "DbcMintBound",
       "type": {
         "kind": "struct",
@@ -597,37 +737,51 @@
       }
     },
     {
-      "name": "DynamicFeeParameters",
+      "name": "InitializeCustomizablePoolParameters",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "bin_step",
-            "type": "u16"
+            "name": "pool_fees",
+            "type": {
+              "defined": {
+                "name": "cross_settle::cp_amm::types::PoolFeeParameters"
+              }
+            }
           },
           {
-            "name": "bin_step_u128",
+            "name": "sqrt_min_price",
             "type": "u128"
           },
           {
-            "name": "filter_period",
-            "type": "u16"
+            "name": "sqrt_max_price",
+            "type": "u128"
           },
           {
-            "name": "decay_period",
-            "type": "u16"
+            "name": "has_alpha_vault",
+            "type": "bool"
           },
           {
-            "name": "reduction_factor",
-            "type": "u16"
+            "name": "liquidity",
+            "type": "u128"
           },
           {
-            "name": "max_volatility_accumulator",
-            "type": "u32"
+            "name": "sqrt_price",
+            "type": "u128"
           },
           {
-            "name": "variable_fee_control",
-            "type": "u32"
+            "name": "activation_type",
+            "type": "u8"
+          },
+          {
+            "name": "collect_fee_mode",
+            "type": "u8"
+          },
+          {
+            "name": "activation_point",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
@@ -785,35 +939,6 @@
       }
     },
     {
-      "name": "PoolFeeParameters",
-      "docs": [
-        "Information regarding fee charges"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "base_fee",
-            "type": {
-              "defined": {
-                "name": "BaseFeeParameters"
-              }
-            }
-          },
-          {
-            "name": "dynamic_fee",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "DynamicFeeParameters"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "TokenSupplyParams",
       "type": {
         "kind": "struct",
@@ -825,6 +950,189 @@
           {
             "name": "post_migration_token_supply",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::cp_amm::types::BaseFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": {
+              "array": [
+                "u8",
+                27
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::cp_amm::types::DynamicFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bin_step",
+            "type": "u16"
+          },
+          {
+            "name": "bin_step_u128",
+            "type": "u128"
+          },
+          {
+            "name": "filter_period",
+            "type": "u16"
+          },
+          {
+            "name": "decay_period",
+            "type": "u16"
+          },
+          {
+            "name": "reduction_factor",
+            "type": "u16"
+          },
+          {
+            "name": "max_volatility_accumulator",
+            "type": "u32"
+          },
+          {
+            "name": "variable_fee_control",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::cp_amm::types::PoolFeeParameters",
+      "docs": [
+        "Information regarding fee charges"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_fee",
+            "type": {
+              "defined": {
+                "name": "cross_settle::cp_amm::types::BaseFeeParameters"
+              }
+            }
+          },
+          {
+            "name": "compounding_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "padding",
+            "type": "u8"
+          },
+          {
+            "name": "dynamic_fee",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "cross_settle::cp_amm::types::DynamicFeeParameters"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::dynamic_bonding_curve::types::BaseFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cliff_fee_numerator",
+            "type": "u64"
+          },
+          {
+            "name": "first_factor",
+            "type": "u16"
+          },
+          {
+            "name": "second_factor",
+            "type": "u64"
+          },
+          {
+            "name": "third_factor",
+            "type": "u64"
+          },
+          {
+            "name": "base_fee_mode",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::dynamic_bonding_curve::types::DynamicFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bin_step",
+            "type": "u16"
+          },
+          {
+            "name": "bin_step_u128",
+            "type": "u128"
+          },
+          {
+            "name": "filter_period",
+            "type": "u16"
+          },
+          {
+            "name": "decay_period",
+            "type": "u16"
+          },
+          {
+            "name": "reduction_factor",
+            "type": "u16"
+          },
+          {
+            "name": "max_volatility_accumulator",
+            "type": "u32"
+          },
+          {
+            "name": "variable_fee_control",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::dynamic_bonding_curve::types::PoolFeeParameters",
+      "docs": [
+        "Information regarding fee charges"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_fee",
+            "type": {
+              "defined": {
+                "name": "cross_settle::dynamic_bonding_curve::types::BaseFeeParameters"
+              }
+            }
+          },
+          {
+            "name": "dynamic_fee",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "cross_settle::dynamic_bonding_curve::types::DynamicFeeParameters"
+                }
+              }
+            }
           }
         ]
       }

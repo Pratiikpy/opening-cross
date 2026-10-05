@@ -8,32 +8,35 @@
 
 import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithPayer, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
 import { addSelfPlanAndSendFunctions, type SelfPlanAndSendFunctions } from '@solana/program-client-core';
-import { getBindDbcMintInstructionAsync, getOpenDbcPoolInstructionAsync, parseBindDbcMintInstruction, parseOpenDbcPoolInstruction, type BindDbcMintAsyncInput, type OpenDbcPoolAsyncInput, type ParsedBindDbcMintInstruction, type ParsedOpenDbcPoolInstruction } from '../instructions/index.js';
-import { findBaseMintPda, findDbcConfigPda, findSettlerPda } from '../pdas/index.js';
+import { getBindDbcMintInstructionAsync, getOpenDbcPoolInstructionAsync, getSeedDammV2InstructionAsync, parseBindDbcMintInstruction, parseOpenDbcPoolInstruction, parseSeedDammV2Instruction, type BindDbcMintAsyncInput, type OpenDbcPoolAsyncInput, type ParsedBindDbcMintInstruction, type ParsedOpenDbcPoolInstruction, type ParsedSeedDammV2Instruction, type SeedDammV2AsyncInput } from '../instructions/index.js';
+import { findBaseMintPda, findDbcConfigPda, findPositionNftMintPda, findSettlerPda } from '../pdas/index.js';
 
 export const CROSS_SETTLE_PROGRAM_ADDRESS = '2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ' as Address<'2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ'>;
 
-export enum CrossSettleEvent { DbcMintBound, DbcPoolOpened }
+export enum CrossSettleEvent { DammV2Seeded, DbcMintBound, DbcPoolOpened }
 
 export function identifyCrossSettleEvent(event: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleEvent {
     const data = 'data' in event ? event.data : event;
-    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([75, 243, 26, 251, 150, 153, 172, 164])), 0)) { return CrossSettleEvent.DbcMintBound; }
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([87, 80, 127, 106, 194, 124, 244, 244])), 0)) { return CrossSettleEvent.DammV2Seeded; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([75, 243, 26, 251, 150, 153, 172, 164])), 0)) { return CrossSettleEvent.DbcMintBound; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([142, 90, 156, 187, 193, 205, 225, 165])), 0)) { return CrossSettleEvent.DbcPoolOpened; }
     throw new Error('The provided event could not be identified as a crossSettle event.');
 }
 
-export enum CrossSettleInstruction { BindDbcMint, OpenDbcPool }
+export enum CrossSettleInstruction { BindDbcMint, OpenDbcPool, SeedDammV2 }
 
 export function identifyCrossSettleInstruction(instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleInstruction {
     const data = 'data' in instruction ? instruction.data : instruction;
     if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([92, 76, 70, 132, 49, 66, 16, 16])), 0)) { return CrossSettleInstruction.BindDbcMint; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([68, 14, 121, 181, 116, 193, 225, 178])), 0)) { return CrossSettleInstruction.OpenDbcPool; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([10, 132, 97, 55, 204, 60, 73, 85])), 0)) { return CrossSettleInstruction.SeedDammV2; }
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, { instructionData: data, programName: "crossSettle" });
 }
 
 export type ParsedCrossSettleInstruction<TProgram extends string = '2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ'> =
 | { instructionType: CrossSettleInstruction.BindDbcMint } & ParsedBindDbcMintInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.OpenDbcPool } & ParsedOpenDbcPoolInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.SeedDammV2 } & ParsedSeedDammV2Instruction<TProgram>
 
 
         export function parseCrossSettleInstruction<TProgram extends string>(
@@ -46,21 +49,23 @@ export type ParsedCrossSettleInstruction<TProgram extends string = '2EVpoks9zhL6
 return { instructionType: CrossSettleInstruction.BindDbcMint, ...parseBindDbcMintInstruction(instruction) }; }
 case CrossSettleInstruction.OpenDbcPool: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.OpenDbcPool, ...parseOpenDbcPoolInstruction(instruction) }; }
+case CrossSettleInstruction.SeedDammV2: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.SeedDammV2, ...parseSeedDammV2Instruction(instruction) }; }
                 default: throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, { instructionType: instructionType as string, programName: "crossSettle" });
             }
         }
 
 export type CrossSettlePlugin = { instructions: CrossSettlePluginInstructions; pdas: CrossSettlePluginPdas; identifyInstruction: typeof identifyCrossSettleInstruction; parseInstruction: typeof parseCrossSettleInstruction; }
 
-export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; }
+export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; seedDammV2: (input: SeedDammV2AsyncInput) => ReturnType<typeof getSeedDammV2InstructionAsync> & SelfPlanAndSendFunctions; }
 
-export type CrossSettlePluginPdas = { settler: typeof findSettlerPda; baseMint: typeof findBaseMintPda; dbcConfig: typeof findDbcConfigPda; }
+export type CrossSettlePluginPdas = { settler: typeof findSettlerPda; baseMint: typeof findBaseMintPda; dbcConfig: typeof findDbcConfigPda; positionNftMint: typeof findPositionNftMintPda; }
 
 export type CrossSettlePluginRequirements = ClientWithPayer & ClientWithTransactionPlanning & ClientWithTransactionSending
 
 export function crossSettleProgram() {
     return <T extends CrossSettlePluginRequirements>(client: T): ExtendedClient<T, { crossSettle: CrossSettlePlugin }> => {
-        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda }, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
+        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)), seedDammV2: input => addSelfPlanAndSendFunctions(client, getSeedDammV2InstructionAsync(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda, positionNftMint: findPositionNftMintPda }, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
     };
 }
 

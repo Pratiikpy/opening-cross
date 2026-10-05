@@ -189,3 +189,4 @@ export async function buildBindDbcMint(cross: CrossView, payer: TransactionSigne
     token2022Program: TOKEN_2022,
   });
 }
+export * from './damm.js';

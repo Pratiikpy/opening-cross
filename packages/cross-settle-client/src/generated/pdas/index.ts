@@ -8,4 +8,5 @@
 
 export * from './baseMint.js';
 export * from './dbcConfig.js';
+export * from './positionNftMint.js';
 export * from './settler.js';
