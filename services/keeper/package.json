@@ -1,0 +1,28 @@
+{
+  "name": "@opening-cross/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Permissionless keeper for Opening Cross: clears books, cranks claims and refunds, abandons expired settlements and finalizes crosses.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts",
+    "devnet-pass": "tsx scripts/devnet-pass.ts"
+  },
+  "dependencies": {
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

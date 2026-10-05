@@ -58,7 +58,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
 | D1 | Indexer (Yellowstone gRPC or RPC fallback) + Postgres + reconciler | Rebuilds full state from chain; never trusts `processed` | Kill/restart and replay tests | DONE | `services/indexer`; replay applies 0, reconcile zero drift on LiteSVM (85/85) and on live devnet history (9 events, 2 crosses) — `docs/evidence/D1-indexer.md`. Yellowstone source: HUMAN H7 |
-| D2 | Keepers: close, clear, settle, refund, calendar triggers | Idempotent; permissionless | Chaos tests on devnet | TODO | |
+| D2 | Keepers: close, clear, settle, refund, calendar triggers | Idempotent; permissionless | Chaos tests on devnet | IN PROGRESS | `services/keeper`: racing-keeper chaos test passes on LiteSVM (88/88); devnet pass ran and exposed the outdated devnet deployment — upgrade pending H10 (`docs/evidence/D2-keeper.md`) |
 | D3 | REST + WebSocket API, unsigned-transaction builder | Every user action available via API | Contract tests | TODO | |
 | D4 | TypeScript SDK + Rust CPI crate (Codama clients) | Published packages build a full cross from a clean project | Example project in CI | TODO | |
 | D5 | Independent verifier + fairness-proof schema + conformance suite | Verifier recomputes every devnet cross exactly | Run against all devnet crosses | IN PROGRESS | `packages/verifier` (schema `opening-cross/fairness-proof/v1`, CLI `opening-cross-verify`): verifies all 25 randomized crosses and catches a tampered book (`tests/core/test/verifier.test.ts`, `properties.test.ts`, 80/80). Per-order allocation proofs need the indexer (D1); devnet run pending H10 |
