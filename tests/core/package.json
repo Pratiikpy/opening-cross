@@ -15,6 +15,7 @@
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
     "@opening-cross/cross-settle-client": "workspace:*",
+    "@opening-cross/indexer": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
     "@solana-program/compute-budget": "^0.19.0",
@@ -25,8 +26,10 @@
     "@solana/web3.js": "1.98.4",
     "@types/bn.js": "^5.2.0",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "bn.js": "5.2.2",
     "litesvm": "1.5.0",
+    "pg": "^8.23.1",
     "sas-lib": "1.0.10",
     "typescript": "7.0.2",
     "vitest": "5.0.3"

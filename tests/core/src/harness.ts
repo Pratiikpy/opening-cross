@@ -9,6 +9,7 @@ import {
   type KeyPairSigner,
   type TransactionSigner,
   appendTransactionMessageInstructions,
+  getSignatureFromTransaction,
   createTransactionMessage,
   generateKeyPairSigner,
   lamports,
@@ -43,8 +44,13 @@ export const DAMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.m
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const T0 = 1_800_000_000n;
 
+/** A transaction the harness landed, in the shape an indexer receives it from an RPC node. */
+export type LandedTx = { signature: string; slot: bigint; blockTime: bigint; logs: string[]; err: null };
+
 export class Harness {
   readonly svm: LiteSVM;
+  /** Every successful transaction, in order — consumed by the indexer tests. */
+  readonly landed: LandedTx[] = [];
   constructor() {
     this.svm = new LiteSVM();
     this.svm.addProgramFromFile(CROSS_CORE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_core.so`);
@@ -84,6 +90,8 @@ export class Harness {
     if (res instanceof FailedTransactionMetadata) {
       throw new TxError(res.meta().logs(), res.toString());
     }
+    const clock = this.svm.getClock();
+    this.landed.push({ signature: getSignatureFromTransaction(tx), slot: clock.slot, blockTime: clock.unixTimestamp, logs: res.logs(), err: null });
     return res.computeUnitsConsumed();
   }
 

@@ -23,6 +23,12 @@ jobs:
       - run: cargo test --workspace --release
   programs:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: oc }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.96.1
@@ -40,6 +46,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opening-cross/core-tests test
+        env: { DATABASE_URL: 'postgres://postgres:oc@localhost:5432/postgres' }
   secrets:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,26 @@
+{
+  "name": "@opening-cross/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Indexer for Opening Cross: decodes cross_core events into Postgres and reconciles the database against chain state.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts",
+    "devnet-check": "tsx scripts/devnet-check.ts"
+  },
+  "dependencies": {
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

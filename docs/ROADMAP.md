@@ -57,7 +57,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| D1 | Indexer (Yellowstone gRPC or RPC fallback) + Postgres + reconciler | Rebuilds full state from chain; never trusts `processed` | Kill/restart and replay tests | TODO | |
+| D1 | Indexer (Yellowstone gRPC or RPC fallback) + Postgres + reconciler | Rebuilds full state from chain; never trusts `processed` | Kill/restart and replay tests | DONE | `services/indexer`; replay applies 0, reconcile zero drift on LiteSVM (85/85) and on live devnet history (9 events, 2 crosses) — `docs/evidence/D1-indexer.md`. Yellowstone source: HUMAN H7 |
 | D2 | Keepers: close, clear, settle, refund, calendar triggers | Idempotent; permissionless | Chaos tests on devnet | TODO | |
 | D3 | REST + WebSocket API, unsigned-transaction builder | Every user action available via API | Contract tests | TODO | |
 | D4 | TypeScript SDK + Rust CPI crate (Codama clients) | Published packages build a full cross from a clean project | Example project in CI | TODO | |
