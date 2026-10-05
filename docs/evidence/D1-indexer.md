@@ -24,3 +24,8 @@ transport (`src/rpc.ts`, exponential backoff on 429/5xx/connection resets).
 
 Not covered: Yellowstone gRPC source (needs a provider endpoint, HUMAN_TASKS H7); the RPC poller
 is the production fallback and is what ran above.
+
+Caveat found during D2: the devnet crosses above were created by an older cross_core build whose
+account layout predates the current one, so this run proves the RPC source, cursor and replay
+path, not decoding of current-layout accounts on devnet. That repeat run waits on the devnet
+upgrade (HUMAN_TASKS H10); current-layout decoding is covered by the LiteSVM test.
