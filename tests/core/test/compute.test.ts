@@ -24,7 +24,7 @@ describe('compute budget', () => {
     units.merge_shard = await w.h.send([merge!], w.admin);
     for (const ix of rest.slice(0, -1)) await w.h.send([ix], w.admin);
     units.clear_256_ticks = await w.h.send([rest[rest.length - 1]!], w.admin);
-    units.claim = await w.h.send([await buildClaim(w.view(sealed.address), w.admin, b.address, 2n)], w.admin);
+    units.claim = await w.h.send(await buildClaim(w.view(sealed.address), w.admin, b.address, 2n), w.admin);
 
     console.table(Object.fromEntries(Object.entries(units).map(([k, v]) => [k, Number(v)])));
     expect(units.commit_open! <= 25_000n).toBe(true);

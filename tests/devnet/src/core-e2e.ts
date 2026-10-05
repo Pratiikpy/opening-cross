@@ -150,7 +150,7 @@ async function main() {
     crossId, kind: CrossKind.Launch, supplyMode: SupplyMode.Mint, disclosure: Disclosure.Open,
     minPrice: GRID.min, tick: GRID.tick, ticks: GRID.ticks, priceScale: SCALE, openTs: now - 5n, closeTs, revealEndTs: closeTs,
     referencePrice: null, minMatched: 0n, maxImbalanceBps: null, integratorFeeBps: 20, integrator: operator.address, gateMint: null,
-    shards: 2, maxOrders: 16, proceedsTo: operator.address, schedule,
+    shards: 2, maxOrders: 16, proceedsTo: operator.address, schedule, settler: null, settleDeadlineTs: 0n,
   });
   const createSig = await send([built.create], operator);
   for (const s of built.shards) await send([s], operator);
@@ -176,7 +176,7 @@ async function main() {
   const fills = referenceFills(buyRefs, ref);
   for (const [i, [b]] of plan.entries()) {
     const before = await balanceOf(b.address, quoteMint);
-    const sig = await send([await buildClaim(await crossView(cross), operator, b.address, BigInt(i))], operator);
+    const sig = await send(await buildClaim(await crossView(cross), operator, b.address, BigInt(i)), operator);
     const got = await balanceOf(b.address, baseMint);
     const refund = (await balanceOf(b.address, quoteMint)) - before;
     const escrow = costCeil(plan[i]![2], plan[i]![1], SCALE);
@@ -207,7 +207,7 @@ async function main() {
     crossId: id2, kind: CrossKind.Reopen, supplyMode: SupplyMode.Escrow, disclosure: Disclosure.Sealed,
     minPrice: GRID.min, tick: GRID.tick, ticks: GRID.ticks, priceScale: SCALE, openTs: now2 - 5n, closeTs: close2, revealEndTs: reveal2,
     referencePrice: 1_500_000n, minMatched: 0n, maxImbalanceBps: null, integratorFeeBps: 0, integrator: operator.address, gateMint: null,
-    shards: 1, maxOrders: 8, proceedsTo: operator.address, schedule: [],
+    shards: 1, maxOrders: 8, proceedsTo: operator.address, schedule: [], settler: null, settleDeadlineTs: 0n,
   });
   const c2Sig = await send([b2.create, ...b2.shards], operator);
   ev.check('sealed-create', 'sealed escrow-mode cross created', true, `cross ${cross2}`, c2Sig);
@@ -237,7 +237,7 @@ async function main() {
   const s2 = c2.data.clearing.__option === 'Some' ? c2.data.clearing.value : null;
   ev.check('sealed-clear', 'sealed cross clears to the reference (reference price rule applied); unrevealed order excluded', s2?.price === ref2.price && s2?.matched === ref2.matched, `P* ${s2?.price} (ref ${ref2.price}), matched ${s2?.matched}`, lastSig);
   const before3 = await balanceOf(buyers[2]!.address, quoteMint);
-  for (const [i, [w]] of sealedPlan.entries()) await send([await buildClaim(await crossView(cross2), operator, w.address, 100n + BigInt(i))], operator);
+  for (const [i, [w]] of sealedPlan.entries()) await send(await buildClaim(await crossView(cross2), operator, w.address, 100n + BigInt(i)), operator);
   const refunded = (await balanceOf(buyers[2]!.address, quoteMint)) - before3;
   ev.check('sealed-refund', 'the order that never revealed is refunded in full', refunded === costCeil(50_000_000n, 1_900_000n, SCALE), `refund ${refunded}`);
   const fin2 = await send([await buildFinalize(await crossView(cross2), operator)], operator);

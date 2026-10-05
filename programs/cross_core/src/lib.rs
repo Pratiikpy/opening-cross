@@ -46,8 +46,12 @@ pub struct CreateCrossParams {
     pub shards: u8,
     pub max_orders: u32,
     pub proceeds_to: Pubkey,
-    /// Mint mode only: the issuer's elastic supply schedule as sell levels.
+    /// Mint modes only: the issuer's elastic supply schedule as sell levels.
     pub schedule: Vec<SupplyLevel>,
+    /// Deferred-mint mode only: the adapter authority allowed to bind the base mint.
+    pub settler: Option<Pubkey>,
+    /// Deferred-mint mode only: after this time an unbound cross can be abandoned and refunded.
+    pub settle_deadline_ts: i64,
 }
 
 /// Arguments for `commit_order`. Sealed crosses send the commitment and leave `price` and
@@ -144,11 +148,19 @@ pub mod cross_core {
             CrossError::InvalidParams
         );
         require!(params.max_orders > 0, CrossError::InvalidParams);
-        require_keys_neq!(
-            ctx.accounts.base_mint.key(),
-            ctx.accounts.quote_mint.key(),
+        let deferred = params.supply_mode == SupplyMode::DeferredMint;
+        require!(
+            deferred == ctx.accounts.base_mint.is_none()
+                && deferred == ctx.accounts.base_vault.is_none(),
             CrossError::InvalidParams
         );
+        if let Some(base) = ctx.accounts.base_mint.as_ref() {
+            require_keys_neq!(
+                base.key(),
+                ctx.accounts.quote_mint.key(),
+                CrossError::InvalidParams
+            );
+        }
         let now = Clock::get()?.unix_timestamp;
         require!(
             params.open_ts < params.close_ts && params.close_ts > now,
@@ -173,11 +185,15 @@ pub mod cross_core {
         c.supply_mode = params.supply_mode;
         c.disclosure = params.disclosure;
         c.state = CrossState::Live;
-        c.base_mint = ctx.accounts.base_mint.key();
+        c.base_mint = ctx
+            .accounts
+            .base_mint
+            .as_ref()
+            .map_or(Pubkey::default(), |m| m.key());
         c.quote_mint = ctx.accounts.quote_mint.key();
         c.base_token_program = ctx.accounts.base_token_program.key();
         c.quote_token_program = ctx.accounts.quote_token_program.key();
-        c.base_decimals = ctx.accounts.base_mint.decimals;
+        c.base_decimals = ctx.accounts.base_mint.as_ref().map_or(0, |m| m.decimals);
         c.quote_decimals = ctx.accounts.quote_mint.decimals;
         c.proceeds_to = params.proceeds_to;
         c.min_price = params.min_price;
@@ -199,7 +215,19 @@ pub mod cross_core {
         c.max_orders = params.max_orders;
         c.bump = ctx.bumps.cross;
         c.quote_vault_bump = ctx.bumps.quote_vault;
-        c.base_vault_bump = ctx.bumps.base_vault;
+        c.base_vault_bump = ctx.bumps.base_vault.unwrap_or_default();
+        c.base_bound = !deferred;
+        if deferred {
+            require!(params.settler.is_some(), CrossError::InvalidParams);
+            require!(
+                params.settle_deadline_ts > reveal_end_ts,
+                CrossError::InvalidTimeline
+            );
+            c.settler = params.settler;
+            c.settle_deadline_ts = params.settle_deadline_ts;
+        } else {
+            require!(params.settler.is_none(), CrossError::InvalidParams);
+        }
         c.book_bump = ctx.bumps.book;
 
         if let Some(r) = params.reference_price {
@@ -215,13 +243,14 @@ pub mod cross_core {
         {
             let mut book = ctx.accounts.book.load_init()?;
             book.cross = cross_key;
-            if params.supply_mode == SupplyMode::Mint {
+            if params.supply_mode.mints() {
                 require!(!params.schedule.is_empty(), CrossError::InvalidParams);
-                require!(
-                    Option::<Pubkey>::from(ctx.accounts.base_mint.mint_authority)
-                        == Some(cross_key),
-                    CrossError::MintAuthorityNotCross
-                );
+                if let Some(base) = ctx.accounts.base_mint.as_ref() {
+                    require!(
+                        Option::<Pubkey>::from(base.mint_authority) == Some(cross_key),
+                        CrossError::MintAuthorityNotCross
+                    );
+                }
                 for level in &params.schedule {
                     let i = c.tick_index(level.price).ok_or(CrossError::OffGrid)?;
                     require!(level.quantity > 0, CrossError::InvalidParams);
@@ -295,10 +324,7 @@ pub mod cross_core {
         require!(c.orders_total < c.max_orders, CrossError::CrossFull);
         require!(escrow > 0, CrossError::InvalidParams);
         if side == OrderSide::Sell {
-            require!(
-                c.supply_mode == SupplyMode::Escrow,
-                CrossError::SellsNotAccepted
-            );
+            require!(!c.supply_mode.mints(), CrossError::SellsNotAccepted);
         }
         if let Some(gate_mint) = c.gate_mint {
             require!(
@@ -674,6 +700,11 @@ pub mod cross_core {
             c.state == CrossState::Cleared || c.state == CrossState::NoPrint,
             CrossError::WrongState
         );
+        // A deferred-mint cross pays fills only once its adapter has bound the base mint.
+        require!(
+            c.state != CrossState::Cleared || c.base_bound,
+            CrossError::SettlementPending
+        );
         let o = &ctx.accounts.order;
         let cross_info = c.to_account_info();
         let (creator, id, bump) = (c.creator, c.cross_id.to_le_bytes(), [c.bump]);
@@ -743,13 +774,23 @@ pub mod cross_core {
             )?;
         }
         if base_out > 0 {
-            if o.side == OrderSide::Buy && c.supply_mode == SupplyMode::Mint {
+            let base_mint = ctx
+                .accounts
+                .base_mint
+                .as_ref()
+                .ok_or(CrossError::TokenAccountMissing)?;
+            let owner_base = ctx
+                .accounts
+                .owner_base
+                .as_ref()
+                .ok_or(CrossError::TokenAccountMissing)?;
+            if o.side == OrderSide::Buy && c.supply_mode.mints() {
                 token_interface::mint_to(
                     CpiContext::new_with_signer(
                         ctx.accounts.base_token_program.key(),
                         MintTo {
-                            mint: ctx.accounts.base_mint.to_account_info(),
-                            to: ctx.accounts.owner_base.to_account_info(),
+                            mint: base_mint.to_account_info(),
+                            to: owner_base.to_account_info(),
                             authority: cross_info.clone(),
                         },
                         &[seeds],
@@ -758,9 +799,12 @@ pub mod cross_core {
                 )?;
             } else {
                 transfer_signed(
-                    &ctx.accounts.base_vault,
-                    &ctx.accounts.owner_base,
-                    &ctx.accounts.base_mint,
+                    ctx.accounts
+                        .base_vault
+                        .as_ref()
+                        .ok_or(CrossError::TokenAccountMissing)?,
+                    owner_base,
+                    base_mint,
                     &ctx.accounts.base_token_program,
                     &cross_info,
                     seeds,
@@ -782,6 +826,70 @@ pub mod cross_core {
         Ok(())
     }
 
+    /// Deferred-mint crosses: the registered settler binds the base mint it created after the
+    /// clear. The cross PDA must already hold the mint authority.
+    pub fn bind_base_mint(ctx: Context<BindBaseMint>) -> Result<()> {
+        let c = &mut ctx.accounts.cross;
+        require!(
+            c.supply_mode == SupplyMode::DeferredMint,
+            CrossError::WrongState
+        );
+        require!(
+            c.state == CrossState::Cleared && !c.base_bound,
+            CrossError::WrongState
+        );
+        require!(
+            c.settler == Some(ctx.accounts.settler.key()),
+            CrossError::NotSettler
+        );
+        let mint = &ctx.accounts.base_mint;
+        require_keys_eq!(
+            *mint.to_account_info().owner,
+            c.base_token_program,
+            CrossError::WrongMint
+        );
+        require_keys_neq!(mint.key(), c.quote_mint, CrossError::InvalidParams);
+        require!(
+            Option::<Pubkey>::from(mint.mint_authority) == Some(c.key()),
+            CrossError::MintAuthorityNotCross
+        );
+        c.base_mint = mint.key();
+        c.base_decimals = mint.decimals;
+        c.base_bound = true;
+        emit!(BaseMintBound {
+            cross: c.key(),
+            base_mint: c.base_mint
+        });
+        Ok(())
+    }
+
+    /// Deferred-mint crosses: if no base mint was bound by the deadline, anyone may abandon
+    /// settlement; the cross becomes a no-print and every order is refunded in full.
+    pub fn abandon_settlement(ctx: Context<AbandonSettlement>) -> Result<()> {
+        let c = &mut ctx.accounts.cross;
+        require!(
+            c.supply_mode == SupplyMode::DeferredMint,
+            CrossError::WrongState
+        );
+        require!(
+            c.state == CrossState::Cleared && !c.base_bound,
+            CrossError::WrongState
+        );
+        require!(
+            Clock::get()?.unix_timestamp >= c.settle_deadline_ts,
+            CrossError::DeadlineNotReached
+        );
+        c.state = CrossState::NoPrint;
+        c.no_print_reason = Some(NoPrintReason::SettlementExpired);
+        emit!(CrossCleared {
+            cross: c.key(),
+            printed: false,
+            clearing: c.clearing,
+            no_print_reason: c.no_print_reason
+        });
+        Ok(())
+    }
+
     /// Distributes what is left once every order has been claimed: the issuer's proceeds and
     /// fees in mint mode, accrued fees in escrow mode, the dust and bond remainder to
     /// `proceeds_to`; then revokes the cross's mint authority in mint mode.
@@ -798,7 +906,9 @@ pub mod cross_core {
 
         // Fees: in mint mode the issuer is the only seller and pays on buyers' total payment.
         let fees = match c.supply_mode {
-            SupplyMode::Mint => mul_bps(c.buyer_paid, c.total_fee_bps())?,
+            SupplyMode::Mint | SupplyMode::DeferredMint => {
+                mul_bps(c.buyer_paid, c.total_fee_bps())?
+            }
             SupplyMode::Escrow => c.fees_accrued,
         };
         let total_bps = u64::from(c.total_fee_bps());
@@ -832,13 +942,25 @@ pub mod cross_core {
         }
 
         // Base dust (escrow mode): sold by sellers, not bought; the bond paid for it.
-        ctx.accounts.base_vault.reload()?;
-        let base_left = ctx.accounts.base_vault.amount;
+        let mut base_left = 0;
+        if let Some(base_vault) = ctx.accounts.base_vault.as_mut() {
+            base_vault.reload()?;
+            base_left = base_vault.amount;
+        }
         if base_left > 0 {
             transfer_signed(
-                &ctx.accounts.base_vault,
-                &ctx.accounts.proceeds_base,
-                &ctx.accounts.base_mint,
+                ctx.accounts
+                    .base_vault
+                    .as_ref()
+                    .ok_or(CrossError::TokenAccountMissing)?,
+                ctx.accounts
+                    .proceeds_base
+                    .as_ref()
+                    .ok_or(CrossError::TokenAccountMissing)?,
+                ctx.accounts
+                    .base_mint
+                    .as_ref()
+                    .ok_or(CrossError::TokenAccountMissing)?,
                 &ctx.accounts.base_token_program,
                 &cross_info,
                 seeds,
@@ -861,7 +983,8 @@ pub mod cross_core {
             )?;
         }
 
-        if c.supply_mode == SupplyMode::Mint {
+        // A deferred-mint cross that never bound a mint has no authority to hand back.
+        if c.supply_mode.mints() && c.base_bound {
             // After an allocation the supply is final: no one may mint again (DP4). If the cross
             // did not print, nothing was allocated and the creator gets the authority back.
             let next_authority = if c.state == CrossState::Cleared {
@@ -874,7 +997,12 @@ pub mod cross_core {
                     ctx.accounts.base_token_program.key(),
                     SetAuthority {
                         current_authority: cross_info.clone(),
-                        account_or_mint: ctx.accounts.base_mint.to_account_info(),
+                        account_or_mint: ctx
+                            .accounts
+                            .base_mint
+                            .as_ref()
+                            .ok_or(CrossError::TokenAccountMissing)?
+                            .to_account_info(),
                     },
                     &[seeds],
                 ),
@@ -1033,14 +1161,15 @@ pub struct CreateCross<'info> {
     pub cross: Box<Account<'info, Cross>>,
     #[account(init, payer = creator, space = Levels::SIZE, seeds = [BOOK_SEED, cross.key().as_ref()], bump)]
     pub book: AccountLoader<'info, Levels>,
+    /// Omitted for deferred-mint crosses.
     #[account(mint::token_program = base_token_program)]
-    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub base_mint: Option<Box<InterfaceAccount<'info, Mint>>>,
     #[account(mint::token_program = quote_token_program)]
     pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(init, payer = creator, seeds = [QUOTE_VAULT_SEED, cross.key().as_ref()], bump, token::mint = quote_mint, token::authority = cross, token::token_program = quote_token_program)]
     pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(init, payer = creator, seeds = [BASE_VAULT_SEED, cross.key().as_ref()], bump, token::mint = base_mint, token::authority = cross, token::token_program = base_token_program)]
-    pub base_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub base_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     #[account(mut, token::mint = quote_mint, token::authority = creator, token::token_program = quote_token_program)]
     pub creator_quote: Box<InterfaceAccount<'info, TokenAccount>>,
     pub base_token_program: Interface<'info, TokenInterface>,
@@ -1159,18 +1288,21 @@ pub struct Claim<'info> {
     pub owner: UncheckedAccount<'info>,
     #[account(mut, close = owner, has_one = owner @ CrossError::Unauthorized, has_one = cross @ CrossError::WrongCross)]
     pub order: Box<Account<'info, Order>>,
+    /// Omitted only when nothing is paid in base (refunds of a deferred-mint cross).
     #[account(mut, address = cross.base_mint)]
-    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub base_mint: Option<Box<InterfaceAccount<'info, Mint>>>,
     #[account(address = cross.quote_mint)]
     pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, seeds = [QUOTE_VAULT_SEED, cross.key().as_ref()], bump = cross.quote_vault_bump)]
     pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// Escrow mode only.
     #[account(mut, seeds = [BASE_VAULT_SEED, cross.key().as_ref()], bump = cross.base_vault_bump)]
-    pub base_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub base_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     #[account(init_if_needed, payer = payer, associated_token::mint = quote_mint, associated_token::authority = owner, associated_token::token_program = quote_token_program)]
     pub owner_quote: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(init_if_needed, payer = payer, associated_token::mint = base_mint, associated_token::authority = owner, associated_token::token_program = base_token_program)]
-    pub owner_base: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// The owner's base account (create it first; the SDK adds an idempotent ATA creation).
+    #[account(mut, token::mint = base_mint, token::authority = owner, token::token_program = base_token_program)]
+    pub owner_base: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     #[account(address = cross.base_token_program)]
     pub base_token_program: Interface<'info, TokenInterface>,
     #[account(address = cross.quote_token_program)]
@@ -1180,19 +1312,35 @@ pub struct Claim<'info> {
 }
 
 #[derive(Accounts)]
+pub struct BindBaseMint<'info> {
+    pub settler: Signer<'info>,
+    #[account(mut)]
+    pub cross: Box<Account<'info, Cross>>,
+    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+pub struct AbandonSettlement<'info> {
+    #[account(mut)]
+    pub cross: Box<Account<'info, Cross>>,
+}
+
+#[derive(Accounts)]
 pub struct Finalize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(mut)]
     pub cross: Box<Account<'info, Cross>>,
+    /// Required whenever the cross has a bound base mint.
     #[account(mut, address = cross.base_mint)]
-    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub base_mint: Option<Box<InterfaceAccount<'info, Mint>>>,
     #[account(address = cross.quote_mint)]
     pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, seeds = [QUOTE_VAULT_SEED, cross.key().as_ref()], bump = cross.quote_vault_bump)]
     pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// Escrow mode only.
     #[account(mut, seeds = [BASE_VAULT_SEED, cross.key().as_ref()], bump = cross.base_vault_bump)]
-    pub base_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub base_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     /// May be the same account as the other payout accounts (e.g. an issuer acting as its own
     /// integrator); Anchor never writes token accounts back, so aliasing is safe.
     #[account(mut, dup, token::mint = quote_mint, token::authority = cross.fee_recipient, token::token_program = quote_token_program)]
@@ -1205,8 +1353,9 @@ pub struct Finalize<'info> {
     /// integrator); Anchor never writes token accounts back, so aliasing is safe.
     #[account(mut, dup, token::mint = quote_mint, token::authority = cross.proceeds_to, token::token_program = quote_token_program)]
     pub proceeds_quote: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// Escrow mode only (receives base dust).
     #[account(mut, token::mint = base_mint, token::authority = cross.proceeds_to, token::token_program = base_token_program)]
-    pub proceeds_base: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub proceeds_base: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     #[account(address = cross.base_token_program)]
     pub base_token_program: Interface<'info, TokenInterface>,
     #[account(address = cross.quote_token_program)]
@@ -1277,6 +1426,11 @@ pub struct OrderClaimed {
     pub fee: u64,
 }
 #[event]
+pub struct BaseMintBound {
+    pub cross: Pubkey,
+    pub base_mint: Pubkey,
+}
+#[event]
 pub struct CrossFinalized {
     pub cross: Pubkey,
     pub protocol_fee: u64,
@@ -1345,4 +1499,10 @@ pub enum CrossError {
     WrongMint,
     #[msg("Vault does not match the cross")]
     WrongVault,
+    #[msg("Settlement has not bound the base mint yet")]
+    SettlementPending,
+    #[msg("Only the registered settler may do this")]
+    NotSettler,
+    #[msg("Settlement deadline has not passed")]
+    DeadlineNotReached,
 }

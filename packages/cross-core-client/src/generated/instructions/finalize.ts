@@ -37,9 +37,11 @@ export function getFinalizeInstructionDataCodec(): FixedSizeCodec<FinalizeInstru
 export type FinalizeAsyncInput<TAccountPayer extends InstructionSignerInput = InstructionSignerInput, TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBaseMint extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteMint extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteVault extends InstructionAccountInput = InstructionAccountInput, TAccountBaseVault extends InstructionAccountInput = InstructionAccountInput, TAccountFeeRecipientQuote extends InstructionAccountInput = InstructionAccountInput, TAccountIntegratorQuote extends InstructionAccountInput = InstructionAccountInput, TAccountProceedsQuote extends InstructionAccountInput = InstructionAccountInput, TAccountProceedsBase extends InstructionAccountInput = InstructionAccountInput, TAccountBaseTokenProgram extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteTokenProgram extends InstructionAccountInput = InstructionAccountInput> =  {
   payer: TAccountPayer;
 cross: TAccountCross;
-baseMint: TAccountBaseMint;
+/** Required whenever the cross has a bound base mint. */
+baseMint?: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault?: TAccountQuoteVault;
+/** Escrow mode only. */
 baseVault?: TAccountBaseVault;
 /**
  * May be the same account as the other payout accounts (e.g. an issuer acting as its own
@@ -56,7 +58,8 @@ integratorQuote: TAccountIntegratorQuote;
  * integrator); Anchor never writes token accounts back, so aliasing is safe.
  */
 proceedsQuote: TAccountProceedsQuote;
-proceedsBase: TAccountProceedsBase;
+/** Escrow mode only (receives base dust). */
+proceedsBase?: TAccountProceedsBase;
 baseTokenProgram: TAccountBaseTokenProgram;
 quoteTokenProgram: TAccountQuoteTokenProgram;
 }
@@ -87,10 +90,12 @@ return Object.freeze({ accounts: [getAccountMeta("payer", accounts.payer), getAc
 export type FinalizeInput<TAccountPayer extends InstructionSignerInput = InstructionSignerInput, TAccountCross extends InstructionAccountInput = InstructionAccountInput, TAccountBaseMint extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteMint extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteVault extends InstructionAccountInput = InstructionAccountInput, TAccountBaseVault extends InstructionAccountInput = InstructionAccountInput, TAccountFeeRecipientQuote extends InstructionAccountInput = InstructionAccountInput, TAccountIntegratorQuote extends InstructionAccountInput = InstructionAccountInput, TAccountProceedsQuote extends InstructionAccountInput = InstructionAccountInput, TAccountProceedsBase extends InstructionAccountInput = InstructionAccountInput, TAccountBaseTokenProgram extends InstructionAccountInput = InstructionAccountInput, TAccountQuoteTokenProgram extends InstructionAccountInput = InstructionAccountInput> =  {
   payer: TAccountPayer;
 cross: TAccountCross;
-baseMint: TAccountBaseMint;
+/** Required whenever the cross has a bound base mint. */
+baseMint?: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault: TAccountQuoteVault;
-baseVault: TAccountBaseVault;
+/** Escrow mode only. */
+baseVault?: TAccountBaseVault;
 /**
  * May be the same account as the other payout accounts (e.g. an issuer acting as its own
  * integrator); Anchor never writes token accounts back, so aliasing is safe.
@@ -106,7 +111,8 @@ integratorQuote: TAccountIntegratorQuote;
  * integrator); Anchor never writes token accounts back, so aliasing is safe.
  */
 proceedsQuote: TAccountProceedsQuote;
-proceedsBase: TAccountProceedsBase;
+/** Escrow mode only (receives base dust). */
+proceedsBase?: TAccountProceedsBase;
 baseTokenProgram: TAccountBaseTokenProgram;
 quoteTokenProgram: TAccountQuoteTokenProgram;
 }
@@ -132,10 +138,12 @@ export type ParsedFinalizeInstruction<TProgram extends string = typeof CROSS_COR
 accounts: {
 payer: TAccountMetas[0];
 cross: TAccountMetas[1];
-baseMint: TAccountMetas[2];
+/** Required whenever the cross has a bound base mint. */
+baseMint?: TAccountMetas[2] | undefined;
 quoteMint: TAccountMetas[3];
 quoteVault: TAccountMetas[4];
-baseVault: TAccountMetas[5];
+/** Escrow mode only. */
+baseVault?: TAccountMetas[5] | undefined;
 /**
  * May be the same account as the other payout accounts (e.g. an issuer acting as its own
  * integrator); Anchor never writes token accounts back, so aliasing is safe.
@@ -151,7 +159,8 @@ integratorQuote: TAccountMetas[7];
  * integrator); Anchor never writes token accounts back, so aliasing is safe.
  */
 proceedsQuote: TAccountMetas[8];
-proceedsBase: TAccountMetas[9];
+/** Escrow mode only (receives base dust). */
+proceedsBase?: TAccountMetas[9] | undefined;
 baseTokenProgram: TAccountMetas[10];
 quoteTokenProgram: TAccountMetas[11];
 };
@@ -167,5 +176,9 @@ const getNextAccount = () => {
   accountIndex += 1;
   return accountMeta;
 }
-  return { programAddress: instruction.programAddress, accounts: { payer: getNextAccount(), cross: getNextAccount(), baseMint: getNextAccount(), quoteMint: getNextAccount(), quoteVault: getNextAccount(), baseVault: getNextAccount(), feeRecipientQuote: getNextAccount(), integratorQuote: getNextAccount(), proceedsQuote: getNextAccount(), proceedsBase: getNextAccount(), baseTokenProgram: getNextAccount(), quoteTokenProgram: getNextAccount() }, data: getFinalizeInstructionDataDecoder().decode(instruction.data) };
+const getNextOptionalAccount = () => {
+  const accountMeta = getNextAccount();
+  return accountMeta.address === CROSS_CORE_PROGRAM_ADDRESS ? undefined : accountMeta;
+};
+  return { programAddress: instruction.programAddress, accounts: { payer: getNextAccount(), cross: getNextAccount(), baseMint: getNextOptionalAccount(), quoteMint: getNextAccount(), quoteVault: getNextAccount(), baseVault: getNextOptionalAccount(), feeRecipientQuote: getNextAccount(), integratorQuote: getNextAccount(), proceedsQuote: getNextAccount(), proceedsBase: getNextOptionalAccount(), baseTokenProgram: getNextAccount(), quoteTokenProgram: getNextAccount() }, data: getFinalizeInstructionDataDecoder().decode(instruction.data) };
 }

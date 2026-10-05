@@ -6,6 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './baseMintBound.js';
 export * from './crossCleared.js';
 export * from './crossCreated.js';
 export * from './crossFinalized.js';

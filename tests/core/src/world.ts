@@ -43,6 +43,8 @@ export type CrossOptions = {
   integratorFeeBps?: number;
   gateMint?: Address | null;
   schedule?: { price: bigint; quantity: bigint }[];
+  settler?: Address | null;
+  settleDeadlineTs?: bigint;
 };
 
 export type PlacedOrder = {
@@ -89,7 +91,8 @@ export class World {
   async newCross(o: CrossOptions = {}): Promise<CrossView> {
     const crossId = this.nextId++;
     const supplyMode = o.supplyMode ?? SupplyMode.Escrow;
-    let baseMint = this.baseMint;
+    let baseMint: Address | undefined = this.baseMint;
+    if (supplyMode === SupplyMode.DeferredMint) baseMint = undefined;
     if (supplyMode === SupplyMode.Mint) {
       baseMint = await this.h.mint(this.admin, 6);
       await this.h.ata(this.creator.address, baseMint, this.admin);
@@ -97,7 +100,7 @@ export class World {
     }
     const { cross, create, shards } = await buildCreateCross({
       creator: this.creator,
-      baseMint,
+      ...(baseMint ? { baseMint } : {}),
       quoteMint: this.quoteMint,
       baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
@@ -122,6 +125,8 @@ export class World {
       maxOrders: o.maxOrders ?? 64,
       proceedsTo: this.creator.address,
       schedule: o.schedule ?? [],
+      settler: o.settler ?? null,
+      settleDeadlineTs: o.settleDeadlineTs ?? 0n,
     });
     await this.h.send([create], this.creator);
     for (const s of shards) await this.h.send([s], this.creator);
@@ -169,7 +174,7 @@ export class World {
 
   async claimAll(cross: CrossView, orders: PlacedOrder[], cranker: KeyPairSigner = this.admin): Promise<void> {
     for (const o of orders) {
-      await this.h.send([await buildClaim(this.view(cross.address), cranker, o.owner.address, o.nonce)], cranker);
+      await this.h.send(await buildClaim(this.view(cross.address), cranker, o.owner.address, o.nonce), cranker);
     }
   }
 

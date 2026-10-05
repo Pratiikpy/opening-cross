@@ -8,7 +8,7 @@
 
 import { combineCodec, getEnumDecoder, getEnumEncoder, type FixedSizeCodec, type FixedSizeDecoder, type FixedSizeEncoder } from '@solana/kit';
 
-export enum SupplyMode { Escrow, Mint }
+export enum SupplyMode { Escrow, Mint, DeferredMint }
 
 export type SupplyModeArgs = SupplyMode;
 

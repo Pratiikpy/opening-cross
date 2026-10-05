@@ -9,6 +9,61 @@
   },
   "instructions": [
     {
+      "name": "abandon_settlement",
+      "docs": [
+        "Deferred-mint crosses: if no base mint was bound by the deadline, anyone may abandon",
+        "settlement; the cross becomes a no-print and every order is refunded in full."
+      ],
+      "discriminator": [
+        33,
+        234,
+        164,
+        189,
+        211,
+        182,
+        49,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "bind_base_mint",
+      "docs": [
+        "Deferred-mint crosses: the registered settler binds the base mint it created after the",
+        "clear. The cross PDA must already hold the mint authority."
+      ],
+      "discriminator": [
+        236,
+        99,
+        134,
+        229,
+        53,
+        179,
+        149,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "settler",
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_order",
       "docs": [
         "Withdraws an order during the call window. Full refund, no fee."
@@ -173,7 +228,11 @@
         },
         {
           "name": "base_mint",
-          "writable": true
+          "docs": [
+            "Omitted only when nothing is paid in base (refunds of a deferred-mint cross)."
+          ],
+          "writable": true,
+          "optional": true
         },
         {
           "name": "quote_mint"
@@ -208,7 +267,11 @@
         },
         {
           "name": "base_vault",
+          "docs": [
+            "Escrow mode only."
+          ],
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -292,60 +355,11 @@
         },
         {
           "name": "owner_base",
+          "docs": [
+            "The owner's base account (create it first; the SDK adds an idempotent ATA creation)."
+          ],
           "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "owner"
-              },
-              {
-                "kind": "account",
-                "path": "base_token_program"
-              },
-              {
-                "kind": "account",
-                "path": "base_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "optional": true
         },
         {
           "name": "base_token_program"
@@ -597,7 +611,11 @@
           }
         },
         {
-          "name": "base_mint"
+          "name": "base_mint",
+          "docs": [
+            "Omitted for deferred-mint crosses."
+          ],
+          "optional": true
         },
         {
           "name": "quote_mint"
@@ -633,6 +651,7 @@
         {
           "name": "base_vault",
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -712,7 +731,11 @@
         },
         {
           "name": "base_mint",
-          "writable": true
+          "docs": [
+            "Required whenever the cross has a bound base mint."
+          ],
+          "writable": true,
+          "optional": true
         },
         {
           "name": "quote_mint"
@@ -747,7 +770,11 @@
         },
         {
           "name": "base_vault",
+          "docs": [
+            "Escrow mode only."
+          ],
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -798,7 +825,11 @@
         },
         {
           "name": "proceeds_base",
-          "writable": true
+          "docs": [
+            "Escrow mode only (receives base dust)."
+          ],
+          "writable": true,
+          "optional": true
         },
         {
           "name": "base_token_program"
@@ -1183,6 +1214,19 @@
   ],
   "events": [
     {
+      "name": "BaseMintBound",
+      "discriminator": [
+        134,
+        83,
+        250,
+        151,
+        30,
+        128,
+        167,
+        98
+      ]
+    },
+    {
       "name": "CrossCleared",
       "discriminator": [
         169,
@@ -1432,9 +1476,40 @@
       "code": 6028,
       "name": "WrongVault",
       "msg": "Vault does not match the cross"
+    },
+    {
+      "code": 6029,
+      "name": "SettlementPending",
+      "msg": "Settlement has not bound the base mint yet"
+    },
+    {
+      "code": 6030,
+      "name": "NotSettler",
+      "msg": "Only the registered settler may do this"
+    },
+    {
+      "code": 6031,
+      "name": "DeadlineNotReached",
+      "msg": "Settlement deadline has not passed"
     }
   ],
   "types": [
+    {
+      "name": "BaseMintBound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "ClearingSummary",
       "docs": [
@@ -1642,7 +1717,7 @@
           {
             "name": "schedule",
             "docs": [
-              "Mint mode only: the issuer's elastic supply schedule as sell levels."
+              "Mint modes only: the issuer's elastic supply schedule as sell levels."
             ],
             "type": {
               "vec": {
@@ -1651,6 +1726,22 @@
                 }
               }
             }
+          },
+          {
+            "name": "settler",
+            "docs": [
+              "Deferred-mint mode only: the adapter authority allowed to bind the base mint."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "settle_deadline_ts",
+            "docs": [
+              "Deferred-mint mode only: after this time an unbound cross can be abandoned and refunded."
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -1870,6 +1961,27 @@
           {
             "name": "fees_accrued",
             "type": "u64"
+          },
+          {
+            "name": "settler",
+            "docs": [
+              "Deferred-mint crosses: the only signer allowed to bind the base mint, and the deadline",
+              "after which anyone may abandon settlement and refund every order."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "settle_deadline_ts",
+            "type": "i64"
+          },
+          {
+            "name": "base_bound",
+            "docs": [
+              "False until a deferred-mint cross has its base mint bound."
+            ],
+            "type": "bool"
           },
           {
             "name": "bump",
@@ -2157,6 +2269,9 @@
           },
           {
             "name": "ImbalanceTooHigh"
+          },
+          {
+            "name": "SettlementExpired"
           }
         ]
       }
@@ -2480,6 +2595,9 @@
           },
           {
             "name": "Mint"
+          },
+          {
+            "name": "DeferredMint"
           }
         ]
       }

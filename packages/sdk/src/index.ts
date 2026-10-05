@@ -9,7 +9,7 @@ import {
   getProgramDerivedAddress,
   getU64Encoder,
 } from '@solana/kit';
-import { findAssociatedTokenPda } from '@solana-program/token-2022';
+import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token-2022';
 import {
   CROSS_CORE_PROGRAM_ADDRESS,
   type Cross,
@@ -17,8 +17,9 @@ import {
   CrossState,
   Disclosure,
   OrderSide,
+  SupplyMode,
   getCancelOrderInstruction,
-  getClaimInstructionAsync,
+  getClaimInstruction,
   getClearInstruction,
   getCommitOrderInstruction,
   getCreateCrossInstruction,
@@ -104,7 +105,8 @@ export type CrossView = { address: Address; data: Cross };
 
 export type CreateCrossInput = Omit<CreateCrossInstructionDataArgs, 'discriminator'> & {
   creator: TransactionSigner;
-  baseMint: Address;
+  /** Omit for deferred-mint crosses (the settlement adapter creates and binds it). */
+  baseMint?: Address;
   quoteMint: Address;
   baseTokenProgram: Address;
   quoteTokenProgram: Address;
@@ -121,10 +123,9 @@ export async function buildCreateCross(input: CreateCrossInput): Promise<{ cross
     protocol: await protocolAddress(),
     cross,
     book: await bookAddress(cross),
-    baseMint,
+    ...(baseMint ? { baseMint, baseVault: await baseVaultAddress(cross) } : {}),
     quoteMint,
     quoteVault: await quoteVaultAddress(cross),
-    baseVault: await baseVaultAddress(cross),
     creatorQuote: await ata(creator.address, quoteMint, quoteTokenProgram),
     baseTokenProgram,
     quoteTokenProgram,
@@ -224,18 +225,31 @@ export async function buildSettleBook(cross: CrossView): Promise<Instruction[]> 
   return ixs;
 }
 
-export async function buildClaim(cross: CrossView, payer: TransactionSigner, owner: Address, nonce: bigint): Promise<Instruction> {
+/** Claim instructions for one order: creates the owner's base account if needed, then claims.
+ *  Anyone may send them; proceeds always go to the order owner. */
+export async function buildClaim(cross: CrossView, payer: TransactionSigner, owner: Address, nonce: bigint): Promise<Instruction[]> {
   const c = cross.data;
-  return getClaimInstructionAsync({
-    payer,
-    cross: cross.address,
-    owner,
-    order: await orderAddress(cross.address, owner, nonce),
-    baseMint: c.baseMint,
-    quoteMint: c.quoteMint,
-    baseTokenProgram: c.baseTokenProgram,
-    quoteTokenProgram: c.quoteTokenProgram,
-  });
+  const ixs: Instruction[] = [];
+  const base = c.baseBound ? { baseMint: c.baseMint, ownerBase: await ata(owner, c.baseMint, c.baseTokenProgram) } : {};
+  if (c.baseBound) {
+    ixs.push(getCreateAssociatedTokenIdempotentInstruction({ payer, ata: base.ownerBase!, owner, mint: c.baseMint, tokenProgram: c.baseTokenProgram }));
+  }
+  ixs.push(
+    getClaimInstruction({
+      payer,
+      cross: cross.address,
+      owner,
+      order: await orderAddress(cross.address, owner, nonce),
+      quoteVault: await quoteVaultAddress(cross.address),
+      ownerQuote: await ata(owner, c.quoteMint, c.quoteTokenProgram),
+      ...base,
+      ...(c.supplyMode === SupplyMode.Escrow ? { baseVault: await baseVaultAddress(cross.address) } : {}),
+      quoteMint: c.quoteMint,
+      baseTokenProgram: c.baseTokenProgram,
+      quoteTokenProgram: c.quoteTokenProgram,
+    }),
+  );
+  return ixs;
 }
 
 export async function buildFinalize(cross: CrossView, payer: TransactionSigner): Promise<Instruction> {
@@ -243,14 +257,15 @@ export async function buildFinalize(cross: CrossView, payer: TransactionSigner):
   return getFinalizeInstruction({
     payer,
     cross: cross.address,
-    baseMint: c.baseMint,
+    ...(c.baseBound ? { baseMint: c.baseMint } : {}),
+    ...(c.supplyMode === SupplyMode.Escrow
+      ? { baseVault: await baseVaultAddress(cross.address), proceedsBase: await ata(c.proceedsTo, c.baseMint, c.baseTokenProgram) }
+      : {}),
     quoteMint: c.quoteMint,
     quoteVault: await quoteVaultAddress(cross.address),
-    baseVault: await baseVaultAddress(cross.address),
     feeRecipientQuote: await ata(c.feeRecipient, c.quoteMint, c.quoteTokenProgram),
     integratorQuote: await ata(c.integrator, c.quoteMint, c.quoteTokenProgram),
     proceedsQuote: await ata(c.proceedsTo, c.quoteMint, c.quoteTokenProgram),
-    proceedsBase: await ata(c.proceedsTo, c.baseMint, c.baseTokenProgram),
     baseTokenProgram: c.baseTokenProgram,
     quoteTokenProgram: c.quoteTokenProgram,
   });

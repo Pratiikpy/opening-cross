@@ -39,6 +39,16 @@ pub enum SupplyMode {
     Escrow,
     /// The issuer's schedule is fixed at creation and buyers' fills are minted at claim.
     Mint,
+    /// Like `Mint`, but the base mint does not exist yet: a settlement adapter creates it after
+    /// the clear (e.g. a Meteora DBC pool starting at P*) and binds it (ADR-0006).
+    DeferredMint,
+}
+
+impl SupplyMode {
+    /// Buyers' fills are minted by the cross rather than paid from escrow.
+    pub fn mints(self) -> bool {
+        matches!(self, SupplyMode::Mint | SupplyMode::DeferredMint)
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
@@ -87,6 +97,8 @@ pub enum NoPrintReason {
     NoCross,
     BelowMinimumVolume,
     ImbalanceTooHigh,
+    /// Deferred-mint cross whose settlement adapter did not bind a mint before the deadline.
+    SettlementExpired,
 }
 
 #[account]
@@ -213,6 +225,13 @@ pub struct Cross {
     pub base_sold: u64,
     pub seller_paid: u64,
     pub fees_accrued: u64,
+
+    /// Deferred-mint crosses: the only signer allowed to bind the base mint, and the deadline
+    /// after which anyone may abandon settlement and refund every order.
+    pub settler: Option<Pubkey>,
+    pub settle_deadline_ts: i64,
+    /// False until a deferred-mint cross has its base mint bound.
+    pub base_bound: bool,
 
     pub bump: u8,
     pub quote_vault_bump: u8,

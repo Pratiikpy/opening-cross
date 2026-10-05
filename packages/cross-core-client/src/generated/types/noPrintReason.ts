@@ -8,7 +8,7 @@
 
 import { combineCodec, getEnumDecoder, getEnumEncoder, type FixedSizeCodec, type FixedSizeDecoder, type FixedSizeEncoder } from '@solana/kit';
 
-export enum NoPrintReason { NoCross, BelowMinimumVolume, ImbalanceTooHigh }
+export enum NoPrintReason { NoCross, BelowMinimumVolume, ImbalanceTooHigh, SettlementExpired }
 
 export type NoPrintReasonArgs = NoPrintReason;
 

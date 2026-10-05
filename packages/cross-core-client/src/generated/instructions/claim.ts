@@ -40,11 +40,14 @@ payer: TAccountPayer;
 cross: TAccountCross;
 owner: TAccountOwner;
 order: TAccountOrder;
-baseMint: TAccountBaseMint;
+/** Omitted only when nothing is paid in base (refunds of a deferred-mint cross). */
+baseMint?: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault?: TAccountQuoteVault;
+/** Escrow mode only. */
 baseVault?: TAccountBaseVault;
 ownerQuote?: TAccountOwnerQuote;
+/** The owner's base account (create it first; the SDK adds an idempotent ATA creation). */
 ownerBase?: TAccountOwnerBase;
 baseTokenProgram: TAccountBaseTokenProgram;
 quoteTokenProgram: TAccountQuoteTokenProgram;
@@ -74,9 +77,6 @@ accounts.baseVault.value = await findBaseVaultPda({ cross: getAddressFromResolve
 if (!accounts.ownerQuote.value) {
 accounts.ownerQuote.value = await getProgramDerivedAddress({ programAddress: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address<'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'>, seeds: [getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("owner", accounts.owner.value)), getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("quoteTokenProgram", accounts.quoteTokenProgram.value)), getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("quoteMint", accounts.quoteMint.value))] });
 }
-if (!accounts.ownerBase.value) {
-accounts.ownerBase.value = await getProgramDerivedAddress({ programAddress: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address<'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'>, seeds: [getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("owner", accounts.owner.value)), getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("baseTokenProgram", accounts.baseTokenProgram.value)), getAddressEncoder().encode(getAddressFromResolvedInstructionAccount("baseMint", accounts.baseMint.value))] });
-}
 if (!accounts.associatedTokenProgram.value) {
 accounts.associatedTokenProgram.value = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address<'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'>;
 }
@@ -93,12 +93,15 @@ payer: TAccountPayer;
 cross: TAccountCross;
 owner: TAccountOwner;
 order: TAccountOrder;
-baseMint: TAccountBaseMint;
+/** Omitted only when nothing is paid in base (refunds of a deferred-mint cross). */
+baseMint?: TAccountBaseMint;
 quoteMint: TAccountQuoteMint;
 quoteVault: TAccountQuoteVault;
-baseVault: TAccountBaseVault;
+/** Escrow mode only. */
+baseVault?: TAccountBaseVault;
 ownerQuote: TAccountOwnerQuote;
-ownerBase: TAccountOwnerBase;
+/** The owner's base account (create it first; the SDK adds an idempotent ATA creation). */
+ownerBase?: TAccountOwnerBase;
 baseTokenProgram: TAccountBaseTokenProgram;
 quoteTokenProgram: TAccountQuoteTokenProgram;
 associatedTokenProgram?: TAccountAssociatedTokenProgram;
@@ -135,12 +138,15 @@ payer: TAccountMetas[0];
 cross: TAccountMetas[1];
 owner: TAccountMetas[2];
 order: TAccountMetas[3];
-baseMint: TAccountMetas[4];
+/** Omitted only when nothing is paid in base (refunds of a deferred-mint cross). */
+baseMint?: TAccountMetas[4] | undefined;
 quoteMint: TAccountMetas[5];
 quoteVault: TAccountMetas[6];
-baseVault: TAccountMetas[7];
+/** Escrow mode only. */
+baseVault?: TAccountMetas[7] | undefined;
 ownerQuote: TAccountMetas[8];
-ownerBase: TAccountMetas[9];
+/** The owner's base account (create it first; the SDK adds an idempotent ATA creation). */
+ownerBase?: TAccountMetas[9] | undefined;
 baseTokenProgram: TAccountMetas[10];
 quoteTokenProgram: TAccountMetas[11];
 associatedTokenProgram: TAccountMetas[12];
@@ -158,5 +164,9 @@ const getNextAccount = () => {
   accountIndex += 1;
   return accountMeta;
 }
-  return { programAddress: instruction.programAddress, accounts: { payer: getNextAccount(), cross: getNextAccount(), owner: getNextAccount(), order: getNextAccount(), baseMint: getNextAccount(), quoteMint: getNextAccount(), quoteVault: getNextAccount(), baseVault: getNextAccount(), ownerQuote: getNextAccount(), ownerBase: getNextAccount(), baseTokenProgram: getNextAccount(), quoteTokenProgram: getNextAccount(), associatedTokenProgram: getNextAccount(), systemProgram: getNextAccount() }, data: getClaimInstructionDataDecoder().decode(instruction.data) };
+const getNextOptionalAccount = () => {
+  const accountMeta = getNextAccount();
+  return accountMeta.address === CROSS_CORE_PROGRAM_ADDRESS ? undefined : accountMeta;
+};
+  return { programAddress: instruction.programAddress, accounts: { payer: getNextAccount(), cross: getNextAccount(), owner: getNextAccount(), order: getNextAccount(), baseMint: getNextOptionalAccount(), quoteMint: getNextAccount(), quoteVault: getNextAccount(), baseVault: getNextOptionalAccount(), ownerQuote: getNextAccount(), ownerBase: getNextOptionalAccount(), baseTokenProgram: getNextAccount(), quoteTokenProgram: getNextAccount(), associatedTokenProgram: getNextAccount(), systemProgram: getNextAccount() }, data: getClaimInstructionDataDecoder().decode(instruction.data) };
 }

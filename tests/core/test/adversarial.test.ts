@@ -151,7 +151,7 @@ describe('book settlement', () => {
     const cross = await w.newCross();
     const b = await w.trader(10_000_000_000n);
     const o = await w.place(cross, b, OrderSide.Buy, 1_000_000n, 1_000n);
-    expect(await w.h.fail([await buildClaim(w.view(cross.address), w.admin, b.address, o.nonce)], w.admin)).toContain('WrongState');
+    expect(await w.h.fail(await buildClaim(w.view(cross.address), w.admin, b.address, o.nonce), w.admin)).toContain('WrongState');
     await w.settle(cross);
     expect(await w.h.fail([await buildFinalize(w.view(cross.address), w.admin)], w.admin)).toContain('OrdersOutstanding');
   });
@@ -167,7 +167,7 @@ describe('book settlement', () => {
     await w.claimAll(cross, orders, stranger);
     expect(await w.h.balanceOf(b.address, w.baseMint)).toBe(1_000_000_000n);
     expect(await w.h.balanceOf(stranger.address, w.baseMint)).toBe(0n);
-    expect(await w.h.fail([await buildClaim(w.view(cross.address), stranger, b.address, orders[1]!.nonce)], stranger)).toMatch(/AccountNotInitialized/);
+    expect(await w.h.fail(await buildClaim(w.view(cross.address), stranger, b.address, orders[1]!.nonce), stranger)).toMatch(/AccountNotInitialized/);
   });
 });
 
@@ -229,7 +229,7 @@ describe('creation', () => {
       creator: w.creator, baseMint, quoteMint: w.quoteMint, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       crossId: 999n, kind: 0, supplyMode: SupplyMode.Mint, disclosure: Disclosure.Open, minPrice: 1_000_000n, tick: 100_000n, ticks: 10, priceScale: 1_000_000n,
       openTs: 1_800_000_000n, closeTs: 1_800_000_100n, revealEndTs: 1_800_000_200n, referencePrice: null, minMatched: 0n, maxImbalanceBps: null,
-      integratorFeeBps: 0, integrator: w.integrator.address, gateMint: null, shards: 1, maxOrders: 8, proceedsTo: w.creator.address, schedule: [{ price: 1_000_000n, quantity: 1_000n }],
+      integratorFeeBps: 0, integrator: w.integrator.address, gateMint: null, shards: 1, maxOrders: 8, proceedsTo: w.creator.address, schedule: [{ price: 1_000_000n, quantity: 1_000n }], settler: null, settleDeadlineTs: 0n,
     });
     expect(await w.h.fail([create], w.creator)).toContain('MintAuthorityNotCross');
   });
