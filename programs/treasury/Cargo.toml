@@ -1,0 +1,27 @@
+[package]
+name = "treasury"
+version = "0.1.0"
+description = "Opening Cross treasury template: a program-custodied treasury with a periodic spend allowance, attestation-gated release, and holder-triggered pro-rata liquidation when attestations lapse."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "treasury"
+
+[features]
+default = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+anchor-spl = "=1.0.2"
+sas-attestation = { path = "../../crates/sas-attestation" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

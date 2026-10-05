@@ -37,6 +37,7 @@ import {
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { CROSS_GATE_PROGRAM_ADDRESS } from '@opening-cross/cross-gate-client';
 import { CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
+import { TREASURY_PROGRAM_ADDRESS } from '@opening-cross/treasury-client';
 import { existsSync } from 'node:fs';
 import { address } from '@solana/kit';
 
@@ -60,6 +61,7 @@ export class Harness {
     this.svm.addProgramFromFile(CROSS_GATE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_gate.so`);
     this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_settle.so`);
     this.svm.addProgramFromFile(address('CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN'), `${ROOT}target/deploy/cross_calendar.so`);
+    this.svm.addProgramFromFile(TREASURY_PROGRAM_ADDRESS, `${ROOT}target/deploy/treasury.so`);
     // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
     if (existsSync(DLMM_FIXTURE)) this.svm.addProgramFromFile(address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'), DLMM_FIXTURE);

@@ -10,6 +10,8 @@ What an external auditor needs, in reading order.
 | `cross_gate` | `programs/cross_gate` | Eligibility passes (allowlist, SAS, Merkle), transfer-hook locks |
 | `cross_settle` | `programs/cross_settle` | Settlement adapters: Meteora DBC, DAMM v2, DLMM, Raydium CPMM |
 | `cross_calendar` | `programs/cross_calendar` | Sessions and feeds behind a ≥7-day timelock |
+| `treasury` | `programs/treasury` | Ownership-coin treasury: allowance, attestation gate, liquidation (ADR-0014) |
+| `sas-attestation` | `crates/sas-attestation` | Shared SAS attestation parser |
 | `clearing-core` | `crates/clearing-core` | The clearing rule; `no_std`, no `unsafe`, `clippy::arithmetic_side_effects` denied |
 
 Out of scope: the off-chain services and the web app. They hold no protocol authority. Their

@@ -23,6 +23,7 @@ anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
 anchor-spl = "=1.0.2"
 spl-discriminator = "0.5"
 solana-sha256-hasher = "3"
+sas-attestation = { path = "../../crates/sas-attestation" }
 spl-tlv-account-resolution = "0.11"
 spl-transfer-hook-interface = "2"
 spl-token-2022-interface = "2"

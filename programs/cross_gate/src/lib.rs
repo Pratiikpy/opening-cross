@@ -711,74 +711,19 @@ pub mod merkle {
 /// `program/src/state/attestation.rs`, MIT).
 pub mod sas {
     use super::*;
-
-    pub const SAS_PROGRAM_ID: Pubkey = pubkey!("22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG");
-    /// `AttestationAccountDiscriminators::AttestationDiscriminator`.
-    pub const ATTESTATION_DISCRIMINATOR: u8 = 2;
-    pub const ATTESTATION_SEED: &[u8] = b"attestation";
+    pub use sas_attestation::{parse, SAS_PROGRAM_ID};
 
     /// `true` if `info` is the SAS attestation `[attestation, credential, schema, owner]`, owned
     /// by SAS, with matching fields and not expired (`expiry == 0` never expires). A missing,
-    /// closed or foreign account is simply invalid.
+    /// closed or foreign account is simply invalid; the wrong address is an error.
     pub fn attestation_valid(
         info: &UncheckedAccount,
         req: &SasRequirement,
         owner: &Pubkey,
         now: i64,
     ) -> Result<bool> {
-        let expected = Pubkey::find_program_address(
-            &[
-                ATTESTATION_SEED,
-                req.credential.as_ref(),
-                req.schema.as_ref(),
-                owner.as_ref(),
-            ],
-            &SAS_PROGRAM_ID,
-        )
-        .0;
-        require_keys_eq!(info.key(), expected, GateError::AttestationInvalid);
-        if info.owner != &SAS_PROGRAM_ID || info.data_is_empty() {
-            return Ok(false);
-        }
-        let data = info.try_borrow_data()?;
-        let Some(a) = parse(&data) else {
-            return Ok(false);
-        };
-        Ok(a.nonce == *owner
-            && a.credential == req.credential
-            && a.schema == req.schema
-            && (a.expiry == 0 || a.expiry > now))
-    }
-
-    pub struct Parsed {
-        pub nonce: Pubkey,
-        pub credential: Pubkey,
-        pub schema: Pubkey,
-        pub expiry: i64,
-    }
-
-    /// discriminator u8 · nonce · credential · schema · data (u32 length + bytes) · signer · expiry
-    /// i64 · token_account.
-    pub fn parse(d: &[u8]) -> Option<Parsed> {
-        if *d.first()? != ATTESTATION_DISCRIMINATOR {
-            return None;
-        }
-        let key = |at: usize| -> Option<Pubkey> {
-            Some(Pubkey::new_from_array(d.get(at..at + 32)?.try_into().ok()?))
-        };
-        let nonce = key(1)?;
-        let credential = key(33)?;
-        let schema = key(65)?;
-        let len = usize::try_from(u32::from_le_bytes(d.get(97..101)?.try_into().ok()?)).ok()?;
-        let after_data = 101usize.checked_add(len)?;
-        let expiry_at = after_data.checked_add(32)?;
-        let expiry = i64::from_le_bytes(d.get(expiry_at..expiry_at + 8)?.try_into().ok()?);
-        Some(Parsed {
-            nonce,
-            credential,
-            schema,
-            expiry,
-        })
+        sas_attestation::is_valid(info, &req.credential, &req.schema, owner, now)
+            .ok_or_else(|| error!(GateError::AttestationInvalid))
     }
 }
 

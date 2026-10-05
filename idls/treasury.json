@@ -1,0 +1,858 @@
+{
+  "address": "sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3",
+  "metadata": {
+    "name": "treasury",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross treasury template: a program-custodied treasury with a periodic spend allowance, attestation-gated release, and holder-triggered pro-rata liquidation when attestations lapse.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "create_treasury",
+      "discriminator": [
+        254,
+        98,
+        217,
+        51,
+        25,
+        88,
+        140,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "coin_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "TreasuryParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "record_attested",
+      "docs": [
+        "Anyone records that a live attestation is back, clearing a recorded lapse."
+      ],
+      "discriminator": [
+        216,
+        174,
+        195,
+        96,
+        37,
+        176,
+        195,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "record_lapse",
+      "docs": [
+        "Anyone records that the attestation is missing or expired. Starts the grace clock once."
+      ],
+      "discriminator": [
+        19,
+        199,
+        199,
+        180,
+        125,
+        2,
+        37,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redeem",
+      "docs": [
+        "A holder burns `amount` coins for `snapshot_vault · amount / snapshot_supply` quote atoms."
+      ],
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "holder_coin",
+          "writable": true
+        },
+        {
+          "name": "holder_quote",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "spend",
+      "docs": [
+        "The team spends within the period's allowance, only while the attestation is live."
+      ],
+      "discriminator": [
+        242,
+        205,
+        255,
+        87,
+        101,
+        217,
+        245,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation"
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "trigger_liquidation",
+      "docs": [
+        "After a lapse longer than the grace period, anyone moves the treasury into liquidation."
+      ],
+      "discriminator": [
+        236,
+        95,
+        184,
+        119,
+        197,
+        67,
+        148,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Treasury",
+      "discriminator": [
+        238,
+        239,
+        123,
+        238,
+        89,
+        1,
+        168,
+        253
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AttestationLapsed",
+      "discriminator": [
+        233,
+        199,
+        63,
+        195,
+        107,
+        254,
+        13,
+        32
+      ]
+    },
+    {
+      "name": "LiquidationStarted",
+      "discriminator": [
+        209,
+        158,
+        62,
+        23,
+        178,
+        196,
+        8,
+        241
+      ]
+    },
+    {
+      "name": "Redeemed",
+      "discriminator": [
+        14,
+        29,
+        183,
+        71,
+        31,
+        165,
+        107,
+        38
+      ]
+    },
+    {
+      "name": "Spent",
+      "discriminator": [
+        43,
+        51,
+        164,
+        100,
+        191,
+        244,
+        174,
+        98
+      ]
+    },
+    {
+      "name": "TreasuryCreated",
+      "discriminator": [
+        190,
+        59,
+        58,
+        105,
+        76,
+        234,
+        21,
+        199
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidParams",
+      "msg": "Invalid parameters"
+    },
+    {
+      "code": 6001,
+      "name": "SupplyNotFixed",
+      "msg": "The coin's supply must be fixed: its mint authority must be revoked"
+    },
+    {
+      "code": 6002,
+      "name": "Unauthorized",
+      "msg": "Only the treasury authority may spend"
+    },
+    {
+      "code": 6003,
+      "name": "Liquidating",
+      "msg": "The treasury is in liquidation"
+    },
+    {
+      "code": 6004,
+      "name": "NotLiquidating",
+      "msg": "The treasury is not in liquidation"
+    },
+    {
+      "code": 6005,
+      "name": "NotAttested",
+      "msg": "No live attestation for this treasury"
+    },
+    {
+      "code": 6006,
+      "name": "StillAttested",
+      "msg": "The attestation is still live"
+    },
+    {
+      "code": 6007,
+      "name": "WrongAttestationAccount",
+      "msg": "That is not this treasury's attestation account"
+    },
+    {
+      "code": 6008,
+      "name": "OverAllowance",
+      "msg": "Spend exceeds this period's allowance"
+    },
+    {
+      "code": 6009,
+      "name": "NoLapse",
+      "msg": "No lapse has been recorded"
+    },
+    {
+      "code": 6010,
+      "name": "GraceNotOver",
+      "msg": "The grace period after the lapse has not ended"
+    },
+    {
+      "code": 6011,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AttestationLapsed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidationStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "u64"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Redeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "burned",
+            "type": "u64"
+          },
+          {
+            "name": "paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Spent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "spent_in_period",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treasury",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "coin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_decimals",
+            "type": "u8"
+          },
+          {
+            "name": "allowance",
+            "type": "u64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "period_start",
+            "type": "i64"
+          },
+          {
+            "name": "spent_in_period",
+            "type": "u64"
+          },
+          {
+            "name": "credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "schema",
+            "type": "pubkey"
+          },
+          {
+            "name": "grace_secs",
+            "type": "i64"
+          },
+          {
+            "name": "lapsed_since",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "TreasuryState"
+              }
+            }
+          },
+          {
+            "name": "snapshot_vault",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_supply",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreasuryCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "coin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowance",
+            "type": "u64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreasuryParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "allowance",
+            "docs": [
+              "Quote atoms the team may spend per period."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "grace_secs",
+            "docs": [
+              "How long a recorded lapse must last before liquidation may be triggered."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "credential",
+            "docs": [
+              "SAS credential and schema whose attestation (nonce = this treasury) keeps it active."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "schema",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreasuryState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Liquidating"
+          }
+        ]
+      }
+    }
+  ]
+}

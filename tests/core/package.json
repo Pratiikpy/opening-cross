@@ -20,6 +20,7 @@
     "@opening-cross/keeper": "workspace:*",
     "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/treasury-client": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
     "@solana-program/compute-budget": "^0.19.0",
     "@solana-program/system": "0.14.0",

@@ -1,0 +1,11 @@
+[package]
+name = "sas-attestation"
+version = "0.1.0"
+description = "Reads Solana Attestation Service attestation accounts: layout, address derivation and validity, shared by the Opening Cross programs."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+anchor-lang = "=1.0.2"
