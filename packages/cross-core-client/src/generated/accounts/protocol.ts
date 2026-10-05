@@ -6,7 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { assertAccountExists, assertAccountsExist, combineCodec, decodeAccount, fetchEncodedAccount, fetchEncodedAccounts, fixDecoderSize, fixEncoderSize, getAddressDecoder, getAddressEncoder, getArrayDecoder, getArrayEncoder, getBooleanDecoder, getBooleanEncoder, getBytesDecoder, getBytesEncoder, getStructDecoder, getStructEncoder, getU16Decoder, getU16Encoder, getU8Decoder, getU8Encoder, transformEncoder, type Account, type Address, type EncodedAccount, type FetchAccountConfig, type FetchAccountsConfig, type FixedSizeCodec, type FixedSizeDecoder, type FixedSizeEncoder, type MaybeAccount, type MaybeEncodedAccount, type ReadonlyUint8Array } from '@solana/kit';
+import { assertAccountExists, assertAccountsExist, combineCodec, decodeAccount, fetchEncodedAccount, fetchEncodedAccounts, fixDecoderSize, fixEncoderSize, getAddressDecoder, getAddressEncoder, getArrayDecoder, getArrayEncoder, getBooleanDecoder, getBooleanEncoder, getBytesDecoder, getBytesEncoder, getOptionDecoder, getOptionEncoder, getStructDecoder, getStructEncoder, getU16Decoder, getU16Encoder, getU8Decoder, getU8Encoder, transformEncoder, type Account, type Address, type Codec, type Decoder, type EncodedAccount, type Encoder, type FetchAccountConfig, type FetchAccountsConfig, type MaybeAccount, type MaybeEncodedAccount, type Option, type OptionOrNullable, type ReadonlyUint8Array } from '@solana/kit';
 
 export const PROTOCOL_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([45, 39, 101, 43, 115, 72, 131, 40]);
 
@@ -16,26 +16,30 @@ export type Protocol = { discriminator: ReadonlyUint8Array; admin: Address;
 /** May pause new crosses and orders; can never block claims or refunds. */
 guardian: Address; feeRecipient: Address; 
 /** Protocol fee in bps of filled notional, indexed by [`CrossKind`]. */
-feeBps: Array<number>; paused: boolean; bump: number;  };
+feeBps: Array<number>; paused: boolean; bump: number; 
+/** Proposed next admin; takes over only when it signs `accept_admin` (two-step handover). */
+pendingAdmin: Option<Address>;  };
 
 export type ProtocolArgs = { admin: Address; 
 /** May pause new crosses and orders; can never block claims or refunds. */
 guardian: Address; feeRecipient: Address; 
 /** Protocol fee in bps of filled notional, indexed by [`CrossKind`]. */
-feeBps: Array<number>; paused: boolean; bump: number;  };
+feeBps: Array<number>; paused: boolean; bump: number; 
+/** Proposed next admin; takes over only when it signs `accept_admin` (two-step handover). */
+pendingAdmin: OptionOrNullable<Address>;  };
 
 /** Gets the encoder for {@link ProtocolArgs} account data. */
-export function getProtocolEncoder(): FixedSizeEncoder<ProtocolArgs> {
-    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['admin', getAddressEncoder()], ['guardian', getAddressEncoder()], ['feeRecipient', getAddressEncoder()], ['feeBps', getArrayEncoder(getU16Encoder(), { size: 4 })], ['paused', getBooleanEncoder()], ['bump', getU8Encoder()]]), (value) => ({ ...value, discriminator: PROTOCOL_DISCRIMINATOR }));
+export function getProtocolEncoder(): Encoder<ProtocolArgs> {
+    return transformEncoder(getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)], ['admin', getAddressEncoder()], ['guardian', getAddressEncoder()], ['feeRecipient', getAddressEncoder()], ['feeBps', getArrayEncoder(getU16Encoder(), { size: 4 })], ['paused', getBooleanEncoder()], ['bump', getU8Encoder()], ['pendingAdmin', getOptionEncoder(getAddressEncoder())]]), (value) => ({ ...value, discriminator: PROTOCOL_DISCRIMINATOR }));
 }
 
 /** Gets the decoder for {@link Protocol} account data. */
-export function getProtocolDecoder(): FixedSizeDecoder<Protocol> {
-    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['admin', getAddressDecoder()], ['guardian', getAddressDecoder()], ['feeRecipient', getAddressDecoder()], ['feeBps', getArrayDecoder(getU16Decoder(), { size: 4 })], ['paused', getBooleanDecoder()], ['bump', getU8Decoder()]]);
+export function getProtocolDecoder(): Decoder<Protocol> {
+    return getStructDecoder([['discriminator', fixDecoderSize(getBytesDecoder(), 8)], ['admin', getAddressDecoder()], ['guardian', getAddressDecoder()], ['feeRecipient', getAddressDecoder()], ['feeBps', getArrayDecoder(getU16Decoder(), { size: 4 })], ['paused', getBooleanDecoder()], ['bump', getU8Decoder()], ['pendingAdmin', getOptionDecoder(getAddressDecoder())]]);
 }
 
 /** Gets the codec for {@link Protocol} account data. */
-export function getProtocolCodec(): FixedSizeCodec<ProtocolArgs, Protocol> {
+export function getProtocolCodec(): Codec<ProtocolArgs, Protocol> {
     return combineCodec(getProtocolEncoder(), getProtocolDecoder());
 }
 
@@ -81,8 +85,4 @@ export async function fetchAllMaybeProtocol(
 ): Promise<MaybeAccount<Protocol>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeProtocol(maybeAccount));
-}
-
-export function getProtocolSize(): number {
-  return 114;
 }

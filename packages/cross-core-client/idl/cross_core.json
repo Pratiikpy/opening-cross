@@ -33,6 +33,50 @@
       "args": []
     },
     {
+      "name": "accept_admin",
+      "docs": [
+        "Second step: the proposed admin signs to take over."
+      ],
+      "discriminator": [
+        112,
+        42,
+        45,
+        90,
+        116,
+        181,
+        13,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "new_admin",
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "bind_base_mint",
       "docs": [
         "Deferred-mint crosses: the registered settler binds the base mint it created after the",
@@ -1001,6 +1045,61 @@
       "args": []
     },
     {
+      "name": "propose_admin",
+      "docs": [
+        "First step of an admin handover (e.g. to a multisig vault). Nothing changes until the",
+        "proposed admin accepts, so a mistyped address cannot lock the protocol. `None` withdraws it."
+      ],
+      "discriminator": [
+        121,
+        214,
+        199,
+        212,
+        87,
+        39,
+        117,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "reveal_order",
       "docs": [
         "Reveals a sealed order during the reveal window and adds it to its shard."
@@ -1055,6 +1154,58 @@
               32
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "set_guardian",
+      "docs": [
+        "The admin may rotate the guardian (the key allowed to pause new activity)."
+      ],
+      "discriminator": [
+        147,
+        243,
+        50,
+        121,
+        154,
+        164,
+        50,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "guardian",
+          "type": "pubkey"
         }
       ]
     },
@@ -1225,6 +1376,32 @@
     }
   ],
   "events": [
+    {
+      "name": "AdminChanged",
+      "discriminator": [
+        232,
+        34,
+        31,
+        226,
+        62,
+        18,
+        19,
+        114
+      ]
+    },
+    {
+      "name": "AdminProposed",
+      "discriminator": [
+        129,
+        249,
+        226,
+        227,
+        199,
+        82,
+        110,
+        243
+      ]
+    },
     {
       "name": "BaseMintBound",
       "discriminator": [
@@ -1526,6 +1703,40 @@
     }
   ],
   "types": [
+    {
+      "name": "AdminChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposed",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "BaseMintBound",
       "type": {
@@ -2676,6 +2887,15 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "pending_admin",
+            "docs": [
+              "Proposed next admin; takes over only when it signs `accept_admin` (two-step handover)."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }

@@ -101,6 +101,7 @@ pub mod cross_core {
         p.fee_bps = fee_bps;
         p.paused = false;
         p.bump = ctx.bumps.protocol;
+        p.pending_admin = None;
         Ok(())
     }
 
@@ -116,6 +117,40 @@ pub mod cross_core {
         );
         ctx.accounts.protocol.fee_recipient = fee_recipient;
         ctx.accounts.protocol.fee_bps = fee_bps;
+        Ok(())
+    }
+
+    /// First step of an admin handover (e.g. to a multisig vault). Nothing changes until the
+    /// proposed admin accepts, so a mistyped address cannot lock the protocol. `None` withdraws it.
+    pub fn propose_admin(ctx: Context<AdminOnly>, new_admin: Option<Pubkey>) -> Result<()> {
+        ctx.accounts.protocol.pending_admin = new_admin;
+        emit!(AdminProposed {
+            admin: ctx.accounts.protocol.admin,
+            proposed: new_admin
+        });
+        Ok(())
+    }
+
+    /// Second step: the proposed admin signs to take over.
+    pub fn accept_admin(ctx: Context<AcceptAdmin>) -> Result<()> {
+        let p = &mut ctx.accounts.protocol;
+        require!(
+            p.pending_admin == Some(ctx.accounts.new_admin.key()),
+            CrossError::Unauthorized
+        );
+        let previous = p.admin;
+        p.admin = ctx.accounts.new_admin.key();
+        p.pending_admin = None;
+        emit!(AdminChanged {
+            previous,
+            admin: p.admin
+        });
+        Ok(())
+    }
+
+    /// The admin may rotate the guardian (the key allowed to pause new activity).
+    pub fn set_guardian(ctx: Context<AdminOnly>, guardian: Pubkey) -> Result<()> {
+        ctx.accounts.protocol.guardian = guardian;
         Ok(())
     }
 
@@ -1220,6 +1255,13 @@ pub struct AdminOnly<'info> {
 }
 
 #[derive(Accounts)]
+pub struct AcceptAdmin<'info> {
+    pub new_admin: Signer<'info>,
+    #[account(mut, seeds = [PROTOCOL_SEED], bump = protocol.bump)]
+    pub protocol: Account<'info, Protocol>,
+}
+
+#[derive(Accounts)]
 pub struct GuardianOnly<'info> {
     pub signer: Signer<'info>,
     #[account(mut, seeds = [PROTOCOL_SEED], bump = protocol.bump)]
@@ -1445,6 +1487,18 @@ pub struct Finalize<'info> {
 }
 
 // ---------------------------------------------------------------- events and errors
+
+#[event]
+pub struct AdminProposed {
+    pub admin: Pubkey,
+    pub proposed: Option<Pubkey>,
+}
+
+#[event]
+pub struct AdminChanged {
+    pub previous: Pubkey,
+    pub admin: Pubkey,
+}
 
 #[event]
 pub struct PauseChanged {

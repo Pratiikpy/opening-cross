@@ -7,6 +7,7 @@
  */
 
 export * from './abandonSettlement.js';
+export * from './acceptAdmin.js';
 export * from './bindBaseMint.js';
 export * from './cancelOrder.js';
 export * from './claim.js';
@@ -17,6 +18,8 @@ export * from './finalize.js';
 export * from './initProtocol.js';
 export * from './initShard.js';
 export * from './mergeShard.js';
+export * from './proposeAdmin.js';
 export * from './revealOrder.js';
+export * from './setGuardian.js';
 export * from './setPaused.js';
 export * from './setProtocolFees.js';

@@ -130,6 +130,8 @@ pub struct Protocol {
     pub fee_bps: [u16; 4],
     pub paused: bool,
     pub bump: u8,
+    /// Proposed next admin; takes over only when it signs `accept_admin` (two-step handover).
+    pub pending_admin: Option<Pubkey>,
 }
 
 /// Clearing summary stored on the cross; mirrors `clearing_core::Clearing`.

@@ -87,7 +87,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 |---|---|---|---|---|---|
 | L1 | Threat model, invariants doc, audit package | Auditor-ready repository | Internal review checklist | DONE | `docs/security/THREAT_MODEL.md` (23 threats, each mapped to a test; 6 open gaps named), `INVARIANTS.md` (13 invariants with enforcement and tests, checked against the code), `AUDIT_PACKAGE.md` (scope, reading order, build/test commands, known limitations) |
 | L2 | External audit engagement and payment | Signed audit | — | HUMAN | HUMAN_TASKS H6 |
-| L3 | Squads multisig + timelock for upgrade and treasury authority | No single key controls funds or upgrades | Devnet rehearsal | TODO | |
+| L3 | Squads multisig + timelock for upgrade and treasury authority | No single key controls funds or upgrades | Devnet rehearsal | DONE (keys: HUMAN H13; devnet run: H10) | ADR-0013; `cross_core` gained `propose_admin`/`accept_admin`/`set_guardian`. Rehearsal on the mainnet Squads v4 binary: after handover no single key upgrades or changes fees, the timelock blocks early execution, a two-approval upgrade lands (`tests/core/test/governance.test.ts`, 3/3; full suite 97/97) |
 | L4 | Mainnet deployment with caps | Verifiable build hash matches repo | On-chain hash check | TODO | |
 | L5 | Legal entity and counsel sign-off on asset classes | Written opinion | — | HUMAN | HUMAN_TASKS H1–H2 |
 | L6 | First mainnet cross with external users | ≥ 1 cross, external wallets, public receipt | Indexer + verifier | TODO | |
