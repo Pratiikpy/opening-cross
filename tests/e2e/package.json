@@ -1,0 +1,21 @@
+{
+  "name": "@opening-cross/e2e",
+  "private": true,
+  "description": "End-to-end environment for the web app: seeds a local validator with crosses and disposable test wallets.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@opening-cross/sdk": "workspace:*",
+    "@solana-program/system": "0.14.0",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

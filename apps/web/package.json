@@ -13,6 +13,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@solana/kit": "8.4.0",
+    "@solana/react": "8.4.0",
+    "@solana/wallet-standard-features": "^1.5.0",
+    "@wallet-standard/core": "^1.1.2",
+    "@wallet-standard/features": "^1.1.1",
+    "@wallet-standard/react": "1.0.3",
+    "@wallet-standard/ui": "^1.0.3",
+    "@wallet-standard/ui-features": "^1.0.3",
     "next": "16.3.8",
     "react": "19.3.0",
     "react-dom": "19.3.0"

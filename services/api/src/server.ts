@@ -4,12 +4,14 @@
 // clearing, an order) is read from chain in the same request, so the API never shows a stale
 // state as current. Writes: unsigned transactions only (see tx.ts). Stream: every ingested event,
 // pushed over WebSocket as the indexer commits it.
+import fastifyCors from '@fastify/cors';
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyReply } from 'fastify';
 import type pg from 'pg';
 import { type Address, isAddress } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
-import { verifyCross } from '@opening-cross/verifier';
+import { referenceClear, verifyCross } from '@opening-cross/verifier';
+import { loadBook } from '@opening-cross/router';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -21,6 +23,8 @@ export type ApiDeps = {
   lifetime: () => Promise<Lifetime>;
   /** Cluster the indexer follows (`devnet`, `mainnet-beta`, `localnet`), reported with every total. */
   network?: string;
+  /** Allowed browser origins; default any. */
+  corsOrigins?: string[];
   /** A dedicated connection for LISTEN; the API owns it once passed. */
   listen?: () => Promise<pg.Client>;
 };
@@ -63,6 +67,9 @@ const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'Settleme
 
 export async function buildServer(d: ApiDeps) {
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
+  // Browsers call the API directly (wallet flows). It holds no credentials and every write is an
+  // unsigned transaction, so any origin may read it unless CORS_ORIGINS narrows the list.
+  await app.register(fastifyCors, { origin: d.corsOrigins ?? '*', methods: ['GET', 'POST'] });
   await app.register(fastifyWebsocket);
 
   app.setErrorHandler((err, _req, reply) => {
@@ -101,6 +108,10 @@ export async function buildServer(d: ApiDeps) {
       quoteMint: c.quoteMint,
       window: { openTs: c.openTs, closeTs: c.closeTs, revealEndTs: c.revealEndTs },
       grid: { minPrice: c.minPrice, tick: c.tick, ticks: c.ticks, priceScale: c.priceScale },
+      decimals: { base: c.baseDecimals, quote: c.quoteDecimals },
+      supplyMode: ['escrow', 'mint', 'deferred-mint'][c.supplyMode],
+      kind: ['launch', 'reopen', 'tender', 'recurring'][c.kind],
+      settlement: { settleDeadlineTs: c.settleDeadlineTs, baseBound: c.baseBound },
       fees: { protocolBps: c.protocolFeeBps, integratorBps: c.integratorFeeBps, integrator: c.integrator },
       orders: { total: c.ordersTotal, open: c.ordersOpen, max: c.maxOrders },
       clearing: clearing && { price: clearing.price, matched: clearing.matched, rationed: ['none', 'buy', 'sell'][clearing.rationed] },
@@ -159,10 +170,59 @@ export async function buildServer(d: ApiDeps) {
     return send(reply, { orders: rows.map((r) => ({ ...r, side: r.side === 0 ? 'buy' : 'sell' })) });
   });
 
+  // The resting book (merged book plus unmerged shards) and the price it would clear at now.
+  // Sealed crosses show nothing until bids are revealed: commitments carry no price.
+  app.get('/v1/crosses/:address/book', async (req, reply) => {
+    const a = address((req.params as { address: string }).address, 'address');
+    const v = await crossView(a);
+    const c = v.data;
+    const book = await loadBook(d.account, a, c);
+    if (typeof book === 'string') throw new RequestError(404, book);
+    const levels = [];
+    for (let i = 0; i < c.ticks; i++) {
+      if (book.buy[i] === 0n && book.sell[i] === 0n) continue;
+      levels.push({ price: c.minPrice + BigInt(i) * c.tick, buy: book.buy[i]!, sell: book.sell[i]!, buyOrders: book.buyOrders[i]!, sellOrders: book.sellOrders[i]! });
+    }
+    const orders = levels.flatMap((l) => [
+      ...(l.buy > 0n ? [{ side: 'buy' as const, price: l.price, quantity: l.buy }] : []),
+      ...(l.sell > 0n ? [{ side: 'sell' as const, price: l.price, quantity: l.sell }] : []),
+    ]);
+    const r = c.state === CrossState.Live ? referenceClear(orders, { min: c.minPrice, tick: c.tick, ticks: c.ticks }, c.referencePrice.__option === 'Some' ? c.referencePrice.value : null) : null;
+    const sealed = c.disclosure === Disclosure.Sealed;
+    return send(reply, {
+      disclosure: sealed ? 'sealed' : 'open',
+      levels,
+      indicative: r && { price: r.price, matched: r.matched },
+      note: sealed ? 'Sealed bids carry no price until they are revealed; only revealed orders appear here.' : 'Indicative until the call closes: later orders can move it.',
+    });
+  });
+
   app.get('/v1/crosses/:address/proof', async (req, reply) => {
     const a = address((req.params as { address: string }).address, 'address');
     await crossView(a);
     return send(reply, await verifyCross(fetchOwned, a));
+  });
+
+  // Batch order lookup: open orders read from chain, closed ones from the index. Unknown addresses
+  // (e.g. placed seconds ago and not yet finalized, or never placed) come back as found: false.
+  app.get('/v1/orders', async (req, reply) => {
+    const raw = (req.query as { addresses?: string }).addresses;
+    if (!raw) throw new RequestError(400, 'addresses must be a comma-separated list of order addresses');
+    const list = raw.split(',').filter(Boolean);
+    if (list.length > 100) throw new RequestError(400, 'at most 100 addresses per request');
+    const out = [];
+    for (const item of list) {
+      const a = address(item, 'addresses');
+      const data = owned(await d.account(a), ORDER_DISCRIMINATOR as Uint8Array);
+      if (data) {
+        const o = getOrderDecoder().decode(data);
+        out.push({ address: a, found: true, open: true, cross: o.cross, owner: o.owner, nonce: o.nonce, index: o.index, side: o.side === 0 ? 'buy' : 'sell', revealed: o.state === 1, escrow: o.escrow });
+        continue;
+      }
+      const { rows } = await d.db.query('SELECT * FROM orders WHERE address = $1', [a]);
+      out.push(rows[0] ? { ...rows[0], found: true, side: rows[0].side === 0 ? 'buy' : 'sell', open: false } : { address: a, found: false });
+    }
+    return send(reply, { orders: out });
   });
 
   app.get('/v1/orders/:address', async (req, reply) => {

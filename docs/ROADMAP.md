@@ -70,7 +70,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 |---|---|---|---|---|---|
 | W1 | Design tokens (light + dark, WCAG AA) | All text ≥ 4.5:1, UI ≥ 3:1 | Automated contrast check | DONE | 42 token pairings pass AA in light and dark (`apps/web/test/contrast.test.ts`); axe clean on every rendered route — `docs/evidence/W1-W2-web-landing.md` |
 | W2 | Marketing landing (L0) with live or labelled-example data | Matches export; no fabricated proof | Screenshots ×4; Lighthouse; console clean | DONE | Live `/v1/stats` figures; non-live content tagged; 4 screenshots in `docs/evidence/screens/`, axe/console/overflow clean; Lighthouse mobile 97/100/100/100, desktop 100/100/100/100 — `docs/evidence/W1-W2-web-landing.md` |
-| W3 | Investor flow: connect, cross page, place/cancel bid, reveal, fill report, claim/refund | Real devnet transactions from the UI | Playwright with a real wallet, every state | TODO | |
+| W3 | Investor flow: connect, cross page, place/cancel bid, reveal, fill report, claim/refund | Real devnet transactions from the UI | Playwright with a real wallet, every state | IN PROGRESS | Built (`apps/web/src/app/crosses`, wallet via Wallet Standard). Local-validator e2e (`tests/e2e/run-all.sh`, `apps/web/e2e/investor-flow.mjs`): 21/22 checks pass with on-chain balance checks; the last claim exposed an indexer stall, now fixed but not yet re-run (run stopped by host memory pressure). Devnet run waits on H10. |
 | W4 | Issuer console: create and schedule a cross | Creates a real devnet cross | Playwright | TODO | |
 | W5 | Developer portal and public status page | Docs executed literally by a fresh project | Stranger test | TODO | |
 

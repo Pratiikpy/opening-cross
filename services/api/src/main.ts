@@ -16,6 +16,7 @@ await migrate(db);
 const app = await buildServer({
   db,
   network: process.env.NETWORK ?? 'devnet',
+  ...(process.env.CORS_ORIGINS ? { corsOrigins: process.env.CORS_ORIGINS.split(',') } : {}),
   account: async (a: Address) => {
     const x = await fetchEncodedAccount(rpc, a, { commitment: 'confirmed' });
     return x.exists ? { data: x.data, owner: x.programAddress } : null;

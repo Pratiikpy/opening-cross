@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { Logo } from './logo';
 import { ThemeToggle } from './theme-toggle';
+import { WalletButton } from './wallet-button';
 
 export const NAV = [
+  { href: '/crosses', label: 'Crosses' },
   { href: '/#how', label: 'How it works' },
   { href: '/#proof', label: 'Proof' },
   { href: '/#issuers', label: 'Issuers' },
@@ -25,12 +27,7 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a
-            href="https://github.com/Pratiikpy/opening-cross"
-            className="hidden rounded-full bg-ink px-4 py-2 text-sm font-medium text-bg transition-opacity hover:opacity-90 sm:inline-block"
-          >
-            Source code
-          </a>
+          <WalletButton />
         </div>
       </div>
     </header>

@@ -12,9 +12,11 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
+    "@fastify/cors": "11.3.0",
     "@fastify/websocket": "11.3.3",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
     "@solana/kit": "8.4.0",

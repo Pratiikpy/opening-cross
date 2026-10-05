@@ -158,6 +158,10 @@ describe.skipIf(!process.env.DATABASE_URL)('API', () => {
     expect((await app.inject({ url: '/v1/crosses?limit=0' })).statusCode).toBe(400);
     expect((await app.inject({ url: '/v1/crosses?state=Open' })).statusCode).toBe(400);
     expect((await app.inject({ url: '/v1/nope' })).statusCode).toBe(404);
+    // Wallet flows run in the browser: a cross-origin preflight must be allowed.
+    const pre = await app.inject({ method: 'OPTIONS', url: '/v1/tx/place-order', headers: { origin: 'https://app.example', 'access-control-request-method': 'POST' } });
+    expect(pre.statusCode).toBe(204);
+    expect(pre.headers['access-control-allow-origin']).toBe('*');
     expect((await app.inject({ url: `/v1/crosses/${w.quoteMint}` })).statusCode).toBe(404);
 
     ws.close();

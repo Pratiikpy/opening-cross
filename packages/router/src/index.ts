@@ -46,6 +46,26 @@ export type BestExecutionReport = {
   caveats: string[];
 };
 
+/** Per-tick resting quantity of a cross: the merged book plus every shard not yet merged (while the
+ *  call is open, orders rest in the shards). Returns the reason as a string if an account is missing. */
+export async function loadBook(read: AccountReader, cross: Address, c: Cross): Promise<{ buy: bigint[]; sell: bigint[]; buyOrders: number[]; sellOrders: number[] } | string> {
+  const sources = [await bookAddressOf(cross)];
+  for (let i = 0; i < c.shards; i++) if (!((c.mergedMask >>> i) & 1)) sources.push(await shardAddress(cross, i));
+  const out = { buy: new Array<bigint>(c.ticks).fill(0n), sell: new Array<bigint>(c.ticks).fill(0n), buyOrders: new Array<number>(c.ticks).fill(0), sellOrders: new Array<number>(c.ticks).fill(0) };
+  for (const a of sources) {
+    const src = await read(a);
+    if (!src || src.owner !== CROSS_CORE_PROGRAM_ADDRESS) return `order book account ${a} not found`;
+    const levels = getLevelsDecoder().decode(src.data);
+    for (let i = 0; i < c.ticks; i++) {
+      out.buy[i] = out.buy[i]! + levels.buy[i]!;
+      out.sell[i] = out.sell[i]! + levels.sell[i]!;
+      out.buyOrders[i] = out.buyOrders[i]! + levels.buyOrders[i]!;
+      out.sellOrders[i] = out.sellOrders[i]! + levels.sellOrders[i]!;
+    }
+  }
+  return out;
+}
+
 /** Indicative outcome of adding `intent` to a live cross. */
 export async function quoteCross(read: AccountReader, cross: Address, intent: Intent, now: bigint): Promise<CrossQuote> {
   const acct = await read(cross);
@@ -66,20 +86,9 @@ export async function quoteCross(read: AccountReader, cross: Address, intent: In
   if (c.disclosure === Disclosure.Sealed) {
     return { venue: 'cross', cross, available: true, disclosure: 'sealed', closeTs: c.closeTs, indicative: null, feeBps };
   }
-  // While the call is open, orders rest in the shards; the book holds only merged shards.
-  const sources = [await bookAddressOf(cross)];
-  for (let i = 0; i < c.shards; i++) if (!((c.mergedMask >>> i) & 1)) sources.push(await shardAddress(cross, i));
-  const buy = new Array<bigint>(c.ticks).fill(0n);
-  const sell = new Array<bigint>(c.ticks).fill(0n);
-  for (const a of sources) {
-    const src = await read(a);
-    if (!src || src.owner !== CROSS_CORE_PROGRAM_ADDRESS) return { venue: 'cross', cross, available: false, reason: `order book account ${a} not found` };
-    const levels = getLevelsDecoder().decode(src.data);
-    for (let i = 0; i < c.ticks; i++) {
-      buy[i] = buy[i]! + levels.buy[i]!;
-      sell[i] = sell[i]! + levels.sell[i]!;
-    }
-  }
+  const levels = await loadBook(read, cross, c);
+  if (typeof levels === 'string') return { venue: 'cross', cross, available: false, reason: levels };
+  const { buy, sell } = levels;
   const orders: RefOrder[] = [];
   for (let i = 0; i < c.ticks; i++) {
     const price = c.minPrice + BigInt(i) * c.tick;

@@ -13,7 +13,7 @@ export function SiteFooter() {
           </p>
         </div>
         <nav aria-label="Footer" className="space-y-2 text-sm">
-          <p className="font-medium">On this page</p>
+          <p className="font-medium">Opening Bell</p>
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className="block text-muted hover:text-ink">
               {n.label}

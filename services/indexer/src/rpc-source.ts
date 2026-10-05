@@ -22,8 +22,7 @@ export async function pollOnce(db: pg.Pool, rpc: Rpc, program: Address = CROSS_C
   }
   let applied = 0;
   for (const s of pending.reverse()) {
-    const tx = await rpc.getTransaction(s.signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0, encoding: 'json' }).send();
-    if (!tx) throw new Error(`finalized transaction ${s.signature} not returned by the node`);
+    const tx = await fetchFinalized(rpc, s.signature);
     applied += await ingestTransaction(db, {
       signature: s.signature,
       slot: tx.slot,
@@ -38,4 +37,21 @@ export async function pollOnce(db: pg.Pool, rpc: Rpc, program: Address = CROSS_C
     );
   }
   return applied;
+}
+
+/** The listing already reported the signature as finalized, so its outcome is final; some nodes
+ *  still fail to return the body at `finalized` for a while (seen on solana-test-validator 4.0.2,
+ *  where it persisted for minutes). Fall back to reading the same final transaction at `confirmed`. */
+async function fetchFinalized(rpc: Rpc, signature: Signature) {
+  const opts = { maxSupportedTransactionVersion: 0, encoding: 'json' } as const;
+  try {
+    const tx = await rpc.getTransaction(signature, { ...opts, commitment: 'finalized' }).send();
+    if (tx) return tx;
+  } catch {
+    // fall through to the confirmed read
+  }
+  const tx = await rpc.getTransaction(signature, { ...opts, commitment: 'confirmed' }).send();
+  if (!tx) throw new Error(`transaction ${signature} is listed as finalized but the node returns no body`);
+  console.error(JSON.stringify({ at: new Date().toISOString(), warning: 'finalized body unavailable; read at confirmed', signature }));
+  return tx;
 }
