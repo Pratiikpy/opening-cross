@@ -144,7 +144,11 @@ pub mod cross_core {
             CrossError::InvalidParams
         );
         require!(params.max_orders > 0, CrossError::InvalidParams);
-        require_keys_neq!(ctx.accounts.base_mint.key(), ctx.accounts.quote_mint.key(), CrossError::InvalidParams);
+        require_keys_neq!(
+            ctx.accounts.base_mint.key(),
+            ctx.accounts.quote_mint.key(),
+            CrossError::InvalidParams
+        );
         let now = Clock::get()?.unix_timestamp;
         require!(
             params.open_ts < params.close_ts && params.close_ts > now,
