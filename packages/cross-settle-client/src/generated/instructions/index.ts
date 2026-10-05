@@ -10,3 +10,4 @@ export * from './bindDbcMint.js';
 export * from './openDbcPool.js';
 export * from './openDlmmPair.js';
 export * from './seedDammV2.js';
+export * from './seedRaydiumCpmm.js';

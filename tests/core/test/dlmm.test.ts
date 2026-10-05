@@ -11,7 +11,7 @@ import { createKeyPairSignerFromBytes } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { OrderSide, ata } from '@opening-cross/sdk';
-import { DLMM_PROGRAM_ADDRESS, binPriceQ64, buildOpenDlmmPair } from '@opening-cross/meteora-adapters';
+import { DLMM_PROGRAM_ADDRESS, binPriceQ64, buildOpenDlmmPair } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DLMM_FIXTURE, fromLegacy } from '../src/harness.js';
 

@@ -8,12 +8,12 @@
 
 import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithPayer, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
 import { addSelfPlanAndSendFunctions, type SelfPlanAndSendFunctions } from '@solana/program-client-core';
-import { getBindDbcMintInstructionAsync, getOpenDbcPoolInstructionAsync, getOpenDlmmPairInstruction, getSeedDammV2InstructionAsync, parseBindDbcMintInstruction, parseOpenDbcPoolInstruction, parseOpenDlmmPairInstruction, parseSeedDammV2Instruction, type BindDbcMintAsyncInput, type OpenDbcPoolAsyncInput, type OpenDlmmPairInput, type ParsedBindDbcMintInstruction, type ParsedOpenDbcPoolInstruction, type ParsedOpenDlmmPairInstruction, type ParsedSeedDammV2Instruction, type SeedDammV2AsyncInput } from '../instructions/index.js';
+import { getBindDbcMintInstructionAsync, getOpenDbcPoolInstructionAsync, getOpenDlmmPairInstruction, getSeedDammV2InstructionAsync, getSeedRaydiumCpmmInstruction, parseBindDbcMintInstruction, parseOpenDbcPoolInstruction, parseOpenDlmmPairInstruction, parseSeedDammV2Instruction, parseSeedRaydiumCpmmInstruction, type BindDbcMintAsyncInput, type OpenDbcPoolAsyncInput, type OpenDlmmPairInput, type ParsedBindDbcMintInstruction, type ParsedOpenDbcPoolInstruction, type ParsedOpenDlmmPairInstruction, type ParsedSeedDammV2Instruction, type ParsedSeedRaydiumCpmmInstruction, type SeedDammV2AsyncInput, type SeedRaydiumCpmmInput } from '../instructions/index.js';
 import { findBaseMintPda, findDbcConfigPda, findPositionNftMintPda, findSettlerPda } from '../pdas/index.js';
 
 export const CROSS_SETTLE_PROGRAM_ADDRESS = '2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ' as Address<'2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ'>;
 
-export enum CrossSettleEvent { DammV2Seeded, DbcMintBound, DbcPoolOpened, DlmmPairOpened }
+export enum CrossSettleEvent { DammV2Seeded, DbcMintBound, DbcPoolOpened, DlmmPairOpened, RaydiumCpmmSeeded }
 
 export function identifyCrossSettleEvent(event: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleEvent {
     const data = 'data' in event ? event.data : event;
@@ -21,10 +21,11 @@ export function identifyCrossSettleEvent(event: { data: ReadonlyUint8Array } | R
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([75, 243, 26, 251, 150, 153, 172, 164])), 0)) { return CrossSettleEvent.DbcMintBound; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([142, 90, 156, 187, 193, 205, 225, 165])), 0)) { return CrossSettleEvent.DbcPoolOpened; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([90, 64, 105, 60, 182, 126, 130, 161])), 0)) { return CrossSettleEvent.DlmmPairOpened; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([65, 101, 205, 223, 81, 166, 189, 27])), 0)) { return CrossSettleEvent.RaydiumCpmmSeeded; }
     throw new Error('The provided event could not be identified as a crossSettle event.');
 }
 
-export enum CrossSettleInstruction { BindDbcMint, OpenDbcPool, OpenDlmmPair, SeedDammV2 }
+export enum CrossSettleInstruction { BindDbcMint, OpenDbcPool, OpenDlmmPair, SeedDammV2, SeedRaydiumCpmm }
 
 export function identifyCrossSettleInstruction(instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleInstruction {
     const data = 'data' in instruction ? instruction.data : instruction;
@@ -32,6 +33,7 @@ export function identifyCrossSettleInstruction(instruction: { data: ReadonlyUint
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([68, 14, 121, 181, 116, 193, 225, 178])), 0)) { return CrossSettleInstruction.OpenDbcPool; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([166, 194, 182, 98, 172, 176, 29, 20])), 0)) { return CrossSettleInstruction.OpenDlmmPair; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([10, 132, 97, 55, 204, 60, 73, 85])), 0)) { return CrossSettleInstruction.SeedDammV2; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([249, 188, 198, 127, 151, 212, 14, 104])), 0)) { return CrossSettleInstruction.SeedRaydiumCpmm; }
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, { instructionData: data, programName: "crossSettle" });
 }
 
@@ -40,6 +42,7 @@ export type ParsedCrossSettleInstruction<TProgram extends string = '2EVpoks9zhL6
 | { instructionType: CrossSettleInstruction.OpenDbcPool } & ParsedOpenDbcPoolInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.OpenDlmmPair } & ParsedOpenDlmmPairInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.SeedDammV2 } & ParsedSeedDammV2Instruction<TProgram>
+| { instructionType: CrossSettleInstruction.SeedRaydiumCpmm } & ParsedSeedRaydiumCpmmInstruction<TProgram>
 
 
         export function parseCrossSettleInstruction<TProgram extends string>(
@@ -56,13 +59,15 @@ case CrossSettleInstruction.OpenDlmmPair: { assertIsInstructionWithAccounts(inst
 return { instructionType: CrossSettleInstruction.OpenDlmmPair, ...parseOpenDlmmPairInstruction(instruction) }; }
 case CrossSettleInstruction.SeedDammV2: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.SeedDammV2, ...parseSeedDammV2Instruction(instruction) }; }
+case CrossSettleInstruction.SeedRaydiumCpmm: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.SeedRaydiumCpmm, ...parseSeedRaydiumCpmmInstruction(instruction) }; }
                 default: throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, { instructionType: instructionType as string, programName: "crossSettle" });
             }
         }
 
 export type CrossSettlePlugin = { instructions: CrossSettlePluginInstructions; pdas: CrossSettlePluginPdas; identifyInstruction: typeof identifyCrossSettleInstruction; parseInstruction: typeof parseCrossSettleInstruction; }
 
-export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; openDlmmPair: (input: OpenDlmmPairInput) => ReturnType<typeof getOpenDlmmPairInstruction> & SelfPlanAndSendFunctions; seedDammV2: (input: SeedDammV2AsyncInput) => ReturnType<typeof getSeedDammV2InstructionAsync> & SelfPlanAndSendFunctions; }
+export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; openDlmmPair: (input: OpenDlmmPairInput) => ReturnType<typeof getOpenDlmmPairInstruction> & SelfPlanAndSendFunctions; seedDammV2: (input: SeedDammV2AsyncInput) => ReturnType<typeof getSeedDammV2InstructionAsync> & SelfPlanAndSendFunctions; seedRaydiumCpmm: (input: SeedRaydiumCpmmInput) => ReturnType<typeof getSeedRaydiumCpmmInstruction> & SelfPlanAndSendFunctions; }
 
 export type CrossSettlePluginPdas = { settler: typeof findSettlerPda; baseMint: typeof findBaseMintPda; dbcConfig: typeof findDbcConfigPda; positionNftMint: typeof findPositionNftMintPda; }
 
@@ -70,7 +75,7 @@ export type CrossSettlePluginRequirements = ClientWithPayer & ClientWithTransact
 
 export function crossSettleProgram() {
     return <T extends CrossSettlePluginRequirements>(client: T): ExtendedClient<T, { crossSettle: CrossSettlePlugin }> => {
-        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)), openDlmmPair: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairInstruction(input)), seedDammV2: input => addSelfPlanAndSendFunctions(client, getSeedDammV2InstructionAsync(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda, positionNftMint: findPositionNftMintPda }, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
+        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)), openDlmmPair: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairInstruction(input)), seedDammV2: input => addSelfPlanAndSendFunctions(client, getSeedDammV2InstructionAsync(input)), seedRaydiumCpmm: input => addSelfPlanAndSendFunctions(client, getSeedRaydiumCpmmInstruction(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda, positionNftMint: findPositionNftMintPda }, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
     };
 }
 

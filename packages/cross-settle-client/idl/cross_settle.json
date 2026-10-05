@@ -483,6 +483,122 @@
           }
         }
       ]
+    },
+    {
+      "name": "seed_raydium_cpmm",
+      "docs": [
+        "Raydium CPMM adapter: opens a Raydium constant-product pool for the cross's market whose",
+        "opening price — the ratio of the two initial deposits — is P* to within one quote atom.",
+        "Raydium orders the pool's mints by key, so the base may be token 0 or token 1."
+      ],
+      "discriminator": [
+        249,
+        188,
+        198,
+        127,
+        151,
+        212,
+        14,
+        104
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "amm_config"
+        },
+        {
+          "name": "raydium_authority"
+        },
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "token_0_mint"
+        },
+        {
+          "name": "token_1_mint"
+        },
+        {
+          "name": "lp_mint",
+          "writable": true
+        },
+        {
+          "name": "creator_token_0",
+          "writable": true
+        },
+        {
+          "name": "creator_token_1",
+          "writable": true
+        },
+        {
+          "name": "creator_lp_token",
+          "writable": true
+        },
+        {
+          "name": "token_0_vault",
+          "writable": true
+        },
+        {
+          "name": "token_1_vault",
+          "writable": true
+        },
+        {
+          "name": "create_pool_fee",
+          "writable": true
+        },
+        {
+          "name": "observation_state",
+          "writable": true
+        },
+        {
+          "name": "raydium_program",
+          "address": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
+        },
+        {
+          "name": "spl_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_0_program"
+        },
+        {
+          "name": "token_1_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "base_amount",
+          "type": "u64"
+        },
+        {
+          "name": "quote_amount",
+          "type": "u64"
+        },
+        {
+          "name": "open_time",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "events": [
@@ -536,6 +652,19 @@
         126,
         130,
         161
+      ]
+    },
+    {
+      "name": "RaydiumCpmmSeeded",
+      "discriminator": [
+        65,
+        101,
+        205,
+        223,
+        81,
+        166,
+        189,
+        27
       ]
     }
   ],
@@ -1118,6 +1247,34 @@
           {
             "name": "creator_fee_percentage",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RaydiumCpmmSeeded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_price",
+            "type": "u64"
+          },
+          {
+            "name": "base_amount",
+            "type": "u64"
+          },
+          {
+            "name": "quote_amount",
+            "type": "u64"
           }
         ]
       }

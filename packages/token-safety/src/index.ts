@@ -12,8 +12,9 @@ import {
   decodeMint,
 } from '@solana-program/token-2022';
 
-export const SPL_TOKEN_PROGRAM_ADDRESS =
-  'TokenkegQfeZyiNwAJsyFsP7wCcEfgJpbmsjb7RRxkq' as Address<'TokenkegQfeZyiNwAJsyFsP7wCcEfgJpbmsjb7RRxkq'>;
+/** Classic SPL Token program, from the official client so it cannot be mistyped. */
+export { TOKEN_PROGRAM_ADDRESS as SPL_TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { TOKEN_PROGRAM_ADDRESS as SPL_TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 
 /**
  * `block`  — the mint cannot be used in a cross or pool at all.

@@ -1,7 +1,7 @@
 {
-  "name": "@opening-cross/meteora-adapters",
+  "name": "@opening-cross/adapters",
   "version": "0.1.0",
-  "description": "Meteora settlement adapters for Opening Cross: DBC continuation and DAMM v2 seeding at the clearing price.",
+  "description": "Settlement adapters for Opening Cross: Meteora DBC continuation, DAMM v2 and DLMM, and Raydium CPMM, all opened at the clearing price.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "src/index.ts",
@@ -16,6 +16,7 @@
     "@opening-cross/cross-gate-client": "workspace:*",
     "@opening-cross/cross-settle-client": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
+    "@solana-program/token": "0.16.0",
     "@solana/kit": "8.4.0",
     "@solana/web3.js": "1.98.4",
     "bn.js": "5.2.2"

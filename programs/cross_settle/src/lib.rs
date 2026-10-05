@@ -22,6 +22,7 @@ declare_program!(cross_core);
 declare_program!(cross_gate);
 declare_program!(cp_amm);
 declare_program!(lb_clmm);
+declare_program!(raydium_cp_swap);
 
 use cross_core::accounts::Cross;
 
@@ -375,6 +376,92 @@ pub mod cross_settle {
         });
         Ok(())
     }
+    /// Raydium CPMM adapter: opens a Raydium constant-product pool for the cross's market whose
+    /// opening price — the ratio of the two initial deposits — is P* to within one quote atom.
+    /// Raydium orders the pool's mints by key, so the base may be token 0 or token 1.
+    pub fn seed_raydium_cpmm(
+        ctx: Context<SeedRaydiumCpmm>,
+        base_amount: u64,
+        quote_amount: u64,
+        open_time: u64,
+    ) -> Result<()> {
+        let cross = read_cross(&ctx.accounts.cross)?;
+        require_keys_eq!(
+            cross.creator,
+            ctx.accounts.creator.key(),
+            SettleError::NotCreator
+        );
+        require!(cross.base_bound, SettleError::PoolNotOpened);
+        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+        require!(
+            deposit_matches_price(base_amount, quote_amount, clearing.price, cross.price_scale)
+                .ok_or(SettleError::Overflow)?,
+            SettleError::StartPriceNotClearingPrice
+        );
+        let base_is_token_0 = cross.base_mint < cross.quote_mint;
+        let (mint_0, mint_1) = if base_is_token_0 {
+            (cross.base_mint, cross.quote_mint)
+        } else {
+            (cross.quote_mint, cross.base_mint)
+        };
+        require_keys_eq!(
+            ctx.accounts.token_0_mint.key(),
+            mint_0,
+            SettleError::WrongMint
+        );
+        require_keys_eq!(
+            ctx.accounts.token_1_mint.key(),
+            mint_1,
+            SettleError::WrongMint
+        );
+        let (amount_0, amount_1) = if base_is_token_0 {
+            (base_amount, quote_amount)
+        } else {
+            (quote_amount, base_amount)
+        };
+
+        raydium_cp_swap::cpi::initialize(
+            CpiContext::new(
+                ctx.accounts.raydium_program.key(),
+                raydium_cp_swap::cpi::accounts::Initialize {
+                    creator: ctx.accounts.creator.to_account_info(),
+                    amm_config: ctx.accounts.amm_config.to_account_info(),
+                    authority: ctx.accounts.raydium_authority.to_account_info(),
+                    pool_state: ctx.accounts.pool_state.to_account_info(),
+                    token_0_mint: ctx.accounts.token_0_mint.to_account_info(),
+                    token_1_mint: ctx.accounts.token_1_mint.to_account_info(),
+                    lp_mint: ctx.accounts.lp_mint.to_account_info(),
+                    creator_token_0: ctx.accounts.creator_token_0.to_account_info(),
+                    creator_token_1: ctx.accounts.creator_token_1.to_account_info(),
+                    creator_lp_token: ctx.accounts.creator_lp_token.to_account_info(),
+                    token_0_vault: ctx.accounts.token_0_vault.to_account_info(),
+                    token_1_vault: ctx.accounts.token_1_vault.to_account_info(),
+                    create_pool_fee: ctx.accounts.create_pool_fee.to_account_info(),
+                    observation_state: ctx.accounts.observation_state.to_account_info(),
+                    token_program: ctx.accounts.spl_token_program.to_account_info(),
+                    token_0_program: ctx.accounts.token_0_program.to_account_info(),
+                    token_1_program: ctx.accounts.token_1_program.to_account_info(),
+                    associated_token_program: ctx
+                        .accounts
+                        .associated_token_program
+                        .to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    rent: ctx.accounts.rent.to_account_info(),
+                },
+            ),
+            amount_0,
+            amount_1,
+            open_time,
+        )?;
+        emit!(RaydiumCpmmSeeded {
+            cross: ctx.accounts.cross.key(),
+            pool: ctx.accounts.pool_state.key(),
+            clearing_price: clearing.price,
+            base_amount,
+            quote_amount
+        });
+        Ok(())
+    }
 }
 
 /// `floor(sqrt(price / price_scale) · 2⁶⁴)` — DBC's Q64.64 square-root price for a price given
@@ -442,6 +529,25 @@ pub fn bin_contains(id: i32, bin_step: u16, price: u64, price_scale: u64) -> Opt
     let lower = bin * (half - U256::from(bin_step)) / half;
     let upper = bin * (half + U256::from(bin_step)) / half;
     Some(p >= lower && p <= upper)
+}
+
+/// `true` when `quote_amount` is `base_amount · P* / price_scale` rounded either way, i.e. the
+/// deposit ratio prices the base at P* to within one quote atom.
+pub fn deposit_matches_price(
+    base_amount: u64,
+    quote_amount: u64,
+    price: u64,
+    price_scale: u64,
+) -> Option<bool> {
+    if price_scale == 0 || base_amount == 0 {
+        return None;
+    }
+    let exact = u128::from(base_amount).checked_mul(u128::from(price))?;
+    let scale = u128::from(price_scale);
+    let floor = exact / scale;
+    let ceil = floor + u128::from(exact % scale != 0);
+    let q = u128::from(quote_amount);
+    Some(q >= floor && q <= ceil)
 }
 
 fn read_cross(info: &UncheckedAccount) -> Result<Cross> {
@@ -579,6 +685,69 @@ pub struct SeedDammV2<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SeedRaydiumCpmm<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    /// CHECK: owner and contents checked in `read_cross`.
+    pub cross: UncheckedAccount<'info>,
+    /// CHECK: Raydium AMM config, validated by Raydium.
+    pub amm_config: UncheckedAccount<'info>,
+    /// CHECK: Raydium vault authority PDA, validated by Raydium.
+    pub raydium_authority: UncheckedAccount<'info>,
+    /// CHECK: Raydium pool PDA, validated by Raydium.
+    #[account(mut)]
+    pub pool_state: UncheckedAccount<'info>,
+    pub token_0_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_1_mint: Box<InterfaceAccount<'info, Mint>>,
+    /// CHECK: Raydium LP mint PDA, validated by Raydium.
+    #[account(mut)]
+    pub lp_mint: UncheckedAccount<'info>,
+    /// CHECK: creator's token-0 account; the token program enforces ownership.
+    #[account(mut)]
+    pub creator_token_0: UncheckedAccount<'info>,
+    /// CHECK: creator's token-1 account; the token program enforces ownership.
+    #[account(mut)]
+    pub creator_token_1: UncheckedAccount<'info>,
+    /// CHECK: creator's LP associated token account, created by Raydium.
+    #[account(mut)]
+    pub creator_lp_token: UncheckedAccount<'info>,
+    /// CHECK: Raydium vault PDA, validated by Raydium.
+    #[account(mut)]
+    pub token_0_vault: UncheckedAccount<'info>,
+    /// CHECK: Raydium vault PDA, validated by Raydium.
+    #[account(mut)]
+    pub token_1_vault: UncheckedAccount<'info>,
+    /// CHECK: Raydium's pool-fee receiver, validated by Raydium.
+    #[account(mut)]
+    pub create_pool_fee: UncheckedAccount<'info>,
+    /// CHECK: Raydium observation PDA, validated by Raydium.
+    #[account(mut)]
+    pub observation_state: UncheckedAccount<'info>,
+    /// CHECK: the Raydium CPMM program.
+    #[account(address = raydium_cp_swap::ID)]
+    pub raydium_program: UncheckedAccount<'info>,
+    /// CHECK: SPL Token (LP mint program).
+    #[account(address = anchor_spl::token::ID)]
+    pub spl_token_program: UncheckedAccount<'info>,
+    pub token_0_program: Interface<'info, TokenInterface>,
+    pub token_1_program: Interface<'info, TokenInterface>,
+    /// CHECK: associated token program.
+    #[account(address = anchor_spl::associated_token::ID)]
+    pub associated_token_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[event]
+pub struct RaydiumCpmmSeeded {
+    pub cross: Pubkey,
+    pub pool: Pubkey,
+    pub clearing_price: u64,
+    pub base_amount: u64,
+    pub quote_amount: u64,
+}
+
+#[derive(Accounts)]
 pub struct OpenDlmmPair<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
@@ -675,6 +844,19 @@ mod tests {
         let f = (v as f64) / 2f64.powi(64);
         assert!((f - 1.2f64.sqrt()).abs() < 1e-12);
         assert_eq!(sqrt_price_q64(1, 0), None);
+        use super::deposit_matches_price;
+        assert_eq!(deposit_matches_price(3, 8, 10, 4), Some(true)); // 7.5 -> 7 or 8
+        assert_eq!(deposit_matches_price(3, 7, 10, 4), Some(true));
+        assert_eq!(deposit_matches_price(3, 9, 10, 4), Some(false));
+        assert_eq!(
+            deposit_matches_price(1_000_000, 1_200_000, 1_200_000, 1_000_000),
+            Some(true)
+        );
+        assert_eq!(
+            deposit_matches_price(1_000_000, 1_200_001, 1_200_000, 1_000_000),
+            Some(false)
+        );
+        assert_eq!(deposit_matches_price(0, 1, 1, 1), None);
         // DLMM bins: id 0 = 1.0; bin step 25 bps -> id 1 = 1.0025.
         use super::{bin_contains, bin_price_q64};
         let one = ruint::aliases::U256::from(1u8) << 64usize;

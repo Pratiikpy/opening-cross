@@ -10,7 +10,7 @@ import { AccountRole, type Instruction, address } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { CrossState, OrderSide, ata } from '@opening-cross/sdk';
-import { DAMM_V2_PROGRAM_ADDRESS, buildSeedDammV2, sqrtPriceQ64 } from '@opening-cross/meteora-adapters';
+import { DAMM_V2_PROGRAM_ADDRESS, buildSeedDammV2, sqrtPriceQ64 } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DAMM_FIXTURE } from '../src/harness.js';
 

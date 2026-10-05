@@ -31,3 +31,12 @@ describe('mainnet stock mints', () => {
     }
   }, 60_000);
 });
+
+describe('classic SPL Token mints', () => {
+  it('reads USDC (SPL Token program) without rejecting it', async () => {
+    const r = await fetchMintSafety(rpc, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' as Address, BigInt(Math.floor(Date.now() / 1000)));
+    expect(r.tokenProgram).toBe('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+    expect(r.decimals).toBe(6);
+    expect(r.risks.map((x) => x.code)).toEqual(['MINT_AUTHORITY', 'FREEZE_AUTHORITY']);
+  }, 30_000);
+});

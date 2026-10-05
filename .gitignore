@@ -42,3 +42,4 @@ test-ledger/
 
 # Third-party program binaries are fetched, never committed (licences).
 tests/fixtures/*.so
+tests/fixtures/*.json

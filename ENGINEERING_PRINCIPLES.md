@@ -33,6 +33,7 @@ How we plan, build, test, design and ship for the next 12 months. Read before yo
 5. **One source of truth:** chain > indexer > API > UI. The UI never computes money on its own; it displays what the chain and indexer prove.
 6. Small PRs, one concern each, reviewed by someone else. Program PRs need two reviewers.
 7. Write code that reads like the surrounding code. No dead code, no TODOs left in main, no "temporary" hacks.
+8. Never hand-type a program ID, mint or other well-known address. Import it from the official client package or derive it, and cover it with a test that hits the real account. (A mistyped SPL Token ID once broke Raydium settlement and silently rejected every classic SPL mint.)
 
 ## 4. Design
 1. **Source of design:** Claude Design exports (`Opening Bell Landing.html`, `Opening Bell Mobile.html`) first, then Linear / Stripe patterns. Do not invent a new visual style.

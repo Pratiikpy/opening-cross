@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { ActivationType, BaseFeeMode, CollectFeeMode, MigrationFeeOption, MigrationOption, TokenDecimal } from '@meteora-ag/dynamic-bonding-curve-sdk';
 import { CrossState, OrderSide, SupplyMode, buildClaim } from '@opening-cross/sdk';
-import { type ContinuationDesign, buildBindDbcMint, buildOpenDbcPool, settlerAddress, sqrtPriceQ64 } from '@opening-cross/meteora-adapters';
+import { type ContinuationDesign, buildBindDbcMint, buildOpenDbcPool, settlerAddress, sqrtPriceQ64 } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DBC_FIXTURE } from '../src/harness.js';
 
