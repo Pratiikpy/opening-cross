@@ -28,6 +28,7 @@ describe.skipIf(!process.env.DATABASE_URL)('API', () => {
     await sync();
     const app = await buildServer({
       db,
+      network: 'localnet',
       account: async (a) => { const x = w.h.svm.getAccount(a); return x.exists ? { data: x.data, owner: x.programAddress } : null; },
       lifetime: async () => ({ blockhash: w.h.svm.latestBlockhash() as never, lastValidBlockHeight: 1_000_000n }),
       listen: client,
@@ -112,6 +113,9 @@ describe.skipIf(!process.env.DATABASE_URL)('API', () => {
     expect(mine.orders[0].fill).toBe('1000000000');
     const crosses = await app.inject({ url: '/v1/crosses?state=Finalized' }).then((r) => JSON.parse(r.body));
     expect(crosses.crosses.map((c: { address: string }) => c.address)).toEqual([cross]);
+    const stats = await app.inject({ url: '/v1/stats' }).then((r) => JSON.parse(r.body));
+    expect(stats).toMatchObject({ network: 'localnet', crosses_printed: 1, crosses_total: 1, buyers_filled: 1, crosses_no_print: 0 });
+    expect(BigInt(stats.quote_to_sellers)).toBeGreaterThan(0n);
     const health = await app.inject({ url: '/v1/health' });
     expect(health.statusCode).toBe(200);
 

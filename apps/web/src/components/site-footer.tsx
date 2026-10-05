@@ -1,0 +1,36 @@
+import Link from 'next/link';
+import { Logo } from './logo';
+import { NAV } from './site-header';
+
+export function SiteFooter() {
+  return (
+    <footer className="border-t border-border bg-surface">
+      <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="space-y-3">
+          <Logo />
+          <p className="max-w-sm text-sm text-muted">
+            Opening Bell is the app. Opening Cross is the open protocol underneath it, Apache-2.0 licensed.
+          </p>
+        </div>
+        <nav aria-label="Footer" className="space-y-2 text-sm">
+          <p className="font-medium">On this page</p>
+          {NAV.map((n) => (
+            <Link key={n.href} href={n.href} className="block text-muted hover:text-ink">
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="space-y-2 text-sm">
+          <p className="font-medium">Open source</p>
+          <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross">GitHub</a>
+          <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/tree/main/docs/adr">Design decisions</a>
+          <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/blob/main/docs/ROADMAP.md">Roadmap</a>
+        </div>
+      </div>
+      <div className="mx-auto max-w-[1200px] border-t border-border px-4 py-6 text-xs text-muted sm:px-6">
+        Early development. Opening Cross runs on Solana devnet and is not deployed to mainnet. Nothing on this site is an offer of
+        securities or investment advice. Buying new assets is risky: you can lose what you pay.
+      </div>
+    </footer>
+  );
+}

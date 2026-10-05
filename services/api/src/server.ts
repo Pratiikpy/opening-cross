@@ -19,6 +19,8 @@ export type ApiDeps = {
   /** Reads an account with its owning program, or null if it does not exist. */
   account: (a: Address) => Promise<ChainAccount | null>;
   lifetime: () => Promise<Lifetime>;
+  /** Cluster the indexer follows (`devnet`, `mainnet-beta`, `localnet`), reported with every total. */
+  network?: string;
   /** A dedicated connection for LISTEN; the API owns it once passed. */
   listen?: () => Promise<pg.Client>;
 };
@@ -113,6 +115,19 @@ export async function buildServer(d: ApiDeps) {
     const { rows } = await d.db.query(`SELECT (SELECT max(last_slot) FROM cursors) AS slot, (SELECT count(*)::int FROM reconciliation_alerts WHERE at > now() - interval '1 hour') AS alerts`);
     const ok = rows[0].alerts === 0;
     return send(reply, { ok, indexedSlot: rows[0].slot, recentDriftAlerts: rows[0].alerts }, ok ? 200 : 503);
+  });
+
+  // Protocol-wide totals for the landing page. Every figure is computed from indexed events; the
+  // network the indexer follows is reported with them so a devnet figure is never shown as mainnet.
+  app.get('/v1/stats', async (_req, reply) => {
+    const { rows } = await d.db.query(`SELECT
+      (SELECT count(*)::int FROM crosses WHERE state IN ('Cleared', 'Finalized') AND clearing_price IS NOT NULL) AS crosses_printed,
+      (SELECT count(*)::int FROM crosses) AS crosses_total,
+      (SELECT count(DISTINCT owner)::int FROM orders WHERE side = 0 AND fill IS NOT NULL AND fill > 0) AS buyers_filled,
+      (SELECT coalesce(sum(quote_out), 0)::text FROM orders WHERE side = 1 AND status = 'claimed') AS quote_to_sellers,
+      (SELECT coalesce(sum(quote_out), 0)::text FROM orders WHERE side = 0 AND status = 'claimed') AS quote_refunded_to_buyers,
+      (SELECT count(*)::int FROM crosses WHERE state = 'NoPrint') AS crosses_no_print`);
+    return send(reply, { network: d.network ?? 'unknown', ...rows[0] });
   });
 
   app.get('/v1/crosses', async (req, reply) => {
@@ -273,13 +288,18 @@ export async function buildServer(d: ApiDeps) {
   if (d.listen) {
     const client = await d.listen();
     await client.query('LISTEN opening_cross_events');
-    client.on('notification', async (n) => {
-      const key = JSON.parse(n.payload ?? '{}') as { signature: string; seq: number };
-      const { rows } = await d.db.query('SELECT signature, seq, slot, name, cross_address AS cross, payload FROM events WHERE signature = $1 AND seq = $2', [key.signature, key.seq]);
-      const ev = rows[0];
-      if (!ev) return;
-      const msg = json({ type: 'event', ...ev });
-      for (const s of sockets) if (s.cross === null || s.cross === ev.cross) s.send(msg);
+    // Notifications arrive in commit order; handle them one at a time so the row reads (async)
+    // cannot reorder them on the way to subscribers.
+    let chain = Promise.resolve();
+    client.on('notification', (n) => {
+      chain = chain.then(async () => {
+        const key = JSON.parse(n.payload ?? '{}') as { signature: string; seq: number };
+        const { rows } = await d.db.query('SELECT signature, seq, slot, name, cross_address AS cross, payload FROM events WHERE signature = $1 AND seq = $2', [key.signature, key.seq]);
+        const ev = rows[0];
+        if (!ev) return;
+        const msg = json({ type: 'event', ...ev });
+        for (const s of sockets) if (s.cross === null || s.cross === ev.cross) s.send(msg);
+      }).catch((e: unknown) => console.error(JSON.stringify({ at: new Date().toISOString(), stream: 'event delivery failed', error: String(e) })));
     });
     app.addHook('onClose', async () => {
       await client.end();

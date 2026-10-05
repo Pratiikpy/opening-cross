@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/*
+ * Opening Bell design tokens (ROADMAP W1). Values come from the Claude Design exports; where an
+ * export colour fails WCAG AA for its use, a darker or lighter variant of the same hue is used
+ * instead (decision 6). `test/contrast.test.ts` checks every text and UI pairing in both themes.
+ *
+ *   --accent        the export orange, for charts, marks and large display only (≥3:1)
+ *   --accent-fill   button and badge fills; --on-accent is the text on them (≥4.5:1)
+ *   --accent-text   orange for normal-size text (≥4.5:1)
+ */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --surface-2: #eeeef0;
+  --ink: #0b0b0f;
+  --muted: #5a5a62;
+  --subtle: #6b6b74;
+  --border: #e4e4e8;
+  --border-strong: #8a8a93;
+  --accent: #e8430c;
+  --accent-fill: #d63e0b;
+  --on-accent: #ffffff;
+  --accent-text: #c2380a;
+  --positive: #17703f;
+  --positive-bg: #e9f6ee;
+  --inverse-bg: #0b0b0f;
+  --inverse-ink: #f4f4f2;
+  --inverse-muted: #9a9aa2;
+  --focus: #0b0b0f;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0f;
+  --surface: #17171c;
+  --surface-2: #26262d;
+  --ink: #f4f4f2;
+  --muted: #9a9aa2;
+  --subtle: #8a8a93;
+  --border: #26262d;
+  --border-strong: #6b6b74;
+  --accent: #ff6a3d;
+  --accent-fill: #ff6a3d;
+  --on-accent: #0b0b0f;
+  --accent-text: #ff7a4a;
+  --positive: #5fd08f;
+  --positive-bg: #12291c;
+  --inverse-bg: #17171c;
+  --inverse-ink: #f4f4f2;
+  --inverse-muted: #9a9aa2;
+  --focus: #f4f4f2;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-positive: var(--positive);
+  --color-positive-bg: var(--positive-bg);
+  --color-inverse-bg: var(--inverse-bg);
+  --color-inverse-ink: var(--inverse-ink);
+  --color-inverse-muted: var(--inverse-muted);
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --radius-card: 12px;
+  --radius-pill: 20px;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
