@@ -129,3 +129,25 @@ describe('no print', () => {
     expect(await w.h.balanceOf(s.address, w.baseMint)).toBe(1_000_000_000n);
   });
 });
+
+describe('imbalance guard', () => {
+  it('does not print when |D − S| / V exceeds the cap, and prints when within it', async () => {
+    const w = await World.create();
+    // V = 1_000, D = 3_000 at P* → imbalance 200% of V.
+    const strict = await w.newCross({ maxImbalanceBps: 19_999 });
+    const s = await w.trader(0n, 1_000_000_000n);
+    const b = await w.trader(10_000_000_000n);
+    const o1 = [await w.place(strict, s, OrderSide.Sell, 1_000_000n, 1_000_000_000n), await w.place(strict, b, OrderSide.Buy, 1_000_000n, 3_000_000_000n)];
+    expect((await w.settle(strict)).data.state).toBe(CrossState.NoPrint);
+    await w.claimAll(strict, o1);
+    expect(await w.h.balanceOf(b.address, w.quoteMint)).toBe(10_000_000_000n);
+
+    w.h.setTime(1_800_000_000n);
+    const loose = await w.newCross({ maxImbalanceBps: 20_000 });
+    const s2 = await w.trader(0n, 1_000_000_000n);
+    const b2 = await w.trader(10_000_000_000n);
+    await w.place(loose, s2, OrderSide.Sell, 1_000_000n, 1_000_000_000n);
+    await w.place(loose, b2, OrderSide.Buy, 1_000_000n, 3_000_000_000n);
+    expect((await w.settle(loose)).data.state).toBe(CrossState.Cleared);
+  });
+});
