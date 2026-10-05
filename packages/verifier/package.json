@@ -1,0 +1,26 @@
+{
+  "name": "@opening-cross/verifier",
+  "version": "0.1.0",
+  "description": "Independent verifier for Opening Cross: recomputes every cross's clearing from its on-chain book with a second implementation of the rule and emits a fairness proof.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "opening-cross-verify": "src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

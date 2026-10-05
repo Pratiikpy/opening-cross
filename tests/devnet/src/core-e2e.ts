@@ -57,7 +57,7 @@ import {
   protocolAddress,
   quoteVaultAddress,
 } from '@opening-cross/sdk';
-import { referenceClear, referenceFills, type RefOrder } from '../../core/src/reference.js';
+import { referenceClear, referenceFills, type RefOrder } from '@opening-cross/verifier';
 import { Evidence, ROOT, RPC, rpc } from './lib.js';
 
 const WS = process.env.WS_URL ?? RPC.replace('https://', 'wss://').replace('http://', 'ws://');

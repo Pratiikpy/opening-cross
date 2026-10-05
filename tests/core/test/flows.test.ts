@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CrossState, Disclosure, OrderSide, SupplyMode, quoteVaultAddress, baseVaultAddress, costCeil } from '@opening-cross/sdk';
 import { FEES, SCALE, World, type PlacedOrder } from '../src/world.js';
-import { referenceClear, referenceFills, type RefOrder } from '../src/reference.js';
+import { referenceClear, referenceFills, type RefOrder } from '@opening-cross/verifier';
 
 const refOf = (orders: PlacedOrder[], schedule: { price: bigint; quantity: bigint }[] = []): RefOrder[] => [
   ...orders.filter((o) => o.reveal).map((o) => ({ side: o.side === OrderSide.Buy ? ('buy' as const) : ('sell' as const), price: o.price, quantity: o.quantity })),

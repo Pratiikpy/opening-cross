@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { CrossState, Disclosure, OrderSide, SupplyMode, baseVaultAddress, costCeil, quoteVaultAddress } from '@opening-cross/sdk';
 import { SCALE, World, type PlacedOrder } from '../src/world.js';
-import { referenceClear, referenceFills } from '../src/reference.js';
+import { referenceClear, referenceFills, verifyCross } from '@opening-cross/verifier';
 
 function rng(seed: number) {
   let x = seed >>> 0 || 1;
@@ -52,6 +52,10 @@ describe('randomized crosses', () => {
         const s = settled.data.clearing.__option === 'Some' ? settled.data.clearing.value : null;
         expect([s?.price, s?.matched]).toEqual([ref.price, ref.matched]);
       }
+
+      // The independent verifier reaches the same verdict from the on-chain book alone.
+      const proof = await verifyCross(async (a) => { const x = w.h.svm.getAccount(a); return x.exists ? x.data : null; }, cross.address);
+      expect(proof.verified).toBe(true);
 
       const baseBeforeClaims = await Promise.all(orders.map((o) => w.h.balanceOf(o.owner.address, w.baseMint)));
       await w.claimAll(cross, orders);

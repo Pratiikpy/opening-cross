@@ -17,6 +17,7 @@
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/verifier": "workspace:*",
     "@pythnetwork/hermes-client": "^3.1.0",
     "@pythnetwork/pyth-solana-receiver": "^0.16.0",
     "@solana-program/system": "0.14.0",
