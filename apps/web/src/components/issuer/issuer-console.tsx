@@ -72,7 +72,7 @@ function Form({ account }: { account: UiWalletAccount }) {
     return (
       <div role="status" className="mt-10 rounded-[var(--radius-card)] border border-border p-6">
         <p className="font-medium">Your cross is on chain.</p>
-        <p className="mt-1 break-all font-mono text-xs text-muted">{created}</p>
+        <p className="mt-1 break-all font-mono text-xs text-muted" data-testid="created-cross">{created}</p>
         <Link href={`/crosses/${created}`} className="mt-4 inline-block rounded-full bg-accent-fill px-5 py-2.5 text-sm font-medium text-on-accent">
           Open the cross page
         </Link>

@@ -193,7 +193,12 @@ export async function buildServer(d: ApiDeps) {
       disclosure: sealed ? 'sealed' : 'open',
       levels,
       indicative: r && { price: r.price, matched: r.matched },
-      note: sealed ? 'Sealed bids carry no price until they are revealed; only revealed orders appear here.' : 'Indicative until the call closes: later orders can move it.',
+      note:
+        c.state !== CrossState.Live
+          ? 'The book as it was cleared.'
+          : sealed
+            ? 'Sealed bids carry no price until they are revealed; only revealed orders appear here.'
+            : 'Indicative until the call closes: later orders can move it.',
     });
   });
 

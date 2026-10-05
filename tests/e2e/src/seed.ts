@@ -99,9 +99,13 @@ for (const [id, disclosure] of [[1n, Disclosure.Open], [2n, Disclosure.Sealed]] 
 
 const buyer = await wallet();
 const buyer2 = await wallet();
+// A second issuer for the console test: holds the mint authority of a fresh token and some quote.
+const issuer2 = await wallet();
+const issuerBase = await mint(issuer2, 6);
+await fund(quote, admin, issuer2.address, 1_000_000_000n);
 for (const b of [buyer, buyer2]) await fund(quote, admin, b.address, 5_000_000_000n);
 
-const out = { rpc: RPC_URL, quoteMint: quote, crosses, now: now.toString(), closeTs: (now + CALL).toString(), revealEndTs: (now + CALL + REVEAL).toString(), wallets: { buyer: { address: buyer.address, secret: await secret(buyer) }, buyer2: { address: buyer2.address, secret: await secret(buyer2) } } };
+const out = { rpc: RPC_URL, quoteMint: quote, crosses, now: now.toString(), closeTs: (now + CALL).toString(), revealEndTs: (now + CALL + REVEAL).toString(), wallets: { buyer: { address: buyer.address, secret: await secret(buyer) }, buyer2: { address: buyer2.address, secret: await secret(buyer2) }, issuer: { address: issuer2.address, secret: await secret(issuer2) } }, issuerBaseMint: issuerBase };
 writeFileSync(process.env.OUT ?? '/tmp/oc-e2e.json', JSON.stringify(out, null, 2));
-console.log(JSON.stringify({ ...out, wallets: { buyer: buyer.address, buyer2: buyer2.address } }, null, 2));
+console.log(JSON.stringify({ ...out, wallets: { buyer: buyer.address, buyer2: buyer2.address, issuer: issuer2.address } }, null, 2));
 process.exit(0);

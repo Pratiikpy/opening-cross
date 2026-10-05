@@ -107,6 +107,8 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
                       <>
                         <dt className="text-muted">Tokens received</dt>
                         <dd>{formatAtoms(BigInt(o.base_out ?? '0'), m.baseDecimals)}</dd>
+                        <dt className="text-muted">Paid</dt>
+                        <dd>{formatAtoms(BigInt(o.escrow) - BigInt(o.quote_out ?? '0'), m.quoteDecimals)}{cross.clearing ? ` at ${formatPrice(BigInt(cross.clearing.price), m)}` : ''}</dd>
                         <dt className="text-muted">Refunded</dt>
                         <dd>{formatAtoms(BigInt(o.quote_out ?? '0'), m.quoteDecimals)}</dd>
                       </>

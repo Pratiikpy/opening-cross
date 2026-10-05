@@ -20,7 +20,12 @@ for (const route of ROUTES) {
       const problems = [];
       page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));
       page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
-      page.on('requestfailed', (r) => problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
+      // Next.js prefetches linked routes (`?_rsc=`); closing the page cancels them (ERR_ABORTED).
+      // That is the harness ending the visit, not a product failure; every other failure counts.
+      page.on('requestfailed', (r) => {
+        if (/[?&]_rsc=/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED') return;
+        problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`);
+      });
       await page.goto(BASE + route, { waitUntil: 'networkidle' });
       const actual = await page.evaluate(() => document.documentElement.dataset.theme);
       if (actual !== theme) problems.push(`theme: expected ${theme}, page applied ${actual}`);
@@ -28,7 +33,7 @@ for (const route of ROUTES) {
       if (overflow > 0) problems.push(`horizontal overflow: ${overflow}px`);
       const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
       for (const v of axe.violations) problems.push(`axe ${v.id}: ${v.help} (${v.nodes.length}) ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`);
-      const name = `${route === '/' ? 'home' : route.replace(/\//g, '_').replace(/^_/, '')}-${device}-${theme}.png`;
+      const name = `${route === '/' ? 'home' : route.replace(/^\/crosses\/.+/, 'cross').replace(/\//g, '_').replace(/^_/, '')}-${device}-${theme}.png`;
       await page.screenshot({ path: `${OUT}/${name}`, fullPage: true });
       console.log(`${problems.length ? 'FAIL' : 'PASS'} ${route} ${device} ${theme} -> ${OUT}/${name}`);
       for (const p of problems) console.log(`  ${p}`);

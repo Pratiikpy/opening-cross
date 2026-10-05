@@ -71,18 +71,16 @@ export function checkIssuerForm(f: IssuerForm, now: Date): Checked {
     if (f.schedule.length === 0) errors.schedule = 'A minting cross needs at least one supply step.';
     let last = -1n;
     f.schedule.forEach((s, i) => {
+      // Check the price on its own first, so an off-grid price is named even before an amount is typed.
       const p = parsePrice(s.price, market);
       const q = parseAtoms(s.quantity, f.baseDecimals);
-      if (p === null || q === null || q === 0n) {
-        errors[`schedule.${i}`] = 'Each step needs a price and a token amount.';
-        return;
-      }
-      if (minPrice !== null && tick !== null && tick > 0n) {
-        const max = minPrice + BigInt(f.ticks - 1) * tick;
-        if (p < minPrice || p > max || (p - minPrice) % tick !== 0n) errors[`schedule.${i}`] = 'This price is not on the grid.';
-      }
-      if (p <= last) errors[`schedule.${i}`] = 'Steps must rise in price.';
-      last = p;
+      const max = minPrice !== null && tick !== null && tick > 0n ? minPrice + BigInt(f.ticks - 1) * tick : null;
+      if (p === null) errors[`schedule.${i}`] = 'Enter a price for this step.';
+      else if (max !== null && (p < minPrice! || p > max || (p - minPrice!) % tick! !== 0n)) errors[`schedule.${i}`] = 'This price is not on the grid.';
+      else if (p <= last) errors[`schedule.${i}`] = 'Steps must rise in price.';
+      else if (q === null || q === 0n) errors[`schedule.${i}`] = 'Enter how many tokens this step offers.';
+      if (p !== null) last = p;
+      if (p === null || q === null || errors[`schedule.${i}`]) return;
       schedule.push({ price: p.toString(), quantity: q.toString() });
     });
   }

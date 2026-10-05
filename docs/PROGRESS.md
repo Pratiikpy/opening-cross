@@ -2,6 +2,9 @@
 
 Newest first. Every entry names what was done, the evidence, what is not verified, and what is next.
 
+## 2026-10-06
+- **W3, W4, W5, MO1 done.** Investor flow (27 checks) and issuer console (11) pass end to end on a local Agave 4.0.2 validator with on-chain checks; visual pass 24/24 clean. Fixed: CORS, hydration mismatch, silent wallet reconnect, hidden mobile wallet state, 404 console noise, indexer stall when the node rejects the cursor signature (now pages by slot), stale book note after clearing, missing 'paid' line, off-grid supply price hidden, short-page footer gap. Open: API contract test flaky under concurrent DB load. A5 treasury built (4/4).
+
 ## 2026-10-05
 - **W1, W2 done.** Web app with AA tokens (light/dark) and an honest landing (live stats, tagged examples). Visual pass clean at 1440/390 × light/dark; Lighthouse 97–100. Fixed an API stream ordering bug. Evidence `docs/evidence/W1-W2-web-landing.md`. Next: W3 investor flow.
 - **D6 done.** Best-execution router with a live Jupiter comparison; the cross prediction matched execution exactly. Two bugs found and fixed (unmerged shards ignored; non-cross accounts crashed decode). Evidence `docs/evidence/D6-router.md`.

@@ -21,4 +21,13 @@ sh "$ROOT/tests/e2e/run-stack.sh" &
 until curl -s -o /dev/null http://localhost:3000/ && curl -s -o /dev/null http://localhost:8080/v1/health; do sleep 2; done
 (cd "$ROOT/tests/e2e" && CALL_SECS=${CALL_SECS:-240} REVEAL_SECS=${REVEAL_SECS:-120} OUT=/tmp/oc-e2e.json node --import tsx src/seed.ts >/tmp/oc-seed.log)
 cd "$ROOT/apps/web"
+if [ "${MODE:-flow}" = issuer ]; then
+  SEED=/tmp/oc-e2e.json OUT="$ROOT/docs/evidence/screens/w4" node e2e/issuer-flow.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
+  exit 0
+fi
+if [ "${MODE:-flow}" = visual ]; then
+  OPEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/oc-e2e.json','utf8')).crosses.open)")
+  ROUTES="/,/crosses,/crosses/$OPEN,/issue,/developers,/status" OUT="$ROOT/docs/evidence/screens" node e2e/visual.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
+  exit 0
+fi
 SEED=/tmp/oc-e2e.json OUT=${OUT:-"$ROOT/docs/evidence/screens/w3"} node e2e/investor-flow.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log

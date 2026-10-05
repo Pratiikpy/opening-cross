@@ -38,6 +38,13 @@ describe('issuer form', () => {
     expect(Object.keys(r.errors).sort()).toEqual(['closeAt', 'crossId', 'integratorFeeBps', 'maxImbalancePct', 'maxOrders', 'minMatched', 'minPrice', 'openAt', 'revealMinutes', 'schedule.1', 'shards', 'tick', 'ticks'].sort());
   });
 
+  it('an off-grid price is named before the amount is typed', () => {
+    const r = checkIssuerForm({ ...base, schedule: [{ price: '1.23', quantity: '' }] }, now);
+    expect(!r.ok && r.errors['schedule.0']).toBe('This price is not on the grid.');
+    const r2 = checkIssuerForm({ ...base, schedule: [{ price: '1.25', quantity: '' }] }, now);
+    expect(!r2.ok && r2.errors['schedule.0']).toBe('Enter how many tokens this step offers.');
+  });
+
   it('off-grid and falling supply steps are refused', () => {
     const r = checkIssuerForm({ ...base, schedule: [{ price: '1.22', quantity: '10' }, { price: '1.50', quantity: '1' }, { price: '1.40', quantity: '1' }] }, now);
     expect(r.ok).toBe(false);
