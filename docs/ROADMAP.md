@@ -47,7 +47,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| A1 | `meteora_dbc_continuation` (flagship) | Cross clears at P\*, Q\* allocated, DBC pool continues, migrates to DAMM v2 | Devnet end-to-end with real DBC program | TODO | |
+| A1 | `meteora_dbc_continuation` (flagship) | Cross clears at P\*, Q\* allocated, DBC pool continues, migrates to DAMM v2 | Devnet end-to-end with real DBC program | IN PROGRESS | Design: ADR-0006 (deferred base mint, adapter-created DBC config at P\*, on-chain start-price check) |
 | A2 | `damm_v2` adapter | Pool seeded at P\* | Devnet | TODO | |
 | A3 | `dlmm` adapter | Bins seeded around P\* | Devnet | TODO | |
 | A4 | `raydium_cpmm`, `external_cpi`, `none` adapters | Each settles a devnet cross | Devnet | TODO | |
