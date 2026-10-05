@@ -317,6 +317,9 @@ importers:
       '@opening-cross/verifier':
         specifier: workspace:*
         version: link:../../packages/verifier
+      '@solana-program/token-2022':
+        specifier: 0.19.0
+        version: 0.19.0(@solana/kit@8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6))(@solana/sysvars@8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2))
       '@solana/kit':
         specifier: 8.4.0
         version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)

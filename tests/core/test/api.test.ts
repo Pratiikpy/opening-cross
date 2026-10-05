@@ -169,6 +169,26 @@ describe.skipIf(!process.env.DATABASE_URL)('API', () => {
     await db.end();
   }, 60_000);
 
+  it('creates a minting cross with one issuer signature that also hands over the mint authority', async () => {
+    const { db } = await freshDb();
+    const w = await World.create();
+    const app = await buildServer({ db, account: async (a) => { const x = w.h.svm.getAccount(a); return x.exists ? { data: x.data, owner: x.programAddress } : null; }, lifetime: async () => ({ blockhash: w.h.svm.latestBlockhash() as never, lastValidBlockHeight: 1_000_000n }) });
+    const base = await w.h.mint(w.creator, 6); // the issuer holds the mint authority
+    const r = await app.inject({ method: 'POST', url: '/v1/tx/create-cross', payload: {
+      creator: w.creator.address, baseMint: base, quoteMint: w.quoteMint, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+      crossId: '5', kind: 'launch', supplyMode: 'mint', disclosure: 'open', minPrice: '1000000', tick: '100000', ticks: 20, priceScale: '1000000',
+      openTs: T0.toString(), closeTs: (T0 + 100n).toString(), revealEndTs: (T0 + 100n).toString(), integrator: w.integrator.address,
+      shards: 1, maxOrders: 16, proceedsTo: w.creator.address, schedule: [{ price: '1200000', quantity: '1000000000' }],
+    } });
+    expect(r.statusCode).toBe(200);
+    const body = JSON.parse(r.body) as { cross: string; transactions: { transaction: string }[] };
+    for (const t of body.transactions) await w.h.sendWire(t.transaction, [w.creator]);
+    expect(w.h.mintInfo(base).mintAuthority).toEqual({ __option: 'Some', value: body.cross });
+    expect(w.view(body.cross as never).data.supplyMode).toBe(1);
+    await app.close();
+    await db.end();
+  });
+
   it('refuses a sealed order without a salt, and a stream filter that is not an address', async () => {
     const { db } = await freshDb();
     const w = await World.create();

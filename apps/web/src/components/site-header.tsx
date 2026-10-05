@@ -5,6 +5,7 @@ import { WalletButton } from './wallet-button';
 
 export const NAV = [
   { href: '/crosses', label: 'Crosses' },
+  { href: '/issue', label: 'Open a cross' },
   { href: '/#how', label: 'How it works' },
   { href: '/#proof', label: 'Proof' },
   { href: '/#issuers', label: 'Issuers' },

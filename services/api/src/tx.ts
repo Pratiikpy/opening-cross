@@ -28,6 +28,7 @@ import {
   getOrderDecoder,
   orderAddress,
 } from '@opening-cross/sdk';
+import { AuthorityType, getSetAuthorityInstruction } from '@solana-program/token-2022';
 
 export type Lifetime = { blockhash: Blockhash; lastValidBlockHeight: bigint };
 export type UnsignedTx = { transaction: string; signers: Address[] };
@@ -97,7 +98,13 @@ export async function finalizeTx(cross: CrossView, payer: Address, lt: Lifetime)
 
 export async function createCrossTxs(input: Omit<Parameters<typeof buildCreateCross>[0], 'creator'> & { creator: Address }, lt: Lifetime) {
   const { cross, create, shards } = await buildCreateCross({ ...input, creator: createNoopSigner(input.creator) });
-  return { cross, transactions: [compile(input.creator, [create], lt), ...shards.map((s) => compile(input.creator, [s], lt))] };
+  // A minting cross must own its base mint's mint authority. Hand it over in the same transaction
+  // as the create, signed by the issuer who holds it now, so the issuer signs once.
+  const handover: Instruction[] =
+    Number(input.supplyMode) === 1 && input.baseMint
+      ? [getSetAuthorityInstruction({ owned: input.baseMint, owner: createNoopSigner(input.creator), authorityType: AuthorityType.MintTokens, newAuthority: cross }, { programAddress: input.baseTokenProgram })]
+      : [];
+  return { cross, transactions: [compile(input.creator, [...handover, create], lt), ...shards.map((s) => compile(input.creator, [s], lt))] };
 }
 
 export { OrderSide };

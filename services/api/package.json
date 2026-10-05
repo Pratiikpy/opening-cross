@@ -19,6 +19,7 @@
     "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
+    "@solana-program/token-2022": "0.19.0",
     "@solana/kit": "8.4.0",
     "fastify": "5.12.5",
     "pg": "^8.23.1"
