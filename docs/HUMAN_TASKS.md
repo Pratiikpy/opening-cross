@@ -12,3 +12,4 @@ Steps only a founder can take (legal, money, identity, accounts, outreach, on-ca
 | H6 | Engage and pay auditors | Request quotes from two Solana auditors once L1 is ready. | L2, L4 | OPEN |
 | H7 | Accounts and domains | Buy the domain; create X account; Apple/Google developer accounts; paid RPC with Yellowstone gRPC (e.g. Helius/Triton) — share API keys via `.secrets/`, never chat. | W2 hosting, D1 at scale, MO2 store release | OPEN |
 | H8 | Users and issuers | Recruit 5–10 named external testers and one first issuer for L6. | L6, traction | OPEN |
+| H9 | Meteora Token Badge for gated mints | Ask Meteora (Discord dev channel / Telegram @meteora_dev) to issue DAMM v2 Token Badges for our gated (Default Account State) mints, citing ADR-0004 and the DP8 evidence. | Gated assets graduating to DAMM v2 | OPEN |

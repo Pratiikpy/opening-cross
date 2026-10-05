@@ -1,23 +1,11 @@
 // Devnet proof for the DBC continuation design (ROADMAP DP1, DP2, DP4, DP5, DP6).
 //
 // Sends real devnet transactions against Meteora's deployed DBC and DAMM v2 programs and our
-// deployed cross_hook program, asserts each outcome from chain state, and writes the
+// deployed cross_gate program, asserts each outcome from chain state, and writes the
 // signatures to docs/evidence/DP-dbc-hook.md.
 //
 //   RPC_URL=<devnet rpc> pnpm --filter @opening-cross/devnet-proofs dp:dbc
-import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SendTransactionError,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-  sendAndConfirmTransaction,
-} from '@solana/web3.js';
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import {
   AuthorityType,
   NATIVE_MINT,
@@ -49,67 +37,34 @@ import {
   deriveDbcPoolAddress,
   deriveDbcPoolAuthority,
 } from '@meteora-ag/dynamic-bonding-curve-sdk';
-import { type Address, type Instruction, AccountRole, address, createNoopSigner } from '@solana/kit';
+import { type Address, createNoopSigner } from '@solana/kit';
 import {
-  CROSS_HOOK_PROGRAM_ADDRESS,
+  CROSS_GATE_PROGRAM_ADDRESS,
   Mode,
+  findConfigPda,
   findExtraMetasPda,
-  findHookConfigPda,
+  getCreateConfigInstruction,
   getGrantPassInstruction,
-  getInitializeInstruction,
+  getInitHookMetasInstruction,
   getSetLockInstruction,
-} from '@opening-cross/cross-hook-client';
+} from '@opening-cross/cross-gate-client';
 
-const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const RPC = process.env.RPC_URL ?? 'https://api.devnet.solana.com';
-const connection = new Connection(RPC, 'confirmed');
+import { Evidence, RPC, type Step, connection, expectFailure, kitAddr, operator, send, toLegacy } from './lib.js';
+
 const dbc = new DynamicBondingCurveClient(connection, 'confirmed');
-const HOOK = new PublicKey(CROSS_HOOK_PROGRAM_ADDRESS);
+const HOOK = new PublicKey(CROSS_GATE_PROGRAM_ADDRESS);
 
-const partner = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(`${ROOT}.keys/opening-bell-devnet.json`, 'utf8'))));
+const partner = operator;
 const holder = Keypair.generate(); // has a pass
 const outsider = Keypair.generate(); // no pass
 
-type Step = { id: string; claim: string; result: 'PASS' | 'FAIL'; signature?: string; detail: string };
-const steps: Step[] = [];
-const record = (s: Step) => {
-  steps.push(s);
-  console.log(`${s.result} ${s.id}: ${s.claim}${s.signature ? ` (${s.signature})` : ''} — ${s.detail}`);
-};
+const ev = new Evidence('DP-dbc-hook.md', 'Devnet proof — DBC continuation with cross_gate (DP1, DP2, DP4, DP5, DP6)', [
+  'Script `tests/devnet/src/dbc-hook-proof.ts` · findings in `DP-dbc-hook-findings.md`',
+  `Programs: DBC \`dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN\`, DAMM v2 \`cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG\`, cross_gate \`${CROSS_GATE_PROGRAM_ADDRESS}\``,
+]);
+const record = (s: Step) => ev.record(s);
 
 // ---------- helpers ----------
-
-/** Converts a @solana/kit instruction into a web3.js v1 instruction (the DBC SDK is v1-based). */
-function toLegacy(ix: Instruction): TransactionInstruction {
-  return new TransactionInstruction({
-    programId: new PublicKey(ix.programAddress),
-    keys: (ix.accounts ?? []).map((a) => ({
-      pubkey: new PublicKey(a.address),
-      isSigner: a.role === AccountRole.READONLY_SIGNER || a.role === AccountRole.WRITABLE_SIGNER,
-      isWritable: a.role === AccountRole.WRITABLE || a.role === AccountRole.WRITABLE_SIGNER,
-    })),
-    data: Buffer.from(ix.data ?? new Uint8Array()),
-  });
-}
-const kitAddr = (k: PublicKey): Address => address(k.toBase58());
-
-async function send(tx: Transaction, signers: Keypair[]): Promise<string> {
-  tx.feePayer ??= signers[0]!.publicKey;
-  return sendAndConfirmTransaction(connection, tx, signers, { commitment: 'confirmed' });
-}
-
-/** Sends a transaction that must fail; returns the program logs proving why. */
-async function expectFailure(tx: Transaction, signers: Keypair[], mustContain: string): Promise<string> {
-  try {
-    const sig = await send(tx, signers);
-    throw new Error(`expected failure but landed: ${sig}`);
-  } catch (e) {
-    const logs = e instanceof SendTransactionError ? (await e.getLogs(connection)) ?? [] : [];
-    const text = `${String(e)}\n${logs.join('\n')}`;
-    if (!text.includes(mustContain)) throw new Error(`failed for the wrong reason (wanted "${mustContain}"):\n${text}`);
-    return logs.find((l) => l.includes(mustContain)) ?? mustContain;
-  }
-}
 
 async function balance(owner: PublicKey, mint: PublicKey): Promise<bigint> {
   const ata = getAssociatedTokenAddressSync(mint, owner, true, TOKEN_2022_PROGRAM_ID);
@@ -260,17 +215,18 @@ async function main() {
   const mintInfo = await getMint(connection, mint, 'confirmed', TOKEN_2022_PROGRAM_ID);
   const hookExt = getTransferHook(mintInfo);
   const authorityOk = mintInfo.mintAuthority?.equals(partner.publicKey) && hookExt?.programId.equals(HOOK);
-  record({ id: 'DP1a', claim: 'after pool creation the partner holds mint authority and the mint points at cross_hook', result: authorityOk ? 'PASS' : 'FAIL', signature: poolSig, detail: `mint ${mint.toBase58()}, pool ${pool.toBase58()}, mintAuthority ${mintInfo.mintAuthority?.toBase58()}, hook ${hookExt?.programId.toBase58()}` });
+  record({ id: 'DP1a', claim: 'after pool creation the partner holds mint authority and the mint points at cross_gate', result: authorityOk ? 'PASS' : 'FAIL', signature: poolSig, detail: `mint ${mint.toBase58()}, pool ${pool.toBase58()}, mintAuthority ${mintInfo.mintAuthority?.toBase58()}, hook ${hookExt?.programId.toBase58()}` });
 
-  // 3. Initialize cross_hook (allowlist mode), passes for the DBC pool authority and the holder.
-  const [hookConfig] = await findHookConfigPda({ mint: kitAddr(mint) });
+  // 3. Initialize cross_gate (allowlist mode), passes for the DBC pool authority and the holder.
+  const [hookConfig] = await findConfigPda({ mint: kitAddr(mint) });
   const [extraMetas] = await findExtraMetasPda({ mint: kitAddr(mint) });
   const partnerSigner = createNoopSigner(kitAddr(partner.publicKey));
   const pass = (owner: PublicKey) =>
-    getGrantPassInstruction({ authority: partnerSigner, hookConfig, pass: pdaPass(mint, owner), owner: kitAddr(owner) });
+    getGrantPassInstruction({ authority: partnerSigner, config: hookConfig, pass: pdaPass(mint, owner), owner: kitAddr(owner) });
   const initSig = await send(
     new Transaction().add(
-      toLegacy(getInitializeInstruction({ payer: partnerSigner, mintAuthority: partnerSigner, mint: kitAddr(mint), hookConfig, extraMetas, authority: kitAddr(partner.publicKey), mode: Mode.Allowlist })),
+      toLegacy(getCreateConfigInstruction({ payer: partnerSigner, mintAuthority: partnerSigner, mint: kitAddr(mint), config: hookConfig, authority: kitAddr(partner.publicKey), mode: Mode.Allowlist })),
+      toLegacy(getInitHookMetasInstruction({ payer: partnerSigner, authority: partnerSigner, mint: kitAddr(mint), config: hookConfig, extraMetas })),
       toLegacy(pass(deriveDbcPoolAuthority())),
       toLegacy(pass(holder.publicKey)),
       createAssociatedTokenAccountIdempotentInstruction(partner.publicKey, getAssociatedTokenAddressSync(mint, holder.publicKey, false, TOKEN_2022_PROGRAM_ID), holder.publicKey, mint, TOKEN_2022_PROGRAM_ID),
@@ -278,7 +234,7 @@ async function main() {
     ),
     [partner],
   );
-  record({ id: 'hook-init', claim: 'cross_hook initialized by the mint authority; passes granted to DBC pool authority and holder', result: 'PASS', signature: initSig, detail: `hookConfig ${hookConfig}, extraMetas ${extraMetas}` });
+  record({ id: 'hook-init', claim: 'cross_gate initialized by the mint authority; passes granted to DBC pool authority and holder', result: 'PASS', signature: initSig, detail: `hookConfig ${hookConfig}, extraMetas ${extraMetas}` });
 
   // 4. DP1/DP2: mint outside the curve while the pool is pre-bonding.
   const before = await poolState(pool);
@@ -317,7 +273,7 @@ async function main() {
   const held = await balance(holder.publicKey, mint);
   const lockAmount = held - 1_000n * 1_000_000n;
   const lockSig = await send(
-    new Transaction().add(toLegacy(getSetLockInstruction({ authority: partnerSigner, hookConfig, lock: pdaLock(mint, holder.publicKey), owner: kitAddr(holder.publicKey), amount: lockAmount, unlockTs: BigInt(Math.floor(Date.now() / 1000) + 3600) }))),
+    new Transaction().add(toLegacy(getSetLockInstruction({ authority: partnerSigner, config: hookConfig, lock: pdaLock(mint, holder.publicKey), owner: kitAddr(holder.publicKey), amount: lockAmount, unlockTs: BigInt(Math.floor(Date.now() / 1000) + 3600) }))),
     [partner],
   );
   record({ id: 'lock-set', claim: 'lock set on holder', result: 'PASS', signature: lockSig, detail: `locked ${lockAmount} of ${held}` });
@@ -383,24 +339,4 @@ async function transferTx(from: Keypair, to: PublicKey, mint: PublicKey, amount:
   return new Transaction().add(ix);
 }
 
-function writeEvidence(error?: unknown) {
-  const ok = !error && steps.every((s) => s.result === 'PASS');
-  const lines = [
-    '# Devnet proof — DBC continuation with cross_hook (DP1, DP2, DP4, DP5, DP6)',
-    '',
-    `Run: ${new Date().toISOString()} · RPC ${RPC} · script \`tests/devnet/src/dbc-hook-proof.ts\``,
-    `Programs: DBC \`dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN\`, DAMM v2 \`cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG\`, cross_hook \`${HOOK.toBase58()}\``,
-    '',
-    `Overall: **${ok ? 'PASS' : 'FAIL'}**`,
-    '',
-    '| Step | Claim | Result | Transaction | Detail |',
-    '|---|---|---|---|---|',
-    ...steps.map((s) => `| ${s.id} | ${s.claim} | ${s.result} | ${s.signature ? `[${s.signature.slice(0, 8)}…](https://explorer.solana.com/tx/${s.signature}?cluster=devnet)` : '—'} | ${s.detail.replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`),
-    ...(error ? ['', '## Error', '', '```', String(error instanceof Error ? error.stack : error), '```'] : []),
-    '',
-  ];
-  writeFileSync(`${ROOT}docs/evidence/DP-dbc-hook.md`, lines.join('\n'));
-  console.log(`evidence written (${ok ? 'PASS' : 'FAIL'})`);
-}
-
-main().then(() => writeEvidence(), (e) => { console.error(e); writeEvidence(e); process.exitCode = 1; });
+main().then(() => ev.write(), (e) => { console.error(e); ev.write(e); });

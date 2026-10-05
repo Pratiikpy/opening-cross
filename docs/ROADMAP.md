@@ -23,7 +23,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | DP5 | Transfer hook invoked on every DBC swap path | Ineligible wallet's swap fails, eligible passes | Two wallets, both swap directions | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
 | DP6 | Migration with hook-locked balances | DBC → DAMM v2 migration succeeds with locked holders | Devnet migration run | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
 | DP7 | Wallets and aggregators handle hooked mints | Phantom/Backpack display; Jupiter routing recorded | Manual wallet check + Jupiter API query | TODO | |
-| DP8 | Token ACL gating after graduation | Blocked wallet fails, allowed wallet passes | Devnet Token ACL mint + two wallets | TODO | |
+| DP8 | Token ACL gating after graduation | Blocked wallet fails, allowed wallet passes | Devnet Token ACL mint + two wallets | DONE | [`DP8-token-acl.md`](evidence/DP8-token-acl.md) 11/11 PASS on mints we create; NO-GO for DBC-created mints (no freeze authority / DAS) — handled by ADR-0004 |
 | DP9 | Arcium 1k-bid benchmark | Cost/bid, latency, failure rate recorded; only aggregate revealed | Devnet MXE run with 1,000 bids | TODO | |
 | DP10 | Reopen-cross novelty evidence | Documented search of Jupiter, Ondo, Kraken, xStocks, Backpack | Sources cited with dates | TODO | |
 | DP11 | Presale vault partner-mint path | Base supply minted by partner authority before revoke | Devnet run | TODO | |
@@ -40,7 +40,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | C2 | `cross_core` program: escrow, create, place/cancel, commit-reveal, close, sharded clear, allocation root, claim, refund | All invariants in ENGINEERING_PRINCIPLES §3.2 hold under fuzzing | LiteSVM unit + invariant + adversarial suites; devnet end-to-end | TODO | |
 | C3 | Print guards and no-print fallback | Thin, imbalanced or oracle-divergent crosses do not print; refunds succeed | Adversarial tests | TODO | |
 | C4 | `cross_fees`: per-cross fee snapshot and split | No fee on bids/cancels/refunds; protocol ≤ 20%; integrator 0–300 bps | Unit + property tests | TODO | |
-| C5 | `cross_gate`: SAS credential, allowlist-Merkle, open | Gated wallet blocked, credentialed wallet passes | Devnet with real SAS attestation | TODO | |
+| C5 | `cross_gate`: SAS credential, allowlist-Merkle, open | Gated wallet blocked, credentialed wallet passes | Devnet with real SAS attestation | IN PROGRESS | `programs/cross_gate` deployed: passes + locks as hook and Token ACL gate (DP5, DP8 evidence); SAS-credential pass issuance and Merkle allowlist still to build |
 | C6 | `cross_calendar`: UTC calendar, oracle-set registry, timelocked admin | Timelock enforced; crosses scheduled from calendar | Unit + devnet | TODO | |
 
 ## M3 — Settlement adapters

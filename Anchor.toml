@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-cross_hook = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 
 [programs.devnet]
-cross_hook = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 
 [provider]
 cluster = "devnet"

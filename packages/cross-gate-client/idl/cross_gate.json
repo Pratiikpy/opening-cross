@@ -1,0 +1,1180 @@
+{
+  "address": "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr",
+  "metadata": {
+    "name": "cross_gate",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross gate: allowlist passes and time locks, enforced as a Token-2022 transfer hook and as a Token ACL (sRFC-37) gate.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "can_freeze_permissionless",
+      "docs": [
+        "Token ACL: may anyone freeze `owner`'s account? Yes if the mint is allowlisted and the",
+        "owner holds no pass (for example after the pass was revoked)."
+      ],
+      "discriminator": [
+        214,
+        141,
+        109,
+        75,
+        248,
+        1,
+        45,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "caller"
+        },
+        {
+          "name": "token_account"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "flag"
+        },
+        {
+          "name": "extra_metas"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pass"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "can_thaw_permissionless",
+      "docs": [
+        "Token ACL: may `owner`'s frozen account be thawed without the issuer? Yes if the mint is",
+        "open or the owner holds a pass."
+      ],
+      "discriminator": [
+        8,
+        175,
+        169,
+        129,
+        137,
+        74,
+        61,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "caller"
+        },
+        {
+          "name": "token_account"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "flag"
+        },
+        {
+          "name": "extra_metas"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pass"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_lock",
+      "docs": [
+        "Closes an expired lock. Anyone may call; rent returns to the gate authority."
+      ],
+      "discriminator": [
+        58,
+        254,
+        183,
+        130,
+        151,
+        238,
+        95,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "lock",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_config",
+      "docs": [
+        "Creates the gate configuration for `mint`. Must be signed by the mint authority."
+      ],
+      "discriminator": [
+        201,
+        207,
+        243,
+        114,
+        75,
+        111,
+        47,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint_authority",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "mode",
+          "type": {
+            "defined": {
+              "name": "Mode"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "execute",
+      "docs": [
+        "Transfer hook: called by Token-2022 during every transfer."
+      ],
+      "discriminator": [
+        105,
+        37,
+        101,
+        197,
+        75,
+        251,
+        102,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "source"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "owner_delegate"
+        },
+        {
+          "name": "extra_metas",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination_pass"
+        },
+        {
+          "name": "source_lock"
+        }
+      ],
+      "args": [
+        {
+          "name": "_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "grant_pass",
+      "docs": [
+        "Grants `owner` a pass for the mint."
+      ],
+      "discriminator": [
+        8,
+        6,
+        77,
+        61,
+        94,
+        6,
+        202,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "init_gate_metas",
+      "docs": [
+        "Writes the Token ACL thaw and freeze extra-account-meta lists."
+      ],
+      "discriminator": [
+        40,
+        155,
+        78,
+        164,
+        76,
+        37,
+        179,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "thaw_metas",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  97,
+                  119,
+                  95,
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  95,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "freeze_metas",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  114,
+                  101,
+                  101,
+                  122,
+                  101,
+                  95,
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  95,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_hook_metas",
+      "docs": [
+        "Writes the transfer-hook extra-account-meta list. The mint's hook must point here."
+      ],
+      "discriminator": [
+        43,
+        34,
+        13,
+        49,
+        167,
+        88,
+        235,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "extra_metas",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_pass",
+      "docs": [
+        "Revokes a pass and returns its rent to the authority."
+      ],
+      "discriminator": [
+        8,
+        206,
+        136,
+        100,
+        178,
+        219,
+        168,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "pass",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_authority",
+      "discriminator": [
+        133,
+        250,
+        37,
+        21,
+        110,
+        163,
+        26,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_lock",
+      "docs": [
+        "Creates or strengthens a lock. While a lock is active its amount can only rise and its",
+        "unlock time can only move later; once expired it may be replaced freely."
+      ],
+      "discriminator": [
+        74,
+        45,
+        137,
+        132,
+        11,
+        86,
+        213,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "lock",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "unlock_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "set_mode",
+      "discriminator": [
+        159,
+        47,
+        147,
+        247,
+        85,
+        53,
+        84,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "mode",
+          "type": {
+            "defined": {
+              "name": "Mode"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GateConfig",
+      "discriminator": [
+        161,
+        200,
+        10,
+        61,
+        185,
+        120,
+        92,
+        21
+      ]
+    },
+    {
+      "name": "Lock",
+      "discriminator": [
+        8,
+        255,
+        36,
+        202,
+        210,
+        22,
+        57,
+        137
+      ]
+    },
+    {
+      "name": "Pass",
+      "discriminator": [
+        40,
+        247,
+        140,
+        113,
+        56,
+        14,
+        57,
+        44
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "ConfigCreated",
+      "discriminator": [
+        195,
+        73,
+        104,
+        161,
+        166,
+        245,
+        4,
+        120
+      ]
+    },
+    {
+      "name": "LockChanged",
+      "discriminator": [
+        83,
+        132,
+        93,
+        50,
+        120,
+        155,
+        81,
+        252
+      ]
+    },
+    {
+      "name": "ModeChanged",
+      "discriminator": [
+        149,
+        123,
+        78,
+        29,
+        237,
+        72,
+        67,
+        229
+      ]
+    },
+    {
+      "name": "PassChanged",
+      "discriminator": [
+        9,
+        101,
+        31,
+        236,
+        109,
+        237,
+        92,
+        174
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotTransferring",
+      "msg": "Hook executed outside a Token-2022 transfer"
+    },
+    {
+      "code": 6001,
+      "name": "RecipientNotAllowed",
+      "msg": "Owner does not hold a pass for this token"
+    },
+    {
+      "code": 6002,
+      "name": "Locked",
+      "msg": "Transfer would take the balance below an active lock"
+    },
+    {
+      "code": 6003,
+      "name": "NotMintAuthority",
+      "msg": "Signer is not the mint authority"
+    },
+    {
+      "code": 6004,
+      "name": "WrongHookProgram",
+      "msg": "Mint's transfer hook does not point at this program"
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Signer is not the gate authority"
+    },
+    {
+      "code": 6006,
+      "name": "LockCannotWeaken",
+      "msg": "An active lock can only be raised or extended"
+    },
+    {
+      "code": 6007,
+      "name": "LockActive",
+      "msg": "Lock has not expired"
+    },
+    {
+      "code": 6008,
+      "name": "NotCalledByTokenAcl",
+      "msg": "Gate check was not invoked by Token ACL"
+    },
+    {
+      "code": 6009,
+      "name": "WrongMetaList",
+      "msg": "Extra-account-meta list is not this mint's thaw or freeze list"
+    },
+    {
+      "code": 6010,
+      "name": "OwnerAllowed",
+      "msg": "Owner holds a pass; permissionless freeze is not allowed"
+    }
+  ],
+  "types": [
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "Mode"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GateConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "Mode"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lock",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "unlock_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "unlock_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Mode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Allowlist"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ModeChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "Mode"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PassChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "granted",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ]
+}
