@@ -199,9 +199,18 @@ importers:
       '@solana/kit':
         specifier: 8.4.0
         version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/web3.js':
+        specifier: 1.98.4
+        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@types/bn.js':
+        specifier: ^5.2.0
+        version: 5.2.0
       '@types/node':
         specifier: ^22.20.5
         version: 22.20.5
+      bn.js:
+        specifier: 5.2.2
+        version: 5.2.2
       litesvm:
         specifier: 1.5.0
         version: 1.5.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)

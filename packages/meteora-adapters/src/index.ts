@@ -190,3 +190,4 @@ export async function buildBindDbcMint(cross: CrossView, payer: TransactionSigne
   });
 }
 export * from './damm.js';
+export * from './dlmm.js';

@@ -21,6 +21,7 @@ declare_program!(dynamic_bonding_curve);
 declare_program!(cross_core);
 declare_program!(cross_gate);
 declare_program!(cp_amm);
+declare_program!(lb_clmm);
 
 use cross_core::accounts::Cross;
 
@@ -303,6 +304,77 @@ pub mod cross_settle {
         });
         Ok(())
     }
+    /// DLMM adapter: opens a Meteora DLMM pair for the cross's market whose active bin is the
+    /// bin nearest P* (within half a bin step). Token X is the base asset and token Y the quote,
+    /// so a bin's price (Y per X) is in the cross's units. Liquidity is added afterwards by the
+    /// issuer with DLMM's own instructions; adding liquidity cannot move the active bin.
+    pub fn open_dlmm_pair(
+        ctx: Context<OpenDlmmPair>,
+        params: lb_clmm::types::CustomizableParams,
+    ) -> Result<()> {
+        let cross = read_cross(&ctx.accounts.cross)?;
+        require_keys_eq!(
+            cross.creator,
+            ctx.accounts.creator.key(),
+            SettleError::NotCreator
+        );
+        require!(cross.base_bound, SettleError::PoolNotOpened);
+        require_keys_eq!(
+            cross.base_mint,
+            ctx.accounts.base_mint.key(),
+            SettleError::WrongMint
+        );
+        require_keys_eq!(
+            cross.quote_mint,
+            ctx.accounts.quote_mint.key(),
+            SettleError::WrongMint
+        );
+        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+        require!(
+            bin_contains(
+                params.active_id,
+                params.bin_step,
+                clearing.price,
+                cross.price_scale
+            )
+            .ok_or(SettleError::Overflow)?,
+            SettleError::StartPriceNotClearingPrice
+        );
+        let (active_id, bin_step) = (params.active_id, params.bin_step);
+        lb_clmm::cpi::initialize_customizable_permissionless_lb_pair2(
+            CpiContext::new(
+                ctx.accounts.dlmm_program.key(),
+                lb_clmm::cpi::accounts::InitializeCustomizablePermissionlessLbPair2 {
+                    lb_pair: ctx.accounts.lb_pair.to_account_info(),
+                    bin_array_bitmap_extension: None,
+                    token_mint_x: ctx.accounts.base_mint.to_account_info(),
+                    token_mint_y: ctx.accounts.quote_mint.to_account_info(),
+                    reserve_x: ctx.accounts.reserve_x.to_account_info(),
+                    reserve_y: ctx.accounts.reserve_y.to_account_info(),
+                    oracle: ctx.accounts.oracle.to_account_info(),
+                    user_token_x: ctx.accounts.creator_base.to_account_info(),
+                    funder: ctx.accounts.creator.to_account_info(),
+                    token_badge_x: None,
+                    token_badge_y: None,
+                    token_program_x: ctx.accounts.base_token_program.to_account_info(),
+                    token_program_y: ctx.accounts.quote_token_program.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    user_token_y: ctx.accounts.creator_quote.to_account_info(),
+                    event_authority: ctx.accounts.dlmm_event_authority.to_account_info(),
+                    program: ctx.accounts.dlmm_program.to_account_info(),
+                },
+            ),
+            params,
+        )?;
+        emit!(DlmmPairOpened {
+            cross: ctx.accounts.cross.key(),
+            lb_pair: ctx.accounts.lb_pair.key(),
+            clearing_price: clearing.price,
+            active_id,
+            bin_step
+        });
+        Ok(())
+    }
 }
 
 /// `floor(sqrt(price / price_scale) · 2⁶⁴)` — DBC's Q64.64 square-root price for a price given
@@ -330,6 +402,46 @@ fn isqrt(n: ruint::aliases::U256) -> ruint::aliases::U256 {
         }
         x = y;
     }
+}
+
+/// DLMM bin price `(1 + bin_step / 10⁴)^id` in Q64.64, by exact integer exponentiation.
+pub fn bin_price_q64(id: i32, bin_step: u16) -> Option<ruint::aliases::U256> {
+    use ruint::aliases::U256;
+    let one = U256::from(1u8) << 64usize;
+    let base = one + (U256::from(bin_step) << 64usize) / U256::from(10_000u32);
+    let mut result = one;
+    let mut b = base;
+    let mut e = id.unsigned_abs();
+    while e > 0 {
+        if e & 1 == 1 {
+            result = (result * b) >> 64usize;
+        }
+        e >>= 1;
+        if e > 0 {
+            b = (b * b) >> 64usize;
+            if b.bit_len() > 192 {
+                return None;
+            }
+        }
+    }
+    if id < 0 {
+        result = (one << 64usize) / result;
+    }
+    Some(result)
+}
+
+/// `true` when P* lies within half a bin step of bin `id`'s price.
+pub fn bin_contains(id: i32, bin_step: u16, price: u64, price_scale: u64) -> Option<bool> {
+    use ruint::aliases::U256;
+    if price_scale == 0 || bin_step == 0 {
+        return None;
+    }
+    let bin = bin_price_q64(id, bin_step)?;
+    let p = (U256::from(price) << 64usize) / U256::from(price_scale);
+    let half = U256::from(20_000u32);
+    let lower = bin * (half - U256::from(bin_step)) / half;
+    let upper = bin * (half + U256::from(bin_step)) / half;
+    Some(p >= lower && p <= upper)
 }
 
 fn read_cross(info: &UncheckedAccount) -> Result<Cross> {
@@ -466,6 +578,49 @@ pub struct SeedDammV2<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct OpenDlmmPair<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    /// CHECK: owner and contents checked in `read_cross`.
+    pub cross: UncheckedAccount<'info>,
+    /// CHECK: DLMM PDA, validated by DLMM.
+    #[account(mut)]
+    pub lb_pair: UncheckedAccount<'info>,
+    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
+    /// CHECK: DLMM PDA, validated by DLMM.
+    #[account(mut)]
+    pub reserve_x: UncheckedAccount<'info>,
+    /// CHECK: DLMM PDA, validated by DLMM.
+    #[account(mut)]
+    pub reserve_y: UncheckedAccount<'info>,
+    /// CHECK: DLMM PDA, validated by DLMM.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: creator's base account, validated by DLMM.
+    pub creator_base: UncheckedAccount<'info>,
+    /// CHECK: creator's quote account, validated by DLMM.
+    pub creator_quote: UncheckedAccount<'info>,
+    /// CHECK: DLMM's event authority, validated by DLMM.
+    pub dlmm_event_authority: UncheckedAccount<'info>,
+    /// CHECK: the DLMM program.
+    #[account(address = lb_clmm::ID)]
+    pub dlmm_program: UncheckedAccount<'info>,
+    pub base_token_program: Interface<'info, TokenInterface>,
+    pub quote_token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+}
+
+#[event]
+pub struct DlmmPairOpened {
+    pub cross: Pubkey,
+    pub lb_pair: Pubkey,
+    pub clearing_price: u64,
+    pub active_id: i32,
+    pub bin_step: u16,
+}
+
 #[event]
 pub struct DammV2Seeded {
     pub cross: Pubkey,
@@ -520,6 +675,24 @@ mod tests {
         let f = (v as f64) / 2f64.powi(64);
         assert!((f - 1.2f64.sqrt()).abs() < 1e-12);
         assert_eq!(sqrt_price_q64(1, 0), None);
+        // DLMM bins: id 0 = 1.0; bin step 25 bps -> id 1 = 1.0025.
+        use super::{bin_contains, bin_price_q64};
+        let one = ruint::aliases::U256::from(1u8) << 64usize;
+        assert_eq!(bin_price_q64(0, 25), Some(one));
+        assert_eq!(
+            bin_price_q64(1, 25),
+            Some(
+                one + (ruint::aliases::U256::from(25u8) << 64usize)
+                    / ruint::aliases::U256::from(10_000u32)
+            )
+        );
+        assert_eq!(bin_contains(0, 25, 1_000_000, 1_000_000), Some(true));
+        assert_eq!(bin_contains(0, 25, 1_001_000, 1_000_000), Some(true)); // +10 bps: inside half a bin
+        assert_eq!(bin_contains(0, 25, 1_002_000, 1_000_000), Some(false)); // +20 bps: outside
+                                                                            // 1.2 at bin step 10 bps: ln 1.2 / ln 1.001 = 182.4 -> bin 182
+        assert_eq!(bin_contains(182, 10, 1_200_000, 1_000_000), Some(true));
+        assert_eq!(bin_contains(183, 10, 1_200_000, 1_000_000), Some(false));
+        assert_eq!(bin_contains(-182, 10, 833_333, 1_000_000), Some(true));
         // floor property on awkward values
         for (p, sc) in [
             (3u64, 7u64),

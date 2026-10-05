@@ -5,5 +5,7 @@
   used; the program itself is called at its deployed address and never copied.
 - `cp_amm.json` — Meteora DAMM v2 (cp-amm) v0.2.5 IDL, copied from `@meteora-ag/cp-amm-sdk`
   (MIT licence, © Meteora). Interface only; the program is called at its deployed address.
+- `lb_clmm.json` — Meteora DLMM v0.12.0 IDL, copied from `@meteora-ag/dlmm` (ISC licence). Interface
+  only; the program is called at its deployed address.
 - `cross_core.json`, `cross_gate.json` â€” this repository's programs (regenerated with
   `anchor idl build`).

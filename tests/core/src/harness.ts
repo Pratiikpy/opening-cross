@@ -37,6 +37,7 @@ import { existsSync } from 'node:fs';
 import { address } from '@solana/kit';
 
 export const DBC_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_bonding_curve.so`;
+export const DLMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}lb_clmm.so`;
 export const DAMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}cp_amm.so`;
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -51,6 +52,7 @@ export class Harness {
     this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_settle.so`);
     // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
+    if (existsSync(DLMM_FIXTURE)) this.svm.addProgramFromFile(address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'), DLMM_FIXTURE);
     if (existsSync(DAMM_FIXTURE)) this.svm.addProgramFromFile(address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'), DAMM_FIXTURE);
     this.setTime(T0);
   }
@@ -154,5 +156,22 @@ export class TxError extends Error {
 
 export function salt(): Uint8Array {
   return new Uint8Array(randomBytes(32));
+}
+
+/** Converts a web3.js v1 instruction (from a vendor SDK or Anchor client) into a kit instruction,
+ *  attaching kit signers for any signer accounts. */
+export function fromLegacy(
+  ix: { programId: { toBase58(): string }; keys: { pubkey: { toBase58(): string }; isSigner: boolean; isWritable: boolean }[]; data: Uint8Array },
+  signers: Record<string, unknown> = {},
+): Instruction {
+  return {
+    programAddress: address(ix.programId.toBase58()),
+    accounts: ix.keys.map((k) => {
+      const a = address(k.pubkey.toBase58());
+      const role = k.isSigner ? (k.isWritable ? 3 : 2) : k.isWritable ? 1 : 0;
+      return signers[a] ? { address: a, role, signer: signers[a] } : { address: a, role };
+    }),
+    data: new Uint8Array(ix.data),
+  } as Instruction;
 }
 

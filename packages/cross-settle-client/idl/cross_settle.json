@@ -274,6 +274,90 @@
       ]
     },
     {
+      "name": "open_dlmm_pair",
+      "docs": [
+        "DLMM adapter: opens a Meteora DLMM pair for the cross's market whose active bin is the",
+        "bin nearest P* (within half a bin step). Token X is the base asset and token Y the quote,",
+        "so a bin's price (Y per X) is in the cross's units. Liquidity is added afterwards by the",
+        "issuer with DLMM's own instructions; adding liquidity cannot move the active bin."
+      ],
+      "discriminator": [
+        166,
+        194,
+        182,
+        98,
+        172,
+        176,
+        29,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "lb_pair",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "reserve_x",
+          "writable": true
+        },
+        {
+          "name": "reserve_y",
+          "writable": true
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "creator_base"
+        },
+        {
+          "name": "creator_quote"
+        },
+        {
+          "name": "dlmm_event_authority"
+        },
+        {
+          "name": "dlmm_program",
+          "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CustomizableParams"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "seed_damm_v2",
       "docs": [
         "DAMM v2 adapter: seeds a Meteora DAMM v2 pool for the cross's market at exactly P*.",
@@ -439,6 +523,19 @@
         205,
         225,
         165
+      ]
+    },
+    {
+      "name": "DlmmPairOpened",
+      "discriminator": [
+        90,
+        64,
+        105,
+        60,
+        182,
+        126,
+        130,
+        161
       ]
     }
   ],
@@ -661,6 +758,65 @@
       }
     },
     {
+      "name": "CustomizableParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "active_id",
+            "type": "i32"
+          },
+          {
+            "name": "bin_step",
+            "type": "u16"
+          },
+          {
+            "name": "base_factor",
+            "type": "u16"
+          },
+          {
+            "name": "activation_type",
+            "type": "u8"
+          },
+          {
+            "name": "has_alpha_vault",
+            "type": "bool"
+          },
+          {
+            "name": "activation_point",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "creator_pool_on_off_control",
+            "type": "bool"
+          },
+          {
+            "name": "base_fee_power_factor",
+            "type": "u8"
+          },
+          {
+            "name": "concrete_function_type",
+            "type": "u8"
+          },
+          {
+            "name": "collect_fee_mode",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                60
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "DammV2Seeded",
       "type": {
         "kind": "struct",
@@ -732,6 +888,34 @@
           {
             "name": "sqrt_start_price",
             "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DlmmPairOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "lb_pair",
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_price",
+            "type": "u64"
+          },
+          {
+            "name": "active_id",
+            "type": "i32"
+          },
+          {
+            "name": "bin_step",
+            "type": "u16"
           }
         ]
       }
