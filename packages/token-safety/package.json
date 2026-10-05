@@ -4,8 +4,8 @@
   "description": "Reads a mint's Token-2022 extensions and reports issuer powers that put pooled or escrowed balances at risk.",
   "license": "Apache-2.0",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

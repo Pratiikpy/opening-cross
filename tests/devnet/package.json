@@ -1,0 +1,24 @@
+{
+  "name": "@opening-cross/devnet-proofs",
+  "private": true,
+  "description": "Devnet proofs for the Meteora DBC design (docs/ROADMAP.md M1). Each run sends real devnet transactions and writes signatures to docs/evidence.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "dp:dbc": "tsx src/dbc-hook-proof.ts"
+  },
+  "dependencies": {
+    "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
+    "@opening-cross/cross-hook-client": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "@solana/spl-token": "0.4.14",
+    "@solana/web3.js": "1.98.4",
+    "bn.js": "5.2.2"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

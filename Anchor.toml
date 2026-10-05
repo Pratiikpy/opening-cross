@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "1.0.2"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+cross_hook = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+
+[programs.devnet]
+cross_hook = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+
+[provider]
+cluster = "devnet"
+wallet = ".keys/opening-bell-devnet.json"

@@ -16,12 +16,12 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| DP1 | Partner mints outside the DBC vault during pre-bonding | PDA mint authority mints to winner accounts before the curve is live; DBC accounting unaffected | Devnet script: create config + pool, mint, read pool state before/after | TODO | |
-| DP2 | Extra supply on a fixed-supply DBC config | Q\* minted beyond curve supply; migration math intact | Same pool driven to migration on devnet | TODO | |
+| DP1 | Partner mints outside the DBC vault during pre-bonding | PDA mint authority mints to winner accounts before the curve is live; DBC accounting unaffected | Devnet script: create config + pool, mint, read pool state before/after | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
+| DP2 | Extra supply on a fixed-supply DBC config | Q\* minted beyond curve supply; migration math intact | Same pool driven to migration on devnet | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
 | DP3 | Design (d) settlement atomic or safely resumable | Clear → config → mint → revoke within CU/account limits, or a locked resumable sequence | Measure CU and accounts per step on devnet | TODO | |
-| DP4 | Mint authority = None after allocation | `getMint` shows no authority after settlement | Read mint after DP3 run | TODO | |
-| DP5 | Transfer hook invoked on every DBC swap path | Ineligible wallet's swap fails, eligible passes | Two wallets, both swap directions | TODO | |
-| DP6 | Migration with hook-locked balances | DBC → DAMM v2 migration succeeds with locked holders | Devnet migration run | TODO | |
+| DP4 | Mint authority = None after allocation | `getMint` shows no authority after settlement | Read mint after DP3 run | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
+| DP5 | Transfer hook invoked on every DBC swap path | Ineligible wallet's swap fails, eligible passes | Two wallets, both swap directions | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
+| DP6 | Migration with hook-locked balances | DBC → DAMM v2 migration succeeds with locked holders | Devnet migration run | DONE | [`docs/evidence/DP-dbc-hook.md`](evidence/DP-dbc-hook.md) |
 | DP7 | Wallets and aggregators handle hooked mints | Phantom/Backpack display; Jupiter routing recorded | Manual wallet check + Jupiter API query | TODO | |
 | DP8 | Token ACL gating after graduation | Blocked wallet fails, allowed wallet passes | Devnet Token ACL mint + two wallets | TODO | |
 | DP9 | Arcium 1k-bid benchmark | Cost/bid, latency, failure rate recorded; only aggregate revealed | Devnet MXE run with 1,000 bids | TODO | |
