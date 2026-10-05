@@ -8,20 +8,29 @@ import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { ingestTransaction } from './ingest.js';
 import type { IndexerRpc as Rpc } from './rpc.js';
 
+/** Last cursor we warned about, so a node that keeps rejecting it logs once, not every poll. */
+let warnedCursor: string | undefined;
+
 export async function pollOnce(db: pg.Pool, rpc: Rpc, program: Address = CROSS_CORE_PROGRAM_ADDRESS, source = `rpc:${program}`): Promise<number> {
-  const { rows } = await db.query('SELECT last_signature FROM cursors WHERE source = $1', [source]);
+  const { rows } = await db.query('SELECT last_signature, last_slot FROM cursors WHERE source = $1', [source]);
   const until = (rows[0]?.last_signature ?? undefined) as Signature | undefined;
-  const pending: { signature: Signature; slot: bigint }[] = [];
-  let before: Signature | undefined;
-  for (;;) {
-    const page = await rpc.getSignaturesForAddress(program, { commitment: 'finalized', limit: 1000, ...(until && { until }), ...(before && { before }) }).send();
-    if (page.length === 0) break;
-    pending.push(...page.map((s) => ({ signature: s.signature, slot: s.slot })));
-    before = page.at(-1)!.signature;
-    if (page.length < 1000) break;
+  const lastSlot = rows[0]?.last_slot === undefined || rows[0]?.last_slot === null ? null : BigInt(rows[0].last_slot);
+  let pending: { signature: Signature; slot: bigint }[];
+  try {
+    pending = await listSince(rpc, program, until, null);
+  } catch (e) {
+    // The cursor signature is an optimisation, not a source of truth. If the node rejects it,
+    // page back by slot instead; ingestion is idempotent, so re-reading the cursor's slot is harmless.
+    if (!until || lastSlot === null) throw new Error(`getSignaturesForAddress failed: ${String(e)}`);
+    if (warnedCursor !== until) {
+      warnedCursor = until;
+      console.error(JSON.stringify({ at: new Date().toISOString(), warning: 'cursor signature rejected by getSignaturesForAddress(until); listing by slot', until, lastSlot: lastSlot.toString(), error: String(e) }));
+    }
+    pending = await listSince(rpc, program, undefined, lastSlot);
   }
   let applied = 0;
-  for (const s of pending.reverse()) {
+  pending.reverse();
+  for (const s of pending) {
     const tx = await fetchFinalized(rpc, s.signature);
     applied += await ingestTransaction(db, {
       signature: s.signature,
@@ -39,9 +48,26 @@ export async function pollOnce(db: pg.Pool, rpc: Rpc, program: Address = CROSS_C
   return applied;
 }
 
-/** The listing already reported the signature as finalized, so its outcome is final; some nodes
- *  still fail to return the body at `finalized` for a while (seen on solana-test-validator 4.0.2,
- *  where it persisted for minutes). Fall back to reading the same final transaction at `confirmed`. */
+/** Signatures newer than `until` (exclusive), or at or after `fromSlot`, newest first. */
+async function listSince(rpc: Rpc, program: Address, until: Signature | undefined, fromSlot: bigint | null) {
+  const out: { signature: Signature; slot: bigint }[] = [];
+  let before: Signature | undefined;
+  for (;;) {
+    const page = await rpc.getSignaturesForAddress(program, { commitment: 'finalized', limit: 1000, ...(until && { until }), ...(before && { before }) }).send();
+    if (page.length === 0) break;
+    for (const s of page) {
+      if (fromSlot !== null && s.slot < fromSlot) return out;
+      out.push({ signature: s.signature, slot: s.slot });
+    }
+    before = page.at(-1)!.signature;
+    if (page.length < 1000) break;
+  }
+  return out;
+}
+
+/** The listing already reported the signature as finalized, so its outcome is final. If the node
+ *  cannot return the body at `finalized`, read the same transaction at `confirmed`; if it cannot
+ *  return it at all, fail with the signature named so the operator can investigate. */
 async function fetchFinalized(rpc: Rpc, signature: Signature) {
   const opts = { maxSupportedTransactionVersion: 0, encoding: 'json' } as const;
   try {
@@ -50,8 +76,13 @@ async function fetchFinalized(rpc: Rpc, signature: Signature) {
   } catch {
     // fall through to the confirmed read
   }
-  const tx = await rpc.getTransaction(signature, { ...opts, commitment: 'confirmed' }).send();
-  if (!tx) throw new Error(`transaction ${signature} is listed as finalized but the node returns no body`);
+  const tx = await rpc
+    .getTransaction(signature, { ...opts, commitment: 'confirmed' })
+    .send()
+    .catch((e: unknown) => {
+      throw new Error(`getTransaction(${signature}) failed at finalized and confirmed: ${String(e)}`);
+    });
+  if (!tx) throw new Error(`getTransaction(${signature}) returned nothing at finalized or confirmed`);
   console.error(JSON.stringify({ at: new Date().toISOString(), warning: 'finalized body unavailable; read at confirmed', signature }));
   return tx;
 }
