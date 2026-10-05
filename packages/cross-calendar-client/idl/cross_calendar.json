@@ -1,0 +1,563 @@
+{
+  "address": "CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN",
+  "metadata": {
+    "name": "cross_calendar",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross exchange calendar: UTC sessions and approved oracle feeds, changed only through a timelock.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "apply_admin",
+      "discriminator": [
+        68,
+        223,
+        78,
+        51,
+        107,
+        68,
+        157,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "calendar",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "apply_update",
+      "docs": [
+        "Applies a proposal once its timelock has passed. Permissionless."
+      ],
+      "discriminator": [
+        76,
+        166,
+        20,
+        147,
+        108,
+        118,
+        174,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "calendar",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_update",
+      "discriminator": [
+        76,
+        229,
+        99,
+        195,
+        126,
+        138,
+        68,
+        247
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "calendar"
+          ]
+        },
+        {
+          "name": "calendar",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_calendar",
+      "discriminator": [
+        140,
+        70,
+        1,
+        99,
+        123,
+        36,
+        66,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "calendar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  108,
+                  101,
+                  110,
+                  100,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "timelock_secs",
+          "type": "i64"
+        },
+        {
+          "name": "sessions",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Session"
+              }
+            }
+          }
+        },
+        {
+          "name": "feeds",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose_admin",
+      "docs": [
+        "Admin handover is itself time-locked: it goes through the same proposal path by setting",
+        "`pending_admin`, applied after the timelock."
+      ],
+      "discriminator": [
+        121,
+        214,
+        199,
+        212,
+        87,
+        39,
+        117,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "calendar"
+          ]
+        },
+        {
+          "name": "calendar",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "propose_update",
+      "docs": [
+        "Proposes a new session list and feed set. Replaces any earlier proposal and restarts the",
+        "timelock."
+      ],
+      "discriminator": [
+        161,
+        223,
+        86,
+        204,
+        80,
+        199,
+        198,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "calendar"
+          ]
+        },
+        {
+          "name": "calendar",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "sessions",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Session"
+              }
+            }
+          }
+        },
+        {
+          "name": "feeds",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Calendar",
+      "discriminator": [
+        157,
+        240,
+        186,
+        57,
+        213,
+        147,
+        151,
+        46
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdminChanged",
+      "discriminator": [
+        232,
+        34,
+        31,
+        226,
+        62,
+        18,
+        19,
+        114
+      ]
+    },
+    {
+      "name": "CalendarUpdated",
+      "discriminator": [
+        141,
+        237,
+        106,
+        247,
+        70,
+        74,
+        71,
+        64
+      ]
+    },
+    {
+      "name": "UpdateCancelled",
+      "discriminator": [
+        172,
+        4,
+        36,
+        17,
+        169,
+        55,
+        211,
+        98
+      ]
+    },
+    {
+      "name": "UpdateProposed",
+      "discriminator": [
+        211,
+        4,
+        5,
+        105,
+        252,
+        120,
+        141,
+        30
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TimelockTooShort",
+      "msg": "Timelock must be at least seven days"
+    },
+    {
+      "code": 6001,
+      "name": "TooMany",
+      "msg": "Too many sessions or feeds"
+    },
+    {
+      "code": 6002,
+      "name": "BadSessions",
+      "msg": "Sessions must be increasing and must not overlap"
+    },
+    {
+      "code": 6003,
+      "name": "NothingPending",
+      "msg": "No pending update"
+    },
+    {
+      "code": 6004,
+      "name": "TimelockActive",
+      "msg": "Timelock has not passed"
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Signer is not the calendar admin"
+    },
+    {
+      "code": 6006,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AdminChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "calendar",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Calendar",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "timelock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "sessions",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Session"
+                }
+              }
+            }
+          },
+          {
+            "name": "feeds",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "pending",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingUpdate"
+                }
+              }
+            }
+          },
+          {
+            "name": "pending_admin",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingAdmin"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CalendarUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "calendar",
+            "type": "pubkey"
+          },
+          {
+            "name": "sessions",
+            "type": "u32"
+          },
+          {
+            "name": "feeds",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingAdmin",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "eta",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sessions",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Session"
+                }
+              }
+            }
+          },
+          {
+            "name": "feeds",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "eta",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Session",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "start_ts",
+            "docs": [
+              "UTC instant the market (re)opens — reopen crosses close here."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "end_ts",
+            "docs": [
+              "UTC instant the session ends."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "calendar",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "calendar",
+            "type": "pubkey"
+          },
+          {
+            "name": "eta",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

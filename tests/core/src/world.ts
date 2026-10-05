@@ -44,6 +44,8 @@ export type CrossOptions = {
   gateMint?: Address | null;
   schedule?: { price: bigint; quantity: bigint }[];
   settler?: Address | null;
+  calendar?: Address | null;
+  closeTs?: bigint;
   oracle?: { feedId: Uint8Array; maxDivergenceBps: number; maxStalenessSecs: number } | null;
   settleDeadlineTs?: bigint;
 };
@@ -114,8 +116,8 @@ export class World {
       ticks: o.ticks ?? 20,
       priceScale: SCALE,
       openTs: T0,
-      closeTs: T0 + 100n,
-      revealEndTs: T0 + 200n,
+      closeTs: o.closeTs ?? T0 + 100n,
+      revealEndTs: (o.closeTs ?? T0 + 100n) + 100n,
       referencePrice: o.reference ?? null,
       minMatched: o.minMatched ?? 0n,
       maxImbalanceBps: o.maxImbalanceBps ?? null,
@@ -127,6 +129,7 @@ export class World {
       proceedsTo: this.creator.address,
       schedule: o.schedule ?? [],
       oracle: o.oracle ?? null,
+      calendar: o.calendar ?? null,
       settler: o.settler ?? null,
       settleDeadlineTs: o.settleDeadlineTs ?? 0n,
     });

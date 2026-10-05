@@ -45,6 +45,9 @@ pub struct CreateCrossParams {
     pub integrator: Pubkey,
     pub gate_mint: Option<Pubkey>,
     pub oracle: Option<OracleGuard>,
+    /// Schedule the cross on this calendar: its close must be a session start, and its oracle
+    /// feed (if any) must be approved by the calendar.
+    pub calendar: Option<Pubkey>,
     pub shards: u8,
     pub max_orders: u32,
     pub proceeds_to: Pubkey,
@@ -224,6 +227,29 @@ pub mod cross_core {
             );
         }
         c.oracle = params.oracle;
+        if let Some(cal_key) = params.calendar {
+            let info = ctx
+                .accounts
+                .calendar_account
+                .as_ref()
+                .ok_or(CrossError::CalendarMismatch)?;
+            require_keys_eq!(info.key(), cal_key, CrossError::CalendarMismatch);
+            require_keys_eq!(
+                *info.owner,
+                cross_calendar::ID,
+                CrossError::CalendarMismatch
+            );
+            let data = info.try_borrow_data()?;
+            let cal = cross_calendar::Calendar::try_deserialize(&mut &data[..])?;
+            require!(
+                cal.has_session_start(params.close_ts),
+                CrossError::NotACalendarSession
+            );
+            if let Some(g) = params.oracle {
+                require!(cal.approves_feed(&g.feed_id), CrossError::FeedNotApproved);
+            }
+        }
+        c.calendar = params.calendar;
         c.shards = params.shards;
         c.max_orders = params.max_orders;
         c.bump = ctx.bumps.cross;
@@ -1222,6 +1248,8 @@ pub struct CreateCross<'info> {
     pub base_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
     #[account(mut, token::mint = quote_mint, token::authority = creator, token::token_program = quote_token_program)]
     pub creator_quote: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: required when `params.calendar` is set; owner and contents checked in the handler.
+    pub calendar_account: Option<UncheckedAccount<'info>>,
     pub base_token_program: Interface<'info, TokenInterface>,
     pub quote_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
@@ -1561,4 +1589,10 @@ pub enum CrossError {
     DeadlineNotReached,
     #[msg("This cross needs a Pyth price update account")]
     OracleAccountMissing,
+    #[msg("Calendar account missing or does not match")]
+    CalendarMismatch,
+    #[msg("The cross must close at the start of a calendar session")]
+    NotACalendarSession,
+    #[msg("The oracle feed is not approved by the calendar")]
+    FeedNotApproved,
 }

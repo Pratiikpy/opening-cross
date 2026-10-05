@@ -466,6 +466,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross_calendar"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "cross_core"
 version = "0.1.0"
 dependencies = [
@@ -473,6 +480,7 @@ dependencies = [
  "anchor-spl",
  "bytemuck",
  "clearing-core",
+ "cross_calendar",
  "cross_gate",
  "solana-sha256-hasher",
 ]

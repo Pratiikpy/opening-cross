@@ -11,6 +11,7 @@ const CLIENTS = [
   { program: 'cross_gate', pkg: 'cross-gate-client' },
   { program: 'cross_core', pkg: 'cross-core-client' },
   { program: 'cross_settle', pkg: 'cross-settle-client' },
+  { program: 'cross_calendar', pkg: 'cross-calendar-client' },
 ];
 
 for (const { program, pkg } of CLIENTS) {

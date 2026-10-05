@@ -246,6 +246,8 @@ pub struct Cross {
 
     /// Optional oracle divergence guard (reopens of assets with a reference market).
     pub oracle: Option<OracleGuard>,
+    /// Exchange calendar the cross is scheduled on (`cross_calendar`), if any.
+    pub calendar: Option<Pubkey>,
 
     /// Deferred-mint crosses: the only signer allowed to bind the base mint, and the deadline
     /// after which anyone may abandon settlement and refund every order.

@@ -41,7 +41,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | C3 | Print guards and no-print fallback | Thin, imbalanced or oracle-divergent crosses do not print; refunds succeed | Adversarial tests | DONE | Min-volume and imbalance guards both ways (`tests/core/test/flows.test.ts`); oracle guard 6 cases (`tests/core/test/oracle.test.ts`); 60/60 |
 | C4 | `cross_fees`: per-cross fee snapshot and split | No fee on bids/cancels/refunds; protocol ≤ 20%; integrator 0–300 bps | Unit + property tests | DONE | ADR-0010 (fees live in `cross_core`); `tests/core/test/fees.test.ts`, `flows.test.ts`, creation caps in `adversarial.test.ts`; 71/71 |
 | C5 | `cross_gate`: SAS credential, allowlist-Merkle, open | Gated wallet blocked, credentialed wallet passes | Devnet with real SAS attestation | IN PROGRESS | `programs/cross_gate` deployed: passes + locks as hook and Token ACL gate (DP5, DP8 evidence); SAS-credential pass issuance and Merkle allowlist still to build |
-| C6 | `cross_calendar`: UTC calendar, oracle-set registry, timelocked admin | Timelock enforced; crosses scheduled from calendar | Unit + devnet | TODO | |
+| C6 | `cross_calendar`: UTC calendar, oracle-set registry, timelocked admin | Timelock enforced; crosses scheduled from calendar | Unit + devnet | IN PROGRESS | ADR-0011; `programs/cross_calendar` + `cross_core` binding; `tests/core/test/calendar.test.ts` (75/75). Devnet run pending H10 |
 
 ## M3 — Settlement adapters
 

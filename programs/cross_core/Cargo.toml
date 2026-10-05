@@ -24,6 +24,7 @@ anchor-spl = "=1.0.2"
 bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
 clearing-core = { path = "../../crates/clearing-core" }
 cross_gate = { path = "../cross_gate", features = ["no-entrypoint"] }
+cross_calendar = { path = "../cross_calendar", features = ["no-entrypoint"] }
 solana-sha256-hasher = "3"
 
 [lints.rust]

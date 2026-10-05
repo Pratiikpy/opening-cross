@@ -229,7 +229,7 @@ describe('creation', () => {
       creator: w.creator, baseMint, quoteMint: w.quoteMint, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       crossId: 999n, kind: 0, supplyMode: SupplyMode.Mint, disclosure: Disclosure.Open, minPrice: 1_000_000n, tick: 100_000n, ticks: 10, priceScale: 1_000_000n,
       openTs: 1_800_000_000n, closeTs: 1_800_000_100n, revealEndTs: 1_800_000_200n, referencePrice: null, minMatched: 0n, maxImbalanceBps: null,
-      integratorFeeBps: 0, integrator: w.integrator.address, gateMint: null, shards: 1, maxOrders: 8, proceedsTo: w.creator.address, schedule: [{ price: 1_000_000n, quantity: 1_000n }], settler: null, settleDeadlineTs: 0n, oracle: null,
+      integratorFeeBps: 0, integrator: w.integrator.address, gateMint: null, shards: 1, maxOrders: 8, proceedsTo: w.creator.address, schedule: [{ price: 1_000_000n, quantity: 1_000n }], settler: null, settleDeadlineTs: 0n, oracle: null, calendar: null,
     });
     expect(await w.h.fail([create], w.creator)).toContain('MintAuthorityNotCross');
   });

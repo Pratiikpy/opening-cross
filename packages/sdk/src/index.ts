@@ -127,6 +127,7 @@ export async function buildCreateCross(input: CreateCrossInput): Promise<{ cross
     quoteMint,
     quoteVault: await quoteVaultAddress(cross),
     creatorQuote: await ata(creator.address, quoteMint, quoteTokenProgram),
+    ...(typeof params.calendar === 'string' ? { calendarAccount: params.calendar } : {}),
     baseTokenProgram,
     quoteTokenProgram,
     ...params,

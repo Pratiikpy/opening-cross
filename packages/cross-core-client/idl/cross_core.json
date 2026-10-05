@@ -689,6 +689,10 @@
           "writable": true
         },
         {
+          "name": "calendar_account",
+          "optional": true
+        },
+        {
           "name": "base_token_program"
         },
         {
@@ -1504,6 +1508,21 @@
       "code": 6032,
       "name": "OracleAccountMissing",
       "msg": "This cross needs a Pyth price update account"
+    },
+    {
+      "code": 6033,
+      "name": "CalendarMismatch",
+      "msg": "Calendar account missing or does not match"
+    },
+    {
+      "code": 6034,
+      "name": "NotACalendarSession",
+      "msg": "The cross must close at the start of a calendar session"
+    },
+    {
+      "code": 6035,
+      "name": "FeedNotApproved",
+      "msg": "The oracle feed is not approved by the calendar"
     }
   ],
   "types": [
@@ -1723,6 +1742,16 @@
                   "name": "OracleGuard"
                 }
               }
+            }
+          },
+          {
+            "name": "calendar",
+            "docs": [
+              "Schedule the cross on this calendar: its close must be a session start, and its oracle",
+              "feed (if any) must be approved by the calendar."
+            ],
+            "type": {
+              "option": "pubkey"
             }
           },
           {
@@ -1996,6 +2025,15 @@
                   "name": "OracleGuard"
                 }
               }
+            }
+          },
+          {
+            "name": "calendar",
+            "docs": [
+              "Exchange calendar the cross is scheduled on (`cross_calendar`), if any."
+            ],
+            "type": {
+              "option": "pubkey"
             }
           },
           {
