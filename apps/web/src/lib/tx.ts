@@ -5,7 +5,9 @@
 // own words, never as a stack trace.
 import { API_URL } from './api';
 
-export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? 'https://api.devnet.solana.com';
+import { RPC_URL } from './config';
+
+export { RPC_URL };
 
 export type Signer = (input: { transaction: Uint8Array }) => Promise<{ signedTransaction: Uint8Array }>;
 export type Unsigned = { transaction: string; signers: string[] };

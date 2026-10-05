@@ -7,9 +7,8 @@ export const NAV = [
   { href: '/crosses', label: 'Crosses' },
   { href: '/issue', label: 'Open a cross' },
   { href: '/#how', label: 'How it works' },
-  { href: '/#proof', label: 'Proof' },
-  { href: '/#issuers', label: 'Issuers' },
-  { href: '/#developers', label: 'Developers' },
+  { href: '/developers', label: 'Developers' },
+  { href: '/status', label: 'Status' },
 ];
 
 export function SiteHeader() {
