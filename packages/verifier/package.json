@@ -3,15 +3,42 @@
   "version": "0.1.0",
   "description": "Independent verifier for Opening Cross: recomputes every cross's clearing from its on-chain book with a second implementation of the rule and emits a fairness proof.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/verifier"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts",
   "bin": {
     "opening-cross-verify": "src/cli.ts"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
+    "bin": {
+      "opening-cross-verify": "dist/cli.js"
+    }
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@opening-cross/cross-core-client": "workspace:*",

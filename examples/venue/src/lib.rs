@@ -10,8 +10,7 @@
 #![allow(clippy::diverging_sub_expression)]
 
 use anchor_lang::prelude::*;
-
-declare_program!(cross_core);
+use opening_cross_cpi::cross_core;
 
 declare_id!("7Kb2feBGE34ck7F7dovaEgKVJRLJ2JeUFxCyo4bamZJD");
 

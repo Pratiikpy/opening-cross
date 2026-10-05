@@ -3,12 +3,36 @@
   "version": "0.1.0",
   "description": "Settlement adapters for Opening Cross: Meteora DBC continuation, DAMM v2 and DLMM, and Raydium CPMM, all opened at the clearing price.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/adapters"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@meteora-ag/cp-amm-sdk": "1.5.1",

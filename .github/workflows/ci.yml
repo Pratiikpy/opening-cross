@@ -39,7 +39,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
       - run: (cd programs/cross_gate && cargo build-sbf) && (cd programs/cross_calendar && cargo build-sbf) && (cd programs/cross_core && cargo build-sbf) && (cd programs/cross_settle && cargo build-sbf) && (cd examples/venue && cargo build-sbf)
       - name: Adapter IDL copies match the programs' IDLs
-        run: diff idls/cross_core.json packages/cross-core-client/idl/cross_core.json && diff idls/cross_gate.json packages/cross-gate-client/idl/cross_gate.json
+        run: diff idls/cross_core.json packages/cross-core-client/idl/cross_core.json && diff idls/cross_gate.json packages/cross-gate-client/idl/cross_gate.json && diff idls/cross_core.json crates/opening-cross-cpi/idls/cross_core.json && diff idls/cross_gate.json crates/opening-cross-cpi/idls/cross_gate.json
       - run: sh tests/fixtures/fetch.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -47,6 +47,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opening-cross/core-tests test
         env: { DATABASE_URL: 'postgres://postgres:oc@localhost:5432/postgres' }
+      - name: Published packages run a full cross from a clean project
+        run: sh examples/ts-quickstart/run.sh
+      - name: CPI crate packages and builds on its own
+        run: cargo package -p opening-cross-cpi
   secrets:
     runs-on: ubuntu-latest
     steps:

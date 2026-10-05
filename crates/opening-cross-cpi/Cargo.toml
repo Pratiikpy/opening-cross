@@ -1,0 +1,17 @@
+[package]
+name = "opening-cross-cpi"
+version = "0.1.0"
+description = "CPI bindings for Opening Cross: program IDs, account types, PDA derivations and typed CPI calls into cross_core and cross_gate, generated from the programs' IDLs."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+include = ["src/**", "idls/**", "Cargo.toml", "README.md"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[dev-dependencies]
+# The programs themselves, to prove the bindings and seeds match them.
+core_program = { package = "cross_core", path = "../../programs/cross_core", features = ["no-entrypoint"] }
+gate_program = { package = "cross_gate", path = "../../programs/cross_gate", features = ["no-entrypoint"] }
