@@ -130,6 +130,31 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
+  packages/router:
+    dependencies:
+      '@opening-cross/cross-core-client':
+        specifier: workspace:*
+        version: link:../cross-core-client
+      '@opening-cross/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@opening-cross/verifier':
+        specifier: workspace:*
+        version: link:../verifier
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
+
   packages/sdk:
     dependencies:
       '@noble/hashes':
@@ -336,6 +361,9 @@ importers:
       '@opening-cross/keeper':
         specifier: workspace:*
         version: link:../../services/keeper
+      '@opening-cross/router':
+        specifier: workspace:*
+        version: link:../../packages/router
       '@opening-cross/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk

@@ -18,6 +18,7 @@
     "@opening-cross/cross-settle-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
     "@opening-cross/keeper": "workspace:*",
+    "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
     "@solana-program/compute-budget": "^0.19.0",

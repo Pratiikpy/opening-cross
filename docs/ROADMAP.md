@@ -62,7 +62,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | D3 | REST + WebSocket API, unsigned-transaction builder | Every user action available via API | Contract tests | DONE | `services/api`: full sealed lifecycle through unsigned API transactions signed by user keys, reads/proof/stream checked against chain, 20+ hostile-input refusals; 90/90 ×3 — `docs/evidence/D3-api.md` |
 | D4 | TypeScript SDK + Rust CPI crate (Codama clients) | Published packages build a full cross from a clean project | Example project in CI | DONE (publish: HUMAN H12) | 8 packages pack and a clean project installs only the tarballs, typechecks and runs a full sealed launch with a verified proof; `opening-cross-cpi` crate tested 4/4, packaged, used by the venue example — `docs/evidence/D4-sdk-and-cpi.md` |
 | D5 | Independent verifier + fairness-proof schema + conformance suite | Verifier recomputes every devnet cross exactly | Run against all devnet crosses | DONE (devnet sweep: HUMAN H10) | Conformance v1: 525 vectors from on-chain clearing-core; TS reference 525/525; the program itself 523/523 on LiteSVM with every fill (2 beyond account limits, named); CI regenerates and diffs — `docs/evidence/D5-conformance.md` |
-| D6 | Router with best-execution reports | Report shows cross vs DEX route at the same moment | Live quote comparisons | TODO | |
+| D6 | Router with best-execution reports | Report shows cross vs DEX route at the same moment | Live quote comparisons | DONE | `packages/router`: live Jupiter route vs a cross on real USDC/JUP mints at the same moment; the indicative price, fill and spend equalled the executed result exactly — `docs/evidence/D6-router.md` |
 
 ## M5 — Opening Bell web app (from the Claude Design exports)
 
