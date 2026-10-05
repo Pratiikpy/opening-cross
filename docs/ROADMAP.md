@@ -9,7 +9,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
 | M0.1 | Repository, allowlist `.gitignore`, secret-scan commit guard, CI skeleton | Repo on GitHub; CI runs on every push; secrets and key files cannot be committed | Stage a fake token and a `.keys/` file; guard blocks both; CI run green | DONE | Repo `Pratiikpy/opening-cross`; guard blocked staged `.keys/k.json` and a `ghp_` token (exit 2); CI run 37282531078 green |
-| M0.2 | Toolchain pinned from live sources (Rust, Agave, Anchor, Node, pnpm) | `rust-toolchain.toml`, `Anchor.toml`, `package.json` engines match ADR-0001 | Clean clone builds with only the documented commands | TODO | |
+| M0.2 | Toolchain pinned from live sources (Rust, Agave, Anchor, Node, pnpm) | `rust-toolchain.toml`, `Anchor.toml`, `package.json` engines match ADR-0001 | Clean clone builds with only the documented commands | DONE | Pins match ADR-0001 (`rust-toolchain.toml` 1.96.1, `Anchor.toml` 1.0.2, `packageManager` pnpm 10.32.1, engines Node ≥22, Agave 4.0.2 in CI). README `Develop` lists the exact commands; CI runs the same commands on a fresh runner — run 37324690484 green ||
 | M0.3 | Devnet operations key and funding | Devnet key outside the repo, funded | `solana balance` on devnet | DONE | `DTB3Jtxb6dy7GvocUbypiJb548ZLGRzVdPrNNCWAKEdC`, 10 SOL (2026-10-05) |
 
 ## M1 — Devnet proofs (no feature is built on an unproven dependency)
