@@ -16,6 +16,7 @@
 !/Cargo.toml
 !/Cargo.lock
 !/Anchor.toml
+!/idls/
 !/rust-toolchain.toml
 !/package.json
 !/pnpm-lock.yaml
@@ -38,3 +39,6 @@ dist/
 .anchor/
 test-ledger/
 *.log
+
+# Third-party program binaries are fetched, never committed (licences).
+tests/fixtures/*.so

@@ -10,6 +10,7 @@ import { renderVisitor } from '@codama/renderers-js';
 const CLIENTS = [
   { program: 'cross_gate', pkg: 'cross-gate-client' },
   { program: 'cross_core', pkg: 'cross-core-client' },
+  { program: 'cross_settle', pkg: 'cross-settle-client' },
 ];
 
 for (const { program, pkg } of CLIENTS) {

@@ -1,0 +1,29 @@
+[package]
+name = "cross_settle"
+version = "0.1.0"
+description = "Opening Cross settlement adapters. First adapter: Meteora DBC continuation at the clearing price (ADR-0006)."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_settle"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+anchor-spl = "=1.0.2"
+# 1.18+ needs rustc 1.90; Agave 4.0 platform-tools ship rustc 1.89.
+ruint = { version = "=1.17.0", default-features = false }
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

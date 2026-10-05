@@ -8,10 +8,12 @@ skip-lint = false
 [programs.localnet]
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+cross_settle = "2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ"
 
 [programs.devnet]
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+cross_settle = "2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ"
 
 [provider]
 cluster = "devnet"

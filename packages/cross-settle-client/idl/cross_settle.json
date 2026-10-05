@@ -1,0 +1,833 @@
+{
+  "address": "2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ",
+  "metadata": {
+    "name": "cross_settle",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross settlement adapters. First adapter: Meteora DBC continuation at the clearing price (ADR-0006).",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "bind_dbc_mint",
+      "docs": [
+        "Step 2: install the open-mode hook config, hand the mint authority to the cross and bind",
+        "the mint in `cross_core`. Permissionless once step 1 has run; the payer funds rent."
+      ],
+      "discriminator": [
+        92,
+        76,
+        70,
+        132,
+        49,
+        66,
+        16,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gate_config",
+          "writable": true
+        },
+        {
+          "name": "gate_extra_metas",
+          "writable": true
+        },
+        {
+          "name": "cross_gate_program",
+          "address": "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+        },
+        {
+          "name": "cross_core_program",
+          "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+        },
+        {
+          "name": "token_2022_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_dbc_pool",
+      "docs": [
+        "Step 1: create the DBC config and pool at the clearing price. Only the cross creator may",
+        "call it, because the curve shape and fees are the issuer's choice; the start price is not."
+      ],
+      "discriminator": [
+        68,
+        14,
+        121,
+        181,
+        116,
+        193,
+        225,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "leftover_receiver"
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "base_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        },
+        {
+          "name": "cross_gate_program",
+          "address": "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "token_2022_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "config_parameters",
+          "type": {
+            "defined": {
+              "name": "ConfigParameters"
+            }
+          }
+        },
+        {
+          "name": "pool",
+          "type": {
+            "defined": {
+              "name": "InitializePoolParameters"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DbcMintBound",
+      "discriminator": [
+        75,
+        243,
+        26,
+        251,
+        150,
+        153,
+        172,
+        164
+      ]
+    },
+    {
+      "name": "DbcPoolOpened",
+      "discriminator": [
+        142,
+        90,
+        156,
+        187,
+        193,
+        205,
+        225,
+        165
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "WrongCross",
+      "msg": "Account is not a cross_core cross"
+    },
+    {
+      "code": 6001,
+      "name": "NotCreator",
+      "msg": "Only the cross creator may open the DBC pool"
+    },
+    {
+      "code": 6002,
+      "name": "AlreadyBound",
+      "msg": "Base mint already bound"
+    },
+    {
+      "code": 6003,
+      "name": "WrongSettler",
+      "msg": "Cross does not name this adapter's settler"
+    },
+    {
+      "code": 6004,
+      "name": "WrongMint",
+      "msg": "Quote mint does not match the cross"
+    },
+    {
+      "code": 6005,
+      "name": "NotCleared",
+      "msg": "Cross has not cleared"
+    },
+    {
+      "code": 6006,
+      "name": "BadConfig",
+      "msg": "DBC config must be Token-2022 with partner mint authority"
+    },
+    {
+      "code": 6007,
+      "name": "StartPriceNotClearingPrice",
+      "msg": "DBC start price must equal the clearing price"
+    },
+    {
+      "code": 6008,
+      "name": "PoolNotOpened",
+      "msg": "DBC pool has not been opened for this cross"
+    },
+    {
+      "code": 6009,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "BaseFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cliff_fee_numerator",
+            "type": "u64"
+          },
+          {
+            "name": "first_factor",
+            "type": "u16"
+          },
+          {
+            "name": "second_factor",
+            "type": "u64"
+          },
+          {
+            "name": "third_factor",
+            "type": "u64"
+          },
+          {
+            "name": "base_fee_mode",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_fees",
+            "type": {
+              "defined": {
+                "name": "PoolFeeParameters"
+              }
+            }
+          },
+          {
+            "name": "collect_fee_mode",
+            "type": "u8"
+          },
+          {
+            "name": "migration_option",
+            "type": "u8"
+          },
+          {
+            "name": "activation_type",
+            "type": "u8"
+          },
+          {
+            "name": "token_type",
+            "type": "u8"
+          },
+          {
+            "name": "token_decimal",
+            "type": "u8"
+          },
+          {
+            "name": "partner_liquidity_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "partner_permanent_locked_liquidity_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "creator_liquidity_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "creator_permanent_locked_liquidity_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "migration_quote_threshold",
+            "type": "u64"
+          },
+          {
+            "name": "sqrt_start_price",
+            "type": "u128"
+          },
+          {
+            "name": "locked_vesting",
+            "type": {
+              "defined": {
+                "name": "LockedVestingParams"
+              }
+            }
+          },
+          {
+            "name": "migration_fee_option",
+            "type": "u8"
+          },
+          {
+            "name": "token_supply",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "TokenSupplyParams"
+                }
+              }
+            }
+          },
+          {
+            "name": "creator_trading_fee_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "token_update_authority",
+            "type": "u8"
+          },
+          {
+            "name": "migration_fee",
+            "type": {
+              "defined": {
+                "name": "MigrationFee"
+              }
+            }
+          },
+          {
+            "name": "migrated_pool_fee",
+            "type": {
+              "defined": {
+                "name": "MigratedPoolFee"
+              }
+            }
+          },
+          {
+            "name": "pool_creation_fee",
+            "type": "u64"
+          },
+          {
+            "name": "partner_liquidity_vesting_info",
+            "type": {
+              "defined": {
+                "name": "LiquidityVestingInfoParams"
+              }
+            }
+          },
+          {
+            "name": "creator_liquidity_vesting_info",
+            "type": {
+              "defined": {
+                "name": "LiquidityVestingInfoParams"
+              }
+            }
+          },
+          {
+            "name": "migrated_pool_base_fee_mode",
+            "type": "u8"
+          },
+          {
+            "name": "migrated_pool_market_cap_fee_scheduler_params",
+            "type": {
+              "defined": {
+                "name": "MigratedPoolMarketCapFeeSchedulerParams"
+              }
+            }
+          },
+          {
+            "name": "enable_first_swap_with_min_fee",
+            "type": "bool"
+          },
+          {
+            "name": "compounding_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "curve",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "LiquidityDistributionParameters"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DbcMintBound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DbcPoolOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_price",
+            "type": "u64"
+          },
+          {
+            "name": "sqrt_start_price",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DynamicFeeParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bin_step",
+            "type": "u16"
+          },
+          {
+            "name": "bin_step_u128",
+            "type": "u128"
+          },
+          {
+            "name": "filter_period",
+            "type": "u16"
+          },
+          {
+            "name": "decay_period",
+            "type": "u16"
+          },
+          {
+            "name": "reduction_factor",
+            "type": "u16"
+          },
+          {
+            "name": "max_volatility_accumulator",
+            "type": "u32"
+          },
+          {
+            "name": "variable_fee_control",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializePoolParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityDistributionParameters",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sqrt_price",
+            "type": "u128"
+          },
+          {
+            "name": "liquidity",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityVestingInfoParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vesting_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "bps_per_period",
+            "type": "u16"
+          },
+          {
+            "name": "number_of_periods",
+            "type": "u16"
+          },
+          {
+            "name": "cliff_duration_from_migration_time",
+            "type": "u32"
+          },
+          {
+            "name": "frequency",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockedVestingParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount_per_period",
+            "type": "u64"
+          },
+          {
+            "name": "cliff_duration_from_migration_time",
+            "type": "u64"
+          },
+          {
+            "name": "frequency",
+            "type": "u64"
+          },
+          {
+            "name": "number_of_period",
+            "type": "u64"
+          },
+          {
+            "name": "cliff_unlock_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigratedPoolFee",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "collect_fee_mode",
+            "type": "u8"
+          },
+          {
+            "name": "dynamic_fee",
+            "type": "u8"
+          },
+          {
+            "name": "pool_fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigratedPoolMarketCapFeeSchedulerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "number_of_period",
+            "type": "u16"
+          },
+          {
+            "name": "sqrt_price_step_bps",
+            "type": "u16"
+          },
+          {
+            "name": "scheduler_expiration_duration",
+            "type": "u32"
+          },
+          {
+            "name": "reduction_factor",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrationFee",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fee_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "creator_fee_percentage",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolFeeParameters",
+      "docs": [
+        "Information regarding fee charges"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_fee",
+            "type": {
+              "defined": {
+                "name": "BaseFeeParameters"
+              }
+            }
+          },
+          {
+            "name": "dynamic_fee",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "DynamicFeeParameters"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenSupplyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pre_migration_token_supply",
+            "type": "u64"
+          },
+          {
+            "name": "post_migration_token_supply",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

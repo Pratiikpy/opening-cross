@@ -32,6 +32,11 @@ import {
 } from '@solana-program/token-2022';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { CROSS_GATE_PROGRAM_ADDRESS } from '@opening-cross/cross-gate-client';
+import { CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
+import { existsSync } from 'node:fs';
+import { address } from '@solana/kit';
+
+export const DBC_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_bonding_curve.so`;
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const T0 = 1_800_000_000n;
@@ -42,6 +47,9 @@ export class Harness {
     this.svm = new LiteSVM();
     this.svm.addProgramFromFile(CROSS_CORE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_core.so`);
     this.svm.addProgramFromFile(CROSS_GATE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_gate.so`);
+    this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_settle.so`);
+    // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
+    if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
     this.setTime(T0);
   }
 

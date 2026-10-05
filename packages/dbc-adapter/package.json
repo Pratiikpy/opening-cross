@@ -1,0 +1,28 @@
+{
+  "name": "@opening-cross/dbc-adapter",
+  "version": "0.1.0",
+  "description": "Meteora DBC continuation for Opening Cross: start-price maths, DBC config at the clearing price, and settlement instruction builders.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
+    "@opening-cross/cross-gate-client": "workspace:*",
+    "@opening-cross/cross-settle-client": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "@solana/web3.js": "1.98.4",
+    "bn.js": "5.2.2"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
