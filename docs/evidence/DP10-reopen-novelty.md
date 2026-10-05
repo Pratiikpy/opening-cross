@@ -13,6 +13,7 @@ GitHub, plus the venues' own pages.
 | **Ondo** (Ondo Stocks) | Mint and redeem 24/5, and 24/7 since July 2026 for six tickers; secondary trading P2P 24/7. | No | ondo.finance/blog/real-24-7-trading-for-tokenized-stocks |
 | **Backpack** Securities | 24/7 trading of tokenized US equities since 10 July 2026; weekend sessions, then routing back to US exchanges on Sunday 8pm ET. | No | support.backpack.exchange (stock trading hours) |
 | **Jupiter** | Aggregates continuous pools (Raydium, Meteora, …) for xStocks. | No | Jupiter xStocks docs |
+| **Metaplex Genesis** | Token launches with buckets, including a **uniform-price auction** bucket for launches, then graduation to Meteora or Raydium. Closed source. | **Yes (launch)** | metaplex.com/docs/smart-contracts/genesis; `@metaplex-foundation/genesis` 0.43.2 (see DP12) |
 | **Uncross** (Uncross-Org/uncross) | **Periodic call auction for tokenized US equities on Solana devnet.** One price at max volume, then min imbalance, then the nearest fresh Pyth price, then the middle of the range. Schedules 10 xStocks fixtures; built for the Solana Foundation "Stocklana" hackathon, September 2026. No licence file. | **Yes** | github.com/Uncross-Org/uncross (created 2026-09-15, last push 2026-10-04) |
 
 Measured market context, from Uncross's README (their measurement, not ours): on 16 September,
@@ -22,7 +23,7 @@ weekend market is real.
 
 ## Conclusion
 
-**A uniform-price call auction for tokenized stocks on Solana is not novel by itself.** Uncross
+**A uniform-price call auction is not novel by itself on Solana.** Genesis runs one for launches, and Uncross for tokenized stocks. Uncross
 already runs one on devnet, with the same first two tie-break rules as ADR-0003 and a Pyth-based
 third rule. Opening Bell must not claim to be the first or only call auction for tokenized
 stocks. As of this search, no copy on the site or in the docs makes that claim (checked with
@@ -30,7 +31,7 @@ stocks. As of this search, no copy on the site or in the docs makes that claim (
 
 What Opening Cross does that the search found nowhere else, including Uncross:
 
-- **Launches as well as reopens.** Deferred or minting supply schedules, then graduation to
+- **One open protocol for launches and reopens** (Genesis covers launches only and is closed source; Uncross covers stocks only). Deferred or minting supply schedules, then graduation to
   Meteora DBC, DAMM v2 and DLMM, or Raydium CPMM pools opened at exactly P* (ADR-0006 to 0009).
 - **Sealed bids** (commit–reveal), with an escrow-backed refund for unrevealed bids.
 - **Eligibility gating** through `cross_gate`: allowlist, Solana Attestation Service, Merkle
