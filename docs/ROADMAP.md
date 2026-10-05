@@ -78,7 +78,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| MO1 | Mobile web parity at 360–430 px | All W3 flows work on mobile web | Playwright mobile emulation | TODO | |
+| MO1 | Mobile web parity at 360–430 px | All W3 flows work on mobile web | Playwright mobile emulation | IN PROGRESS | Mobile menu added to the header; the W3 e2e already drives the second buyer at 390 px in dark mode (all its checks up to the last claim passed). Full mobile visual pass pending the browser rerun. |
 | MO2 | Native app (Expo) with Mobile Wallet Adapter | Place and claim on devnet from Android | Emulator run | TODO | |
 
 ## M7 — Mainnet staging, audit prep, launch, growth
