@@ -8,7 +8,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| M0.1 | Repository, allowlist `.gitignore`, secret-scan commit guard, CI skeleton | Repo on GitHub; CI runs on every push; secrets and key files cannot be committed | Stage a fake token and a `.keys/` file; guard blocks both; CI run green | IN PROGRESS | |
+| M0.1 | Repository, allowlist `.gitignore`, secret-scan commit guard, CI skeleton | Repo on GitHub; CI runs on every push; secrets and key files cannot be committed | Stage a fake token and a `.keys/` file; guard blocks both; CI run green | DONE | Repo `Pratiikpy/opening-cross`; guard blocked staged `.keys/k.json` and a `ghp_` token (exit 2); CI run 37282531078 green |
 | M0.2 | Toolchain pinned from live sources (Rust, Agave, Anchor, Node, pnpm) | `rust-toolchain.toml`, `Anchor.toml`, `package.json` engines match ADR-0001 | Clean clone builds with only the documented commands | TODO | |
 | M0.3 | Devnet operations key and funding | Devnet key outside the repo, funded | `solana balance` on devnet | DONE | `DTB3Jtxb6dy7GvocUbypiJb548ZLGRzVdPrNNCWAKEdC`, 10 SOL (2026-10-05) |
 
@@ -29,7 +29,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | DP11 | Presale vault partner-mint path | Base supply minted by partner authority before revoke | Devnet run | TODO | |
 | DP12 | Genesis third-party bucket | Callable from our program or NO-GO | Read Genesis source + devnet call | TODO | |
 | DP13 | Performance targets | bid ≤ 25k CU; throughput, landing latency, 100k-bid settlement measured | LiteSVM CU + devnet load test | TODO | |
-| DP14 | Stock-token safeguards | Pause, permanent delegate, scaled-UI multiplier detected per mint on mainnet | Mainnet RPC reads of xStocks/Backpack mints | TODO | |
+| DP14 | Stock-token safeguards | Pause, permanent delegate, scaled-UI multiplier detected per mint on mainnet | Mainnet RPC reads of xStocks/Backpack mints | DONE | [`docs/evidence/DP14.md`](evidence/DP14.md); `packages/token-safety` 11/11 tests |
 | DP15 | Oracle feeds for the price band | Pyth feeds read for target stocks; divergence guard triggers | Mainnet/devnet reads + unit test | TODO | |
 
 ## M2 — Core protocol
