@@ -85,7 +85,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 
 | ID | Item | Acceptance | Test plan | Status | Evidence |
 |---|---|---|---|---|---|
-| L1 | Threat model, invariants doc, audit package | Auditor-ready repository | Internal review checklist | TODO | |
+| L1 | Threat model, invariants doc, audit package | Auditor-ready repository | Internal review checklist | DONE | `docs/security/THREAT_MODEL.md` (23 threats, each mapped to a test; 6 open gaps named), `INVARIANTS.md` (13 invariants with enforcement and tests, checked against the code), `AUDIT_PACKAGE.md` (scope, reading order, build/test commands, known limitations) |
 | L2 | External audit engagement and payment | Signed audit | — | HUMAN | HUMAN_TASKS H6 |
 | L3 | Squads multisig + timelock for upgrade and treasury authority | No single key controls funds or upgrades | Devnet rehearsal | TODO | |
 | L4 | Mainnet deployment with caps | Verifiable build hash matches repo | On-chain hash check | TODO | |
