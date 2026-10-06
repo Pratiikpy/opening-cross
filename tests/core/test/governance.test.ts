@@ -238,3 +238,26 @@ describe('admin handover edge cases', () => {
     await w.h.send([getSetGuardianInstruction({ admin: next, protocol, guardian: stranger.address })], next);
   });
 });
+
+describe('protocol account migration', () => {
+  it('upgrades a protocol account written by the previous layout, admin-only and idempotent', async () => {
+    const { getMigrateProtocolInstruction, getSetGuardianInstruction } = await import('@opening-cross/sdk');
+    const w = await World.create();
+    const protocol = await protocolAddress();
+    // Rewrite the account as the earlier 114-byte layout (no `pending_admin`).
+    const now = w.h.svm.getAccount(protocol);
+    if (!now.exists) throw new Error('protocol missing');
+    const old = new Uint8Array(now.data.slice(0, 114));
+    w.h.svm.setAccount({ ...now, data: old, space: 114n });
+    expect(await w.h.fail([getSetGuardianInstruction({ admin: w.admin, protocol, guardian: w.admin.address })], w.admin)).toMatch(/AccountDidNotDeserialize|Failed to deserialize/);
+    const stranger = await w.h.wallet();
+    expect(await w.h.fail([getMigrateProtocolInstruction({ admin: stranger, protocol })], stranger)).toMatch(/Unauthorized/);
+    await w.h.send([getMigrateProtocolInstruction({ admin: w.admin, protocol })], w.admin);
+    await w.h.send([getMigrateProtocolInstruction({ admin: w.admin, protocol })], w.admin); // idempotent
+    const p = getProtocolDecoder().decode((w.h.svm.getAccount(protocol) as { data: Uint8Array }).data);
+    expect(p.admin).toBe(w.admin.address);
+    expect(p.pendingAdmin).toEqual({ __option: 'None' });
+    await w.h.send([getSetGuardianInstruction({ admin: w.admin, protocol, guardian: stranger.address })], w.admin);
+    await w.newCross(); // the migrated protocol serves new crosses
+  });
+});

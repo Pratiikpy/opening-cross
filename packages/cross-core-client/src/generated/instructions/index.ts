@@ -18,6 +18,7 @@ export * from './finalize.js';
 export * from './initProtocol.js';
 export * from './initShard.js';
 export * from './mergeShard.js';
+export * from './migrateProtocol.js';
 export * from './proposeAdmin.js';
 export * from './revealOrder.js';
 export * from './setGuardian.js';

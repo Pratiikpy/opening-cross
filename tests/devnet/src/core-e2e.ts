@@ -11,13 +11,12 @@ import {
   type KeyPairSigner,
   appendTransactionMessageInstructions,
   createKeyPairSignerFromBytes,
-  createSolanaRpcSubscriptions,
   createTransactionMessage,
   fetchEncodedAccount,
   generateKeyPairSigner,
   getSignatureFromTransaction,
   pipe,
-  sendAndConfirmTransactionFactory,
+  getBase64EncodedWireTransaction,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
@@ -52,6 +51,8 @@ import {
   crossAddress,
   getCrossDecoder,
   getInitProtocolInstruction,
+  getMigrateProtocolInstruction,
+  getProtocolEncoder,
   getOrderDecoder,
   orderAddress,
   protocolAddress,
@@ -60,8 +61,8 @@ import {
 import { referenceClear, referenceFills, type RefOrder } from '@opening-cross/verifier';
 import { Evidence, ROOT, RPC, rpc } from './lib.js';
 
-const WS = process.env.WS_URL ?? RPC.replace('https://', 'wss://').replace('http://', 'ws://');
-const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: createSolanaRpcSubscriptions(WS) });
+// Full size of the current Protocol layout (discriminator included), with pending_admin set.
+const PROTOCOL_FULL = getProtocolEncoder().encode({ admin: CROSS_CORE_PROGRAM_ADDRESS, guardian: CROSS_CORE_PROGRAM_ADDRESS, feeRecipient: CROSS_CORE_PROGRAM_ADDRESS, feeBps: [0, 0, 0, 0], paused: false, bump: 0, pendingAdmin: CROSS_CORE_PROGRAM_ADDRESS }).length;
 const ev = new Evidence('C2-cross-core-devnet.md', 'Devnet end-to-end — cross_core (C2)', [
   'Script `tests/devnet/src/core-e2e.ts` (drives `@opening-cross/sdk`)',
   `Program: cross_core \`${CROSS_CORE_PROGRAM_ADDRESS}\``,
@@ -78,8 +79,17 @@ async function send(ixs: Instruction[], payer: KeyPairSigner): Promise<string> {
     (m) => appendTransactionMessageInstructions(ixs, m),
   );
   const tx = await signTransactionMessageWithSigners(msg);
-  await sendAndConfirm(tx as Parameters<typeof sendAndConfirm>[0], { commitment: 'confirmed' });
-  return getSignatureFromTransaction(tx);
+  const signature = getSignatureFromTransaction(tx);
+  // Public devnet WebSockets drop connections; send over HTTP and poll the status instead.
+  await rpc.sendTransaction(getBase64EncodedWireTransaction(tx), { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
+  for (let i = 0; i < 90; i++) {
+    const { value } = await rpc.getSignatureStatuses([signature]).send();
+    const st = value[0];
+    if (st?.err) throw new Error(`transaction ${signature} failed: ${JSON.stringify(st.err)}`);
+    if (st && (st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized')) return signature;
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+  throw new Error(`transaction ${signature} not confirmed within 90 s`);
 }
 
 async function chainTime(): Promise<bigint> {
@@ -113,7 +123,14 @@ async function main() {
     const sig = await send([getInitProtocolInstruction({ admin: operator, protocol, guardian: operator.address, feeRecipient: operator.address, feeBps: [30, 5, 15, 30] })], operator);
     ev.check('protocol', 'protocol initialised (fees 30/5/15/30 bps, guardian set)', true, `protocol ${protocol}`, sig);
   } else {
-    ev.check('protocol', 'protocol already initialised', true, `protocol ${protocol}`);
+    const acct = await fetchEncodedAccount(rpc, protocol);
+    if (acct.exists && acct.data.length < PROTOCOL_FULL) {
+      // Written by an earlier program layout: bring it up to date before anything reads it.
+      const sig = await send([getMigrateProtocolInstruction({ admin: operator, protocol })], operator);
+      ev.check('protocol', `protocol migrated from ${acct.data.length} to ${PROTOCOL_FULL} bytes (admin-only, idempotent)`, true, `protocol ${protocol}`, sig);
+    } else {
+      ev.check('protocol', 'protocol already initialised at the current layout', true, `protocol ${protocol}`);
+    }
   }
 
   // Mints: a test quote token and a launch token whose authority goes to the cross PDA.

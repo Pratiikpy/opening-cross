@@ -1045,6 +1045,43 @@
       "args": []
     },
     {
+      "name": "migrate_protocol",
+      "docs": [
+        "Brings a protocol account written by an earlier layout up to the current one. Only the",
+        "stored admin may run it; it grows the account (the admin pays the extra rent) and sets every",
+        "field added since to its default. Idempotent: a current account is left unchanged."
+      ],
+      "discriminator": [
+        182,
+        254,
+        253,
+        220,
+        0,
+        144,
+        234,
+        250
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "docs": [
+            "account may not deserialize under the current layout, which is why it is migrated)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "propose_admin",
       "docs": [
         "First step of an admin handover (e.g. to a multisig vault). Nothing changes until the",

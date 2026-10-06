@@ -120,6 +120,57 @@ pub mod cross_core {
         Ok(())
     }
 
+    /// Brings a protocol account written by an earlier layout up to the current one. Only the
+    /// stored admin may run it; it grows the account (the admin pays the extra rent) and sets every
+    /// field added since to its default. Idempotent: a current account is left unchanged.
+    pub fn migrate_protocol(ctx: Context<MigrateProtocol>) -> Result<()> {
+        let info = ctx.accounts.protocol.to_account_info();
+        require_keys_eq!(*info.owner, crate::ID, CrossError::Unauthorized);
+        let (pda, _) = Pubkey::find_program_address(&[PROTOCOL_SEED], &crate::ID);
+        require_keys_eq!(info.key(), pda, CrossError::Unauthorized);
+        let target = 8 + Protocol::INIT_SPACE;
+        {
+            let data = info.try_borrow_data()?;
+            require!(
+                data.len() >= 8 + 32 && data[..8] == *Protocol::DISCRIMINATOR,
+                CrossError::Unauthorized
+            );
+            let stored_admin =
+                Pubkey::new_from_array(data[8..40].try_into().map_err(|_| CrossError::Overflow)?);
+            require_keys_eq!(
+                stored_admin,
+                ctx.accounts.admin.key(),
+                CrossError::Unauthorized
+            );
+            if data.len() >= target {
+                return Ok(());
+            }
+        }
+        let old_len = info.data_len();
+        let rent = Rent::get()?
+            .minimum_balance(target)
+            .saturating_sub(info.lamports());
+        if rent > 0 {
+            anchor_lang::system_program::transfer(
+                CpiContext::new(
+                    ctx.accounts.system_program.key(),
+                    anchor_lang::system_program::Transfer {
+                        from: ctx.accounts.admin.to_account_info(),
+                        to: info.clone(),
+                    },
+                ),
+                rent,
+            )?;
+        }
+        info.resize(target)?;
+        // Zero every added byte explicitly: `pending_admin = None` is a single 0 tag byte.
+        let mut data = info.try_borrow_mut_data()?;
+        for b in data[old_len..].iter_mut() {
+            *b = 0;
+        }
+        Ok(())
+    }
+
     /// First step of an admin handover (e.g. to a multisig vault). Nothing changes until the
     /// proposed admin accepts, so a mistyped address cannot lock the protocol. `None` withdraws it.
     pub fn propose_admin(ctx: Context<AdminOnly>, new_admin: Option<Pubkey>) -> Result<()> {
@@ -1252,6 +1303,17 @@ pub struct AdminOnly<'info> {
     pub admin: Signer<'info>,
     #[account(mut, seeds = [PROTOCOL_SEED], bump = protocol.bump, has_one = admin @ CrossError::Unauthorized)]
     pub protocol: Account<'info, Protocol>,
+}
+
+#[derive(Accounts)]
+pub struct MigrateProtocol<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    /// CHECK: owner, address, discriminator and stored admin are checked in the handler (the
+    /// account may not deserialize under the current layout, which is why it is migrated).
+    #[account(mut)]
+    pub protocol: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
