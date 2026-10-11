@@ -69,9 +69,14 @@ export async function ata(owner: Address, mint: Address, tokenProgram: Address):
   return (await findAssociatedTokenPda({ owner, mint, tokenProgram }))[0];
 }
 
-/** Shard an order writes to: `index % shards`. */
-export function shardIndexFor(orderIndex: number, shards: number): number {
-  return orderIndex % shards;
+/**
+ * Shard an order writes to: `sha256(owner ‖ nonce)` read as a little-endian u32, modulo the shard count. It depends
+ * only on what the order's owner already knows, so bidders placing at the same moment never race for a shard.
+ * Mirrors `cross_core::shard_of`.
+ */
+export function shardIndexFor(owner: Address, nonce: bigint, shards: number): number {
+  const h = sha256(concat([enc.encode(owner), u64.encode(nonce)]));
+  return new DataView(h.buffer, h.byteOffset, 4).getUint32(0, true) % Math.max(shards, 1);
 }
 
 // ------------------------------------------------------------------ commitments
@@ -170,7 +175,7 @@ export async function buildPlaceOrder(input: PlaceOrderInput): Promise<Instructi
     protocol: await protocolAddress(),
     cross: cross.address,
     order,
-    ...(sealed ? {} : { shard: await shardAddress(cross.address, shardIndexFor(c.ordersTotal, c.shards)) }),
+    ...(sealed ? {} : { shard: await shardAddress(cross.address, shardIndexFor(owner.address, nonce, c.shards)) }),
     ...(gateMint ? { pass: await gatePassAddress(gateMint, owner.address) } : {}),
     ...(side === OrderSide.Buy
       ? { escrowMint: c.quoteMint, escrowVault: await quoteVaultAddress(cross.address), ownerEscrow: await ata(owner.address, c.quoteMint, c.quoteTokenProgram), escrowTokenProgram: c.quoteTokenProgram }
@@ -185,13 +190,13 @@ export async function buildPlaceOrder(input: PlaceOrderInput): Promise<Instructi
   });
 }
 
-export async function buildCancel(cross: CrossView, owner: TransactionSigner, nonce: bigint, side: OrderSide, orderIndex: number, revealed: boolean): Promise<Instruction> {
+export async function buildCancel(cross: CrossView, owner: TransactionSigner, nonce: bigint, side: OrderSide, revealed: boolean): Promise<Instruction> {
   const c = cross.data;
   return getCancelOrderInstruction({
     owner,
     cross: cross.address,
     order: await orderAddress(cross.address, owner.address, nonce),
-    ...(revealed ? { shard: await shardAddress(cross.address, shardIndexFor(orderIndex, c.shards)) } : {}),
+    ...(revealed ? { shard: await shardAddress(cross.address, shardIndexFor(owner.address, nonce, c.shards)) } : {}),
     baseMint: c.baseMint,
     quoteMint: c.quoteMint,
     quoteVault: await quoteVaultAddress(cross.address),
@@ -202,12 +207,12 @@ export async function buildCancel(cross: CrossView, owner: TransactionSigner, no
   });
 }
 
-export async function buildReveal(cross: CrossView, owner: TransactionSigner, nonce: bigint, orderIndex: number, price: bigint, quantity: bigint, salt: Uint8Array): Promise<Instruction> {
+export async function buildReveal(cross: CrossView, owner: TransactionSigner, nonce: bigint, price: bigint, quantity: bigint, salt: Uint8Array): Promise<Instruction> {
   return getRevealOrderInstruction({
     owner,
     cross: cross.address,
     order: await orderAddress(cross.address, owner.address, nonce),
-    shard: await shardAddress(cross.address, shardIndexFor(orderIndex, cross.data.shards)),
+    shard: await shardAddress(cross.address, shardIndexFor(owner.address, nonce, cross.data.shards)),
     price,
     quantity,
     salt,

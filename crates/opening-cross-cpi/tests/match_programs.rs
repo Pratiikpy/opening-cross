@@ -46,7 +46,15 @@ fn derivations_are_program_addresses() {
         )
         .0
     );
-    assert_eq!(pda::shard_index_for(5, 2), 1);
+    // The binding picks the same shard as the program, for any owner, nonce and shard count.
+    for shards in [1u8, 2, 3, 7, 32] {
+        for nonce in 0..64u64 {
+            assert_eq!(
+                usize::from(pda::shard_index_for(&owner, nonce, shards)),
+                core_program::shard_of(&owner, nonce, shards)
+            );
+        }
+    }
 }
 
 #[test]

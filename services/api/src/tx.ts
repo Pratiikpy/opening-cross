@@ -71,12 +71,12 @@ export async function placeOrderTx(fetch: Fetch, cross: CrossView, b: { owner: A
 export async function cancelTx(fetch: Fetch, cross: CrossView, b: { owner: Address; nonce: bigint }, lt: Lifetime) {
   const o = await orderOf(fetch, cross.address, b.owner, b.nonce);
   const revealed = o.state === 1;
-  return compile(b.owner, [await buildCancel(cross, createNoopSigner(b.owner), b.nonce, o.side, o.index, revealed)], lt);
+  return compile(b.owner, [await buildCancel(cross, createNoopSigner(b.owner), b.nonce, o.side, revealed)], lt);
 }
 
 export async function revealTx(fetch: Fetch, cross: CrossView, b: { owner: Address; nonce: bigint; price: bigint; quantity: bigint; salt: Uint8Array }, lt: Lifetime) {
   const o = await orderOf(fetch, cross.address, b.owner, b.nonce);
-  return compile(b.owner, [await buildReveal(cross, createNoopSigner(b.owner), b.nonce, o.index, b.price, b.quantity, b.salt)], lt);
+  return compile(b.owner, [await buildReveal(cross, createNoopSigner(b.owner), b.nonce, b.price, b.quantity, b.salt)], lt);
 }
 
 /** Merges and the clear, one transaction each (shards are large). Anyone may send them. */

@@ -31,6 +31,7 @@ import {
   verifyProof,
   verifySigned,
 } from '@opening-cross/promises';
+import { buildServer } from '../../../services/api/src/server.js';
 import { freshDb } from '../src/db.js';
 import { World } from '../src/world.js';
 
@@ -273,4 +274,56 @@ describe.skipIf(!process.env.DATABASE_URL)('promiser', () => {
     expect(signed.signer).toBe(signer.address);
     void SupplyMode;
   });
+
+  it('the HTTP routes serve exactly what was signed, refuse junk, and say so when there is nothing', async () => {
+    const { db, w, signer, sync, deps } = await rig();
+    const cross = await w.newCross({ disclosure: Disclosure.Open, openTs: BASE, closeTs: BASE + 300n });
+    const app = await buildServer({ db, account: async (a: Address) => { const x = w.h.svm.getAccount(a); return x.exists ? { data: x.data, owner: x.programAddress } : null; }, lifetime: async () => ({}) as never, network: 'localnet', promiseSigner: signer.address });
+    const get = async (url: string) => app.inject({ method: 'GET', url });
+
+    // Before any band: the routes say so rather than inventing one, and the record is empty but well formed.
+    expect((await get(`/v1/crosses/${cross.address}/promise`)).statusCode).toBe(404);
+    const empty = (await get('/v1/accuracy')).json();
+    expect(empty.totals).toEqual({ issued: 0, crosses: 0, graded: 0, unresolved: 0, void: 0 });
+    expect(empty.buckets).toHaveLength(3);
+    expect((await get('/v1/promises/signer')).json()).toMatchObject({ signer: signer.address, cluster: 'localnet' });
+
+    const s = await w.trader(0n, 2_000_000_000n);
+    const b = await w.trader(10_000_000_000n);
+    await w.place(cross, s, OrderSide.Sell, 1_300_000n, 2_000_000_000n);
+    await w.place(cross, b, OrderSide.Buy, 1_800_000n, 1_000_000_000n);
+    await sync();
+    w.h.setTime(BASE + 100n);
+    const [id] = (await issueRound(deps)).issued;
+
+    const byCross = (await get(`/v1/crosses/${cross.address}/promise`)).json();
+    expect(byCross.promise.id).toBe(id);
+    expect(await verifySigned({ promise: byCross.promise, signer: byCross.signer, signature: byCross.signature }, signer.address)).toEqual({ ok: true });
+    expect(byCross.grade).toBeNull();
+    expect((await get(`/v1/promises/${id}`)).json().promise.id).toBe(id);
+    const inputs = (await get(`/v1/promises/${id}/inputs`)).json();
+    expect(hashJcs(inputs)).toBe(byCross.promise.inputsHash);
+
+    // Junk and unknowns.
+    for (const bad of ['nope', 'ABC', 'G'.repeat(64), 'a'.repeat(63)]) {
+      expect((await get(`/v1/promises/${bad}`)).statusCode, bad).toBe(400);
+      expect((await get(`/v1/promises/${bad}/inputs`)).statusCode, bad).toBe(400);
+    }
+    expect((await get(`/v1/promises/${'a'.repeat(64)}`)).statusCode).toBe(404);
+    expect((await get(`/v1/promises/${'a'.repeat(64)}/inputs`)).statusCode).toBe(404);
+    expect((await get('/v1/crosses/not-an-address/promise')).statusCode).toBe(400);
+
+    // After settlement the grade and the accuracy record agree with the chain.
+    const settled = await w.settle(cross);
+    await sync();
+    await gradeRound(deps);
+    const clearing = settled.data.clearing;
+    if (clearing.__option !== 'Some') throw new Error('should have cleared');
+    const finalTick = Number((clearing.value.price - settled.data.minPrice) / settled.data.tick);
+    const graded = (await get(`/v1/promises/${id}`)).json();
+    expect(graded.grade).toMatchObject({ status: 'SCORED', outcomeTick: finalTick });
+    const acc = (await get('/v1/accuracy')).json();
+    expect(acc.totals).toMatchObject({ issued: 1, crosses: 1, graded: 1, unresolved: 0 });
+    expect(acc.signer).toBe(signer.address);
+  }, 60_000);
 });

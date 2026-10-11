@@ -182,7 +182,7 @@ export class World {
   async revealAll(cross: CrossView, orders: PlacedOrder[]): Promise<void> {
     this.h.setTime(cross.data.closeTs + 1n);
     for (const o of orders.filter((x) => x.reveal)) {
-      await this.h.send([await buildReveal(this.view(cross.address), o.owner, o.nonce, o.index, o.price, o.quantity, o.salt)], o.owner);
+      await this.h.send([await buildReveal(this.view(cross.address), o.owner, o.nonce, o.price, o.quantity, o.salt)], o.owner);
     }
   }
 
@@ -205,7 +205,7 @@ export class World {
 
   async cancel(cross: CrossView, o: PlacedOrder): Promise<void> {
     const v = this.view(cross.address);
-    await this.h.send([await buildCancel(v, o.owner, o.nonce, o.side, o.index, v.data.disclosure === Disclosure.Open)], o.owner);
+    await this.h.send([await buildCancel(v, o.owner, o.nonce, o.side, v.data.disclosure === Disclosure.Open)], o.owner);
   }
 }
 

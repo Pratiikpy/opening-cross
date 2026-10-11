@@ -45,3 +45,8 @@ test-ledger/
 tests/fixtures/*.so
 tests/fixtures/*.json
 *.tsbuildinfo
+
+# Product film: renders and recorded screens are regenerated, not committed
+video/out/
+video/public/shots/
+video/public/clips/

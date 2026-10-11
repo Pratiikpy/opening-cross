@@ -34,7 +34,7 @@ const deps = (period: string): RoundDeps => ({
   paceMs: 0,
 });
 
-describe.skipIf(!process.env.DATABASE_URL)('premium monitor', () => {
+describe.skipIf(!process.env.DATABASE_URL)('premium monitor', { timeout: 60_000 }, () => {
   it('builds the universe from genuine xStocks that have a reference and a route', async () => {
     const u = await buildUniverse(deps('market'));
     expect(u.entries.map((e) => e.ticker)).toEqual(['TSLA']);

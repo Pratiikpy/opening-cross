@@ -42,7 +42,7 @@ async function crossAccount(address) {
 
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 async function user(name, key, theme = 'light', viewport = { width: 1440, height: 900 }) {
-  const ctx = await browser.newContext({ viewport, colorScheme: theme, acceptDownloads: true });
+  const ctx = await browser.newContext({ viewport, colorScheme: theme, acceptDownloads: true, deviceScaleFactor: Number(process.env.DSF ?? 1) });
   await ctx.addInitScript(`window.__E2E_WALLET__ = ${JSON.stringify({ name: 'E2E Test Wallet', secret: key.secret, chain: 'solana:localnet' })};`);
   await ctx.addInitScript(WALLET_JS);
   const page = await ctx.newPage();

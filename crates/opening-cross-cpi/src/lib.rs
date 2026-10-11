@@ -49,9 +49,11 @@ pub mod pda {
     pub fn shard(cross: &Pubkey, index: u8) -> (Pubkey, u8) {
         core(&[SHARD_SEED, cross.as_ref(), &[index]])
     }
-    /// Which shard an order lands in: `order_index % shards` (the SDK's `shardIndexFor`).
-    pub fn shard_index_for(order_index: u32, shards: u8) -> u8 {
-        (order_index % u32::from(shards)) as u8
+    /// Which shard an order lands in: `sha256(owner ‖ nonce)` as a little-endian `u32`, modulo `shards`
+    /// (the SDK's `shardIndexFor`; the program's `shard_of`).
+    pub fn shard_index_for(owner: &Pubkey, nonce: u64, shards: u8) -> u8 {
+        let h = solana_sha256_hasher::hashv(&[owner.as_ref(), &nonce.to_le_bytes()]).to_bytes();
+        (u32::from_le_bytes([h[0], h[1], h[2], h[3]]) % u32::from(shards.max(1))) as u8
     }
     pub fn order(cross: &Pubkey, owner: &Pubkey, nonce: u64) -> (Pubkey, u8) {
         core(&[

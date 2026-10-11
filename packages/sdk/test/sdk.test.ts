@@ -15,10 +15,25 @@ describe('sdk helpers', () => {
     expect(() => orderCommitment(cross, owner, 3n, OrderSide.Buy, 1n, 1n, new Uint8Array(31))).toThrow();
   });
 
-  it('rounds buyer cost up and assigns shards by index', () => {
+  it('rounds buyer cost up', () => {
     expect(costCeil(3n, 10n, 4n)).toBe(8n);
     expect(costCeil(4n, 10n, 4n)).toBe(10n);
-    expect([0, 1, 2, 3, 4].map((i) => shardIndexFor(i, 3))).toEqual([0, 1, 2, 0, 1]);
+  });
+
+  it('assigns an order to a shard from its owner and nonce alone, the same as an independent sha256', () => {
+    const owner = address('DTB3Jtxb6dy7GvocUbypiJb548ZLGRzVdPrNNCWAKEdC');
+    const le = (v: bigint) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(v); return b; };
+    for (const shards of [1, 2, 3, 7, 32]) {
+      const seen = new Set<number>();
+      for (let nonce = 0n; nonce < 200n; nonce++) {
+        const h = createHash('sha256').update(getAddressEncoder().encode(owner)).update(le(nonce)).digest();
+        const expected = h.readUInt32LE(0) % shards;
+        expect(shardIndexFor(owner, nonce, shards)).toBe(expected);
+        seen.add(expected);
+      }
+      // Spread over every shard, so no shard is starved or overloaded by the rule.
+      expect(seen.size).toBe(shards);
+    }
   });
 
   it('derives distinct cross addresses per creator and id', async () => {

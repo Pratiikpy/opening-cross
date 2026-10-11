@@ -18,7 +18,7 @@ describe('compute budget', () => {
     units.commit_sealed = await w.h.send([await buildPlaceOrder({ cross: w.view(sealed.address), owner: b, nonce: 2n, side: OrderSide.Buy, price: 1_000_000n, quantity: 1_000_000n, salt: s, escrow: 2_000_000n })], b);
     w.h.setTime(sealed.data.closeTs + 1n);
     const order = getOrderDecoder().decode((w.h.svm.getAccount(await orderAddress(sealed.address, b.address, 2n)) as { data: Uint8Array }).data);
-    units.reveal = await w.h.send([await buildReveal(w.view(sealed.address), b, 2n, order.index, 1_000_000n, 1_000_000n, s)], b);
+    units.reveal = await w.h.send([await buildReveal(w.view(sealed.address), b, 2n, 1_000_000n, 1_000_000n, s)], b);
     w.h.setTime(sealed.data.revealEndTs + 1n);
     const [merge, ...rest] = await buildSettleBook(w.view(sealed.address));
     units.merge_shard = await w.h.send([merge!], w.admin);

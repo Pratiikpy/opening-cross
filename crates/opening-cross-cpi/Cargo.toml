@@ -10,6 +10,7 @@ include = ["src/**", "idls/**", "Cargo.toml", "README.md"]
 [dependencies]
 anchor-lang = "=1.0.2"
 bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+solana-sha256-hasher = "3"
 
 [dev-dependencies]
 # The programs themselves, to prove the bindings and seeds match them.

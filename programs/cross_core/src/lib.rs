@@ -518,8 +518,7 @@ pub mod cross_core {
             }
             Disclosure::Open => {
                 validate_order(c, side, price, quantity, escrow)?;
-                let shard_ix = usize::try_from(index % u32::from(c.shards))
-                    .map_err(|_| CrossError::Overflow)?;
+                let shard_ix = shard_of(&owner_key, nonce, c.shards);
                 let shard_acc = ctx
                     .accounts
                     .shard
@@ -624,8 +623,7 @@ pub mod cross_core {
                 .as_ref()
                 .ok_or(CrossError::ShardMissing)?;
             let mut shard = shard_acc.load_mut()?;
-            let shard_ix =
-                usize::try_from(o.index % u32::from(c.shards)).map_err(|_| CrossError::Overflow)?;
+            let shard_ix = shard_of(&o.owner, o.nonce, c.shards);
             require!(
                 usize::from(shard.index) == shard_ix && shard.cross == c.key(),
                 CrossError::WrongShard
@@ -700,8 +698,7 @@ pub mod cross_core {
         );
         validate_order(c, o.side, price, quantity, o.escrow)?;
         let mut shard = ctx.accounts.shard.load_mut()?;
-        let shard_ix =
-            usize::try_from(o.index % u32::from(c.shards)).map_err(|_| CrossError::Overflow)?;
+        let shard_ix = shard_of(&o.owner, o.nonce, c.shards);
         require!(
             usize::from(shard.index) == shard_ix && shard.cross == c.key(),
             CrossError::WrongShard
@@ -1202,6 +1199,15 @@ fn validate_order(
         OrderSide::Sell => require!(quantity <= escrow, CrossError::InsufficientEscrow),
     }
     Ok(())
+}
+
+/// The shard an order's per-tick quantity lives in: `sha256(owner ‖ nonce)` read as a little-endian `u32`, modulo
+/// the number of shards. It depends only on what the order's owner already knows, so concurrent bidders never race
+/// for a shard (an arrival-order rule changes with every order that lands first), and cancel and reveal find the
+/// same shard again from the stored owner and nonce.
+pub fn shard_of(owner: &Pubkey, nonce: u64, shards: u8) -> usize {
+    let h = solana_sha256_hasher::hashv(&[owner.as_ref(), &nonce.to_le_bytes()]).to_bytes();
+    (u32::from_le_bytes([h[0], h[1], h[2], h[3]]) % u32::from(shards.max(1))) as usize
 }
 
 pub fn commitment_of(

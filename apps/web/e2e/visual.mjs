@@ -15,7 +15,7 @@ const failures = [];
 for (const route of ROUTES) {
   for (const [device, viewport] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
     for (const theme of ['light', 'dark']) {
-      const ctx = await browser.newContext({ viewport, colorScheme: theme, deviceScaleFactor: 1 });
+      const ctx = await browser.newContext({ viewport, colorScheme: theme, deviceScaleFactor: Number(process.env.DSF ?? 1) });
       const page = await ctx.newPage();
       const problems = [];
       page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));

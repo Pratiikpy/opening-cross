@@ -23,7 +23,7 @@ const j = async (path) => (await fetch(API + path)).json();
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const problems = [];
 async function open(path, { theme = 'light', viewport = { width: 1440, height: 900 } } = {}) {
-  const ctx = await browser.newContext({ viewport, colorScheme: theme });
+  const ctx = await browser.newContext({ viewport, colorScheme: theme, deviceScaleFactor: Number(process.env.DSF ?? 1) });
   const page = await ctx.newPage();
   page.on('console', (m) => m.type() === 'error' && problems.push(`${path} console: ${m.text()}`));
   page.on('pageerror', (e) => problems.push(`${path} pageerror: ${e.message}`));

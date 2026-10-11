@@ -32,7 +32,7 @@ until curl -s -o /dev/null http://localhost:3000/ && curl -s -o /dev/null http:/
 cd "$ROOT/apps/web"
 if [ "${MODE:-flow}" = trust ]; then
   OPEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/oc-e2e.json','utf8')).crosses.open)")
-  TRUST_OUT="$ROOT/docs/evidence/screens/trust"
+  TRUST_OUT="${TRUST_OUT:-$ROOT/docs/evidence/screens/trust}"
   (cd "$ROOT/tests/e2e" && node --import tsx src/trust-seed.ts) >/tmp/oc-trust-seed.log 2>&1
   # A band is signed once the book crosses.
   for i in $(seq 1 40); do curl -sf "http://localhost:8080/v1/crosses/$OPEN/promise" >/tmp/oc-promise.json && break; sleep 3; done
@@ -50,12 +50,12 @@ if [ "${MODE:-flow}" = trust ]; then
   exit 0
 fi
 if [ "${MODE:-flow}" = issuer ]; then
-  SEED=/tmp/oc-e2e.json OUT="$ROOT/docs/evidence/screens/w4" node e2e/issuer-flow.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
+  SEED=/tmp/oc-e2e.json OUT="${OUT:-$ROOT/docs/evidence/screens/w4}" node e2e/issuer-flow.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
   exit 0
 fi
 if [ "${MODE:-flow}" = visual ]; then
   OPEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/oc-e2e.json','utf8')).crosses.open)")
-  ROUTES="/,/crosses,/crosses/$OPEN,/issue,/developers,/status" OUT="$ROOT/docs/evidence/screens" node e2e/visual.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
+  ROUTES="/,/crosses,/crosses/$OPEN,/issue,/developers,/status" OUT="${OUT:-$ROOT/docs/evidence/screens}" node e2e/visual.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log
   exit 0
 fi
 SEED=/tmp/oc-e2e.json OUT=${OUT:-"$ROOT/docs/evidence/screens/w3"} node e2e/investor-flow.mjs >/tmp/oc-flow.log 2>&1 && echo FLOW-OK >>/tmp/oc-flow.log || echo FLOW-FAILED >>/tmp/oc-flow.log

@@ -95,22 +95,22 @@ describe('sealed reveal', () => {
     const b = await w.trader(10_000_000_000n);
     const o = await w.place(cross, b, OrderSide.Buy, 1_200_000n, 1_000_000n, { escrow: 5_000_000n });
     // Too early: still in the call window.
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.index, o.price, o.quantity, o.salt)], b)).toContain('NotInRevealWindow');
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.price, o.quantity, o.salt)], b)).toContain('NotInRevealWindow');
     w.h.setTime(cross.data.closeTs + 1n);
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.index, 1_300_000n, o.quantity, o.salt)], b)).toContain('CommitmentMismatch');
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.index, o.price, o.quantity, salt())], b)).toContain('CommitmentMismatch');
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, 1_300_000n, o.quantity, o.salt)], b)).toContain('CommitmentMismatch');
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.price, o.quantity, salt())], b)).toContain('CommitmentMismatch');
     // Escrow too small for the true order: commitments can hide the price but not underfund it.
     const c2 = await w.trader(10_000_000_000n);
     w.h.setTime(cross.data.openTs);
     const under = await w.place(cross, c2, OrderSide.Buy, 1_900_000n, 10_000_000n, { escrow: 1_000_000n });
     w.h.setTime(cross.data.closeTs + 1n);
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), c2, under.nonce, under.index, under.price, under.quantity, under.salt)], c2)).toContain('InsufficientEscrow');
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), c2, under.nonce, under.price, under.quantity, under.salt)], c2)).toContain('InsufficientEscrow');
     // The honest reveal works once, and only once.
-    await w.h.send([await buildReveal(w.view(cross.address), b, o.nonce, o.index, o.price, o.quantity, o.salt)], b);
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.index, o.price, o.quantity, o.salt)], b)).toContain('AlreadyRevealed');
+    await w.h.send([await buildReveal(w.view(cross.address), b, o.nonce, o.price, o.quantity, o.salt)], b);
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.price, o.quantity, o.salt)], b)).toContain('AlreadyRevealed');
     // After the reveal window closes, reveals are refused.
     w.h.setTime(cross.data.revealEndTs);
-    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.index, o.price, o.quantity, o.salt)], b)).toMatch(/NotInRevealWindow|AlreadyRevealed/);
+    expect(await w.h.fail([await buildReveal(w.view(cross.address), b, o.nonce, o.price, o.quantity, o.salt)], b)).toMatch(/NotInRevealWindow|AlreadyRevealed/);
   });
 
   it('nobody else can reveal or cancel your order', async () => {
@@ -121,7 +121,7 @@ describe('sealed reveal', () => {
     const o = await w.place(cross, b, OrderSide.Buy, 1_200_000n, 1_000_000n, { escrow: 5_000_000n });
     w.h.setTime(cross.data.closeTs + 1n);
     // Mallory signs as owner of an order that is not hers: the PDA derivation does not match.
-    const forged = await buildReveal(w.view(cross.address), mallory, o.nonce, o.index, o.price, o.quantity, o.salt);
+    const forged = await buildReveal(w.view(cross.address), mallory, o.nonce, o.price, o.quantity, o.salt);
     expect(await w.h.fail([forged], mallory)).toMatch(/AccountNotInitialized|ConstraintHasOne|Unauthorized/);
   });
 });

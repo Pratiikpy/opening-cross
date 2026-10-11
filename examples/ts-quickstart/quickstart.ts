@@ -169,7 +169,7 @@ for (const o of orders) {
   const acct = svm.getAccount(await orderAddress(cross, o.owner.address, o.nonce));
   if (!acct.exists) throw new Error('order missing');
   const { index } = getOrderDecoder().decode(acct.data);
-  await send([await buildReveal(view(cross), o.owner, o.nonce, index, o.price, o.quantity, o.salt)], o.owner);
+  await send([await buildReveal(view(cross), o.owner, o.nonce, o.price, o.quantity, o.salt)], o.owner);
 }
 setTime(T0 + 201n);
 for (const ix of await buildSettleBook(view(cross))) await send([ix], admin);

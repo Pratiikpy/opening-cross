@@ -245,7 +245,7 @@ async function main() {
   for (const [i, [w, , price, qty, reveal]] of sealedPlan.entries()) {
     if (!reveal) continue;
     const o = getOrderDecoder().decode((await account(await orderAddress(cross2, w.address, 100n + BigInt(i)))).data);
-    await send([await buildReveal(await crossView(cross2), w, 100n + BigInt(i), o.index, price, qty, salts[i]!)], w);
+    await send([await buildReveal(await crossView(cross2), w, 100n + BigInt(i), price, qty, salts[i]!)], w);
   }
   await waitUntil(reveal2 + 1n);
   for (const ix of await buildSettleBook(await crossView(cross2))) lastSig = await send([ix], operator);

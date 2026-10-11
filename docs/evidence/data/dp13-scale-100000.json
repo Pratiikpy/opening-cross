@@ -1,0 +1,24 @@
+{
+ "orders": 100000,
+ "shards": 32,
+ "ticks": 256,
+ "placeOrder": {
+  "n": 100000,
+  "min": 21633,
+  "max": 21633,
+  "mean": 21633
+ },
+ "settleInstructions": 33,
+ "settleTotalCu": 783740,
+ "settleMaxInstructionCu": 116476,
+ "claim": {
+  "n": 200,
+  "min": 34743,
+  "max": 46637,
+  "mean": 35438
+ },
+ "clearingPrice": "2790000",
+ "matched": "30000000000",
+ "verifiedByIndependentImplementation": true,
+ "placeSeconds": 422
+}

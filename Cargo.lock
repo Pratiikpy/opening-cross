@@ -960,6 +960,7 @@ dependencies = [
  "bytemuck",
  "cross_core",
  "cross_gate",
+ "solana-sha256-hasher",
 ]
 
 [[package]]

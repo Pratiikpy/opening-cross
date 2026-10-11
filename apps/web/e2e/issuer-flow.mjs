@@ -17,7 +17,7 @@ const log = (ok, what) => {
 const rpc = async (method, params) => (await (await fetch(seed.rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()).result;
 
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: Number(process.env.DSF ?? 1) });
 await ctx.addInitScript(`window.__E2E_WALLET__ = ${JSON.stringify({ name: 'E2E Test Wallet', secret: seed.wallets.issuer.secret, chain: 'solana:localnet' })};`);
 await ctx.addInitScript(WALLET_JS);
 const page = await ctx.newPage();
