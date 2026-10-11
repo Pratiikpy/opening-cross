@@ -71,7 +71,11 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       result.done.push({ action, signature: last });
       progressed = true;
     } catch (e) {
-      result.failed.push({ action, error: describe(e) });
+      const error = describe(e);
+      // The program cannot read this account (written by an earlier layout): retrying cannot
+      // succeed, so report it once as skipped with the reason rather than failing every pass.
+      if (error.includes('AccountDidNotDeserialize')) p.skipped.push({ cross: address, reason: `the program cannot read this account (${error})` });
+      else result.failed.push({ action, error });
     }
   }
   return { progressed, skipped: p.skipped };
