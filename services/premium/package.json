@@ -1,0 +1,26 @@
+{
+  "name": "@opening-cross/premium-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runs the premium monitor on a schedule and stores every observation for the public premium page.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@opening-cross/authenticity": "workspace:*",
+    "@opening-cross/premium": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

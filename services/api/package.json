@@ -18,6 +18,8 @@
     "@opening-cross/authenticity": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/premium": "workspace:*",
+    "@opening-cross/premium-service": "workspace:*",
     "@opening-cross/promiser": "workspace:*",
     "@opening-cross/promises": "workspace:*",
     "@opening-cross/router": "workspace:*",

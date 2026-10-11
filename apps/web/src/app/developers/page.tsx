@@ -16,6 +16,14 @@ const ROUTES: [string, string][] = [
   ['GET  /v1/crosses/:address/book', 'Resting book (merged and unmerged shards) and the price it would clear at now.'],
   ['GET  /v1/crosses/:address/orders', 'Indexed orders with fills.'],
   ['GET  /v1/crosses/:address/proof', 'Fairness proof: the clearing recomputed independently.'],
+  ['GET  /v1/crosses/:address/promise', 'The latest signed price band for a cross, with its grade once graded.'],
+  ['GET  /v1/promises/:id', 'A signed promise with its grade and its on-chain anchor proof. Add /inputs for the book it was computed from.'],
+  ['GET  /v1/promises/signer', 'The key that signs promises; promises by any other key are not ours.'],
+  ['GET  /v1/accuracy', 'Every signed band counted by outcome, with calibration per time bucket.'],
+  ['GET  /v1/tokens/:mint/authenticity', "Is this the issuer's real token? Mainnet mints only."],
+  ['GET  /v1/crosses/:address/authenticity', 'The same check for both tokens of a cross.'],
+  ['GET  /v1/premium/summary?days=', 'Stock-token premium by order size and market session, with exclusions counted.'],
+  ['GET  /v1/premium/latest', 'The newest premium measurement for each token.'],
   ['GET  /v1/orders?addresses=a,b', 'Orders by address; open ones read from chain.'],
   ['GET  /v1/owners/:owner/orders', 'All orders of one wallet across crosses.'],
   ['POST /v1/tx/{create-cross,place-order,cancel,reveal,settle,claim,finalize}', 'Unsigned transactions; your wallet signs and sends.'],
@@ -27,6 +35,10 @@ const PACKAGES: [string, string][] = [
   ['@opening-cross/verifier', 'Recompute any cross; fairness proofs; the conformance suite (opening-cross-conformance).'],
   ['@opening-cross/router', 'Compare a cross with a live Jupiter route at the same moment.'],
   ['opening-cross-cpi (Rust)', 'CPI bindings and PDA derivations for your own program.'],
+  ['@opening-cross/promises', 'Verify a signed price band yourself: id, signature, the book it was computed from, and its grade against the chain.'],
+  ['@opening-cross/authenticity', "Is this the issuer's real token? Issuer lists, issuer keys on chain, and copy detection."],
+  ['@opening-cross/premium', 'Executable per-share premium of Solana stock tokens against an independent reference.'],
+  ['@opening-cross/mcp', 'An MCP server for agents: reads and unsigned drafts only, third-party text wrapped as data.'],
 ];
 
 export default function Developers() {

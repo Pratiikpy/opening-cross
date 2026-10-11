@@ -15,6 +15,8 @@ import { loadBook } from '@opening-cross/router';
 import { anchorFor, getInputs, getPromise, latestForCross, records, samples } from '@opening-cross/promiser';
 import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promises';
 import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
+import { groupObservations } from '@opening-cross/premium';
+import { coverage as premiumCoverage, latestPerTicker, observationsSince } from '@opening-cross/premium-service';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -267,6 +269,28 @@ export async function buildServer(d: ApiDeps) {
   app.get('/v1/accuracy', async (_req, reply) => {
     const { rows } = await records(d.db, cluster);
     return send(reply, { cluster, signer: d.promiseSigner ?? null, ...accuracyReport(rows, await samples(d.db, cluster)) });
+  });
+
+  // ---- premium monitor (ADR-0017). It measures mainnet liquidity whichever cluster this API follows.
+  const PREMIUM_CLUSTER = 'mainnet-beta';
+  app.get('/v1/premium/summary', async (req, reply) => {
+    const days = Number((req.query as { days?: string }).days ?? 7);
+    if (!Number.isInteger(days) || days < 1 || days > 90) throw new RequestError(400, 'days must be a whole number from 1 to 90');
+    const since = Math.floor(Date.now() / 1000) - days * 86_400;
+    const [obs, cov] = await Promise.all([observationsSince(d.db, PREMIUM_CLUSTER, since), premiumCoverage(d.db, PREMIUM_CLUSTER, since)]);
+    return send(reply, {
+      cluster: PREMIUM_CLUSTER,
+      unit: 'basis points x 100, signed; positive is above the reference',
+      reference: 'hip3_oracle',
+      days,
+      coverage: cov,
+      groups: groupObservations(obs),
+    });
+  });
+
+  app.get('/v1/premium/latest', async (_req, reply) => {
+    const obs = await latestPerTicker(d.db, PREMIUM_CLUSTER);
+    return send(reply, { cluster: PREMIUM_CLUSTER, unit: 'basis points x 100, signed', observations: obs });
   });
 
   app.get('/v1/crosses/:address/proof', async (req, reply) => {

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { API_URL, get } from '@/lib/api';
+import { explainCalibration } from '@/lib/reasons';
 import type { AccuracyView, BucketReport } from '@/lib/trust-types';
 import { shortAddress } from '@/lib/units';
 
@@ -16,6 +17,16 @@ function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
   const label = WINDOW[b.bucket] ?? `Part ${b.bucket + 1}`;
   const c = b.calibration;
   const claimed = b.hit + b.miss;
+  if (b.issued === 0) {
+    return (
+      <li className="py-5" data-testid={`bucket-${b.bucket}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-lg font-medium">{label}</h3>
+          <span className="text-sm text-muted">No bands signed yet</span>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="py-6" data-testid={`bucket-${b.bucket}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -32,7 +43,7 @@ function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
       </dl>
       <p className="mt-3 text-sm text-muted">
         {b.scored} scored estimates · {b.void} void (the cross did not print) · {b.unresolved} still unresolved. Calibration: {c.n} graded crosses over {c.distinctDays} day{c.distinctDays === 1 ? '' : 's'}.
-        {c.status === 'PROVISIONAL' && c.reason ? ` ${c.reason}` : ''}
+        {c.status === 'PROVISIONAL' && c.reason ? ` ${explainCalibration(c.reason)}` : ''}
       </p>
       <span className="sr-only">Window bounds in basis points: {bounds.join(', ')}</span>
     </li>

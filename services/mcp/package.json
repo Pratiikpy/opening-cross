@@ -1,0 +1,35 @@
+{
+  "name": "@opening-cross/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Opening Cross: read tools for crosses, the book, fairness proofs, signed price bands, token authenticity and the premium monitor, and draft tools that return unsigned transactions. It holds no key and cannot move funds.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "services/mcp"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "opening-cross-mcp": "src/stdio.ts"
+  },
+  "scripts": {
+    "start": "tsx src/stdio.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

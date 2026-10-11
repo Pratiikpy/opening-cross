@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
 import type { PromiseView } from '@/lib/trust-types';
+import { explainCalibration } from '@/lib/reasons';
 import { type Market, formatPrice, shortAddress } from '@/lib/units';
 
 const priceOfTick = (g: PromiseView['promise']['subject']['grid'], tick: number): bigint => BigInt(g.minPrice) + BigInt(tick) * BigInt(g.tick);
@@ -14,7 +15,7 @@ function outcomeLine(g: NonNullable<PromiseView['grade']>): string | null {
     case 'MISS':
       return 'The final price landed outside this band.';
     case 'SCORED':
-      return `The final price was ${g.errorTicks} tick${g.errorTicks === 1 ? '' : 's'} from this estimate.`;
+      return g.errorTicks === 0 ? 'The final price was exactly this estimate.' : `The final price was ${g.errorTicks} tick${g.errorTicks === 1 ? '' : 's'} from this estimate.`;
     case 'VOID':
       return 'This cross did not print, so the promise is void.';
     default:
@@ -63,7 +64,7 @@ export function SignedBand({ address, market, version }: { address: string; mark
           <span className="ml-2 text-muted">estimate, no coverage claimed yet</span>
         </p>
       )}
-      {!calibrated && claim.reason ? <p className="mt-1 text-muted">{claim.reason}</p> : null}
+      {!calibrated && claim.reason ? <p className="mt-1 text-muted" data-testid="band-reason">{explainCalibration(claim.reason)}</p> : null}
       {outcome ? <p className="mt-2 font-medium">{outcome}</p> : null}
       <p className="mt-3 text-xs text-muted">
         Signed by {shortAddress(p.signer)} · promise {p.promise.id.slice(0, 12)}… ·{' '}
