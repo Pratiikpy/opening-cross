@@ -1,0 +1,98 @@
+{
+ "comparable": true,
+ "base": {
+  "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+  "verdict": {
+   "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+   "verdict": "GENUINE",
+   "reasons": [
+    {
+     "code": "ISSUER_LISTED",
+     "message": "xStocks (Backed) lists this address as TSLAx."
+    },
+    {
+     "code": "AUTHORITIES_MATCH_ISSUER",
+     "message": "The mint authority and every other issuer power on the mint are held by keys this issuer uses."
+    }
+   ],
+   "listing": {
+    "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+    "symbol": "TSLAx",
+    "name": "Tesla xStock",
+    "family": "xstock"
+   },
+   "impersonates": [],
+   "observed": {
+    "name": "Tesla xStock",
+    "symbol": "TSLAx",
+    "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+   },
+   "registry": {
+    "snapshotHash": "befb8fa1e9e7c57012a11c904ca5691bf55a6ca8c15d77225607c19d1015ddea",
+    "generatedAt": "2026-10-11T15:48:14.256Z"
+   }
+  }
+ },
+ "quote": {
+  "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "verdict": {
+   "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+   "verdict": "UNRELATED_TOKEN",
+   "reasons": [],
+   "listing": null,
+   "impersonates": [],
+   "observed": {
+    "name": "Bonk",
+    "symbol": "Bonk",
+    "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+   },
+   "registry": {
+    "snapshotHash": "befb8fa1e9e7c57012a11c904ca5691bf55a6ca8c15d77225607c19d1015ddea",
+    "generatedAt": "2026-10-11T15:48:14.256Z"
+   }
+  }
+ },
+ "registry": {
+  "network": "mainnet-beta",
+  "snapshotHash": "befb8fa1e9e7c57012a11c904ca5691bf55a6ca8c15d77225607c19d1015ddea",
+  "generatedAt": "2026-10-11T15:48:14.256Z",
+  "sources": [
+   {
+    "id": "xstocks_api",
+    "url": "https://api.xstocks.fi/api/v2/public/assets?page=<n>&pageSize=100",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 1319
+   },
+   {
+    "id": "ondo_csv",
+    "url": "https://www.dropbox.com/scl/fi/qjfxyg748mx0dwi6up86d/EXTERNAL-Ondo-GM-Tokens-Ondo-GM-Tokens.csv?rlkey=n3no1w78wrah3umsl0nr9s77i&e=2&st=spdit2q1&dl=1",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 451
+   },
+   {
+    "id": "issuer_page:developers.circle.com:USDC",
+    "url": "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 1
+   },
+   {
+    "id": "issuer_page:developers.circle.com:EURC",
+    "url": "https://developers.circle.com/stablecoins/eurc-contract-addresses",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 1
+   },
+   {
+    "id": "issuer_page:tether.to:USDT",
+    "url": "https://tether.to/en/supported-protocols/",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 1
+   },
+   {
+    "id": "issuer_page:paxos.com:PYUSD",
+    "url": "https://paxos.com/pyusd",
+    "fetchedAt": "2026-10-11T15:48:14.256Z",
+    "count": 1
+   }
+  ]
+ }
+}

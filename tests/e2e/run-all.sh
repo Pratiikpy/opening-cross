@@ -30,6 +30,11 @@ sh "$ROOT/tests/e2e/run-stack.sh" &
 until curl -s -o /dev/null http://localhost:3000/ && curl -s -o /dev/null http://localhost:8080/v1/health; do sleep 2; done
 (cd "$ROOT/tests/e2e" && CALL_SECS=${CALL_SECS:-240} REVEAL_SECS=${REVEAL_SECS:-120} OUT=/tmp/oc-e2e.json node --import tsx src/seed.ts >/tmp/oc-seed.log)
 cd "$ROOT/apps/web"
+if [ "${MODE:-flow}" = hold ]; then
+  # Keep the seeded stack up for manual inspection.
+  sleep "${HOLD_SECS:-900}"
+  exit 0
+fi
 if [ "${MODE:-flow}" = trust ]; then
   OPEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/oc-e2e.json','utf8')).crosses.open)")
   TRUST_OUT="${TRUST_OUT:-$ROOT/docs/evidence/screens/trust}"

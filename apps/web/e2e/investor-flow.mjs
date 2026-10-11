@@ -96,7 +96,7 @@ const { open, sealed } = seed.crosses;
 await A.page.goto(`${BASE}/crosses`, { waitUntil: 'networkidle' });
 for (let i = 0; i < 30 && (await A.page.getByText('Open for orders').count()) < 2; i++) {
   await A.page.waitForTimeout(2000);
-  await A.page.reload({ waitUntil: 'networkidle' });
+  await A.page.reload({ waitUntil: 'load' });
 }
 log((await A.page.getByText('Open for orders').count()) === 2, 'both seeded crosses are listed as open for orders');
 await shot(A, '01-crosses-list');

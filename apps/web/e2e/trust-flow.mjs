@@ -67,6 +67,26 @@ async function open(path, { theme = 'light', viewport = { width: 1440, height: 9
   }
 }
 
+// ---- the identity panel in its comparable state. The local API follows a local cluster, so the panel's answer for a
+// mainnet API is served from a recording of the real API's verdicts (apps/web/e2e/fixtures); the page code is the real one.
+{
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/authenticity-mainnet.json', import.meta.url), 'utf8'));
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: Number(process.env.DSF ?? 1) });
+  const page = await ctx.newPage();
+  page.on('console', (m) => m.type() === 'error' && problems.push(`identity console: ${m.text()}`));
+  page.on('pageerror', (e) => problems.push(`identity pageerror: ${e.message}`));
+  await page.route('**/v1/crosses/*/authenticity', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+  await page.goto(`${BASE}/crosses/${cross}`, { waitUntil: 'networkidle' });
+  const panel = page.getByTestId('identity-panel');
+  await panel.waitFor({ timeout: 20_000 });
+  await page.getByTestId('identity-quote').waitFor({ timeout: 20_000 });
+  const text = (await panel.innerText()).replace(/\s+/g, ' ');
+  check('the identity panel shows a genuine issuer token as such', /TSLAx/.test(text) && /Matches the issuer's list and keys/.test(text), text.slice(0, 140));
+  check('and a token that is not an issuer token as not covered', /Not a covered issuer token/.test(text));
+  await page.screenshot({ path: `${OUT}/identity-comparable-desktop-light.png`, fullPage: true });
+  await ctx.close();
+}
+
 // ---- the track record
 {
   const acc = await j('/v1/accuracy');

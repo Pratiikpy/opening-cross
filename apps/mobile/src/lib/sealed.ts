@@ -43,7 +43,7 @@ export async function importBackup(store: KeyValue, text: string, cross: string,
   return mine.length;
 }
 
-/** 32 random bytes as hex, from a source the caller supplies (expo-crypto in the app, a stub in tests). */
+/** 32 random bytes as hex, from a source the caller supplies (expo-crypto in the app, a fixed source in tests). */
 export const saltFrom = (random: (n: number) => Uint8Array): string => bytesToHex(random(32));
 
 /** A nonce no earlier order by this wallet in this cross uses: 48 random bits as a decimal string. */

@@ -1,4 +1,4 @@
-// Real screens of the product. Each scene pans and zooms a recorded screenshot; nothing here is mocked.
+// Real screens of the product. Each scene pans and zooms a recorded screenshot; nothing here is faked.
 import { MONO, type Mode, THEME } from '../brand';
 import { Appear, Caption, Chip, Eyebrow, Headline, Shot, Stage, Sub, beat, useScene } from '../ui';
 

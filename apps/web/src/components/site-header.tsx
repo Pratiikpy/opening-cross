@@ -22,7 +22,7 @@ export function SiteHeader() {
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-7 text-sm text-muted md:flex">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="transition-colors hover:text-ink">
+            <Link key={n.href} href={n.href} prefetch={false} className="transition-colors hover:text-ink">
               {n.label}
             </Link>
           ))}
@@ -36,7 +36,7 @@ export function SiteHeader() {
             </summary>
             <nav aria-label="Main" className="absolute right-0 z-50 mt-2 w-56 rounded-[var(--radius-card)] border border-border bg-bg p-2 shadow-lg">
               {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className="block rounded-lg px-3 py-2.5 text-sm hover:bg-surface">
+                <Link key={n.href} href={n.href} prefetch={false} className="block rounded-lg px-3 py-2.5 text-sm hover:bg-surface">
                   {n.label}
                 </Link>
               ))}

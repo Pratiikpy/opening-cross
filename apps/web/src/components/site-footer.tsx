@@ -15,7 +15,7 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="space-y-2 text-sm">
           <p className="font-medium">Opening Bell</p>
           {[...NAV, { href: '/#proof', label: 'Proof' }, { href: '/#issuers', label: 'For issuers' }].map((n) => (
-            <Link key={n.href} href={n.href} className="block text-muted hover:text-ink">
+            <Link key={n.href} href={n.href} prefetch={false} className="block text-muted hover:text-ink">
               {n.label}
             </Link>
           ))}
