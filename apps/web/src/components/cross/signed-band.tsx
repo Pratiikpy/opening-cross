@@ -31,9 +31,9 @@ export function SignedBand({ address, market, version }: { address: string; mark
   const [p, setP] = useState<PromiseView | null>(null);
   useEffect(() => {
     let live = true;
-    fetch(`${API_URL}/v1/crosses/${address}/promise`, { cache: 'no-store' })
-      .then((r) => (r.ok ? (r.json() as Promise<PromiseView>) : null))
-      .then((v) => live && setP(v))
+    fetch(`${API_URL}/v1/crosses/${address}/promise?optional=1`, { cache: 'no-store' })
+      .then((r) => (r.ok ? (r.json() as Promise<PromiseView | { promise: null }>) : null))
+      .then((v) => live && setP(v && v.promise ? (v as PromiseView) : null))
       .catch(() => live && setP(null));
     return () => {
       live = false;

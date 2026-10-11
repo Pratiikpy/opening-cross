@@ -246,7 +246,10 @@ export async function buildServer(d: ApiDeps) {
   app.get('/v1/crosses/:address/promise', async (req, reply) => {
     const a = address((req.params as { address: string }).address, 'address');
     const last = await latestForCross(d.db, a);
-    if (!last) throw new RequestError(404, 'no promise has been issued for this cross (sealed crosses and books that do not cross yet have none)');
+    const none = 'no promise has been issued for this cross (sealed crosses and books that do not cross yet have none)';
+    // A page asks with ?optional=1 so that "no band yet" is an ordinary answer, not a failed request in the browser console.
+    if (!last && (req.query as { optional?: string }).optional === '1') return send(reply, { promise: null, note: none });
+    if (!last) throw new RequestError(404, none);
     return send(reply, await promiseView(last.signed.promise.id));
   });
 

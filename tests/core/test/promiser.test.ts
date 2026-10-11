@@ -283,6 +283,10 @@ describe.skipIf(!process.env.DATABASE_URL)('promiser', () => {
 
     // Before any band: the routes say so rather than inventing one, and the record is empty but well formed.
     expect((await get(`/v1/crosses/${cross.address}/promise`)).statusCode).toBe(404);
+    // A page can ask for the same thing without a failed request.
+    const optional = await get(`/v1/crosses/${cross.address}/promise?optional=1`);
+    expect(optional.statusCode).toBe(200);
+    expect(optional.json().promise).toBeNull();
     const empty = (await get('/v1/accuracy')).json();
     expect(empty.totals).toEqual({ issued: 0, crosses: 0, graded: 0, unresolved: 0, void: 0 });
     expect(empty.buckets).toHaveLength(3);
