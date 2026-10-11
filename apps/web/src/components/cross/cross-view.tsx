@@ -82,7 +82,7 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
     <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Cross {shortAddress(cross.address)}</h1>
-        <StateBadge state={cross.state} open={phase === 'open'} />
+        <StateBadge state={cross.state} phase={phase === 'settled' ? 'awaiting-settlement' : phase} />
       </div>
       <p className="mt-2 text-sm text-muted">
         {cross.kind} · {cross.disclosure === 'sealed' ? 'sealed bids' : 'open book'} · base {cross.baseMint ? shortAddress(cross.baseMint) : 'minted at settlement'} · quote{' '}

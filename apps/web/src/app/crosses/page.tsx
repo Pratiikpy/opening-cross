@@ -24,6 +24,7 @@ export default async function Crosses() {
         <ul className="mt-10 divide-y divide-border border-y border-border">
           {res.data.crosses.map((c) => {
             const open = c.state === 'Live' && BigInt(c.open_ts) <= now && now < BigInt(c.close_ts);
+            const phase = now < BigInt(c.open_ts) ? 'upcoming' : open ? 'open' : now < BigInt(c.reveal_end_ts) ? 'reveal' : 'awaiting-settlement';
             return (
               <li key={c.address}>
                 <Link href={`/crosses/${c.address}`} className="grid gap-2 py-4 transition-colors hover:bg-surface sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-3">
@@ -34,7 +35,7 @@ export default async function Crosses() {
                     </span>
                   </span>
                   <span className="text-sm text-muted">closes {new Date(Number(c.close_ts) * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC</span>
-                  <StateBadge state={c.state} open={open} />
+                  <StateBadge state={c.state} phase={phase} />
                 </Link>
               </li>
             );

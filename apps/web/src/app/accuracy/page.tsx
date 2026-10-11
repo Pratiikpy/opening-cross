@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 const WINDOW = ['Early in the call', 'Middle of the call', 'Late in the call'];
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const pct = (x: number | null) => (x === null ? '—' : `${(x * 100).toFixed(1)}%`);
 
 function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
@@ -42,7 +43,7 @@ function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
         <Stat label="Typical miss" value={b.medianAbsErrorTicks === null ? '—' : `${b.medianAbsErrorTicks} ticks`} note={b.meanAbsErrorTicks === null ? undefined : `mean ${b.meanAbsErrorTicks.toFixed(1)}`} />
       </dl>
       <p className="mt-3 text-sm text-muted">
-        {b.scored} scored estimates · {b.void} void (the cross did not print) · {b.unresolved} still unresolved. Calibration: {c.n} graded crosses over {c.distinctDays} day{c.distinctDays === 1 ? '' : 's'}.
+        {plural(b.scored, 'scored estimate')} · {b.void} void (the cross did not print) · {b.unresolved} still unresolved. Calibration: {plural(c.n, 'graded cross', 'graded crosses')} over {plural(c.distinctDays, 'day')}.
         {c.status === 'PROVISIONAL' && c.reason ? ` ${explainCalibration(c.reason)}` : ''}
       </p>
       <span className="sr-only">Window bounds in basis points: {bounds.join(', ')}</span>
