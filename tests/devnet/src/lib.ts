@@ -15,7 +15,15 @@ import { type Address, type Instruction, AccountRole, address, createDefaultRpcT
 
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const RPC = process.env.RPC_URL ?? 'https://api.devnet.solana.com';
-export const connection = new Connection(RPC, 'confirmed');
+/** The public devnet endpoint answers bursts, and several proofs share it, with HTTP 429: retry with backoff. */
+const retryFetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 || attempt >= 8) return res;
+    await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+  }
+};
+export const connection = new Connection(RPC, { commitment: 'confirmed', fetch: retryFetch as typeof fetch });
 /** Public devnet RPC answers bursts with HTTP 429; retry with exponential backoff. */
 const baseTransport = createDefaultRpcTransport({ url: RPC });
 const retryingTransport = (async (...args: Parameters<typeof baseTransport>) => {

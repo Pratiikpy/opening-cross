@@ -5,11 +5,37 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ActionButton } from '@/components/cross/action-button';
 import { useSigner } from '@/components/cross/use-signer';
+import { API_URL } from '@/lib/api';
 import { type IssuerForm, checkIssuerForm } from '@/lib/issuer';
+import type { AuthenticityVerdict, VerdictClass } from '@/lib/trust-types';
 import { RPC_URL } from '@/lib/tx';
 import { useWallet } from '@/lib/wallet';
 
 type MintInfo = { decimals: number; program: string };
+type Identity = { verdict: VerdictClass; message: string | null };
+
+/** Who issued this mint, from the API's identity check; null where the registry does not apply (not mainnet) or the API is down. */
+async function readIdentity(mint: string): Promise<Identity | null> {
+  try {
+    const res = await fetch(`${API_URL}/v1/tokens/${mint}/authenticity`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { comparable: boolean; verdict?: AuthenticityVerdict };
+    return body.comparable && body.verdict ? { verdict: body.verdict.verdict, message: body.verdict.reasons[0]?.message ?? null } : null;
+  } catch {
+    return null;
+  }
+}
+
+const IDENTITY_LABEL: Record<VerdictClass, string> = {
+  GENUINE: "Matches the issuer's list and keys",
+  FAMILY_UNLISTED: "Held by an issuer's keys, not yet on its list",
+  IMPERSONATOR: 'Copies a genuine token and is not it',
+  ADDRESS_LOOKALIKE: 'Address made to look like a genuine token',
+  UNVERIFIED_STOCK_TOKEN: 'Tokenized stock from an issuer we cannot verify',
+  UNRELATED_TOKEN: 'Not a covered issuer token',
+  NOT_A_MINT: 'Not a token mint',
+  UNKNOWN: 'Could not be confirmed',
+};
 
 /** Reads a mint's decimals and owning token program from chain (classic SPL or Token-2022). */
 async function readMint(address: string): Promise<MintInfo | string> {
@@ -42,6 +68,7 @@ function Form({ account }: { account: UiWalletAccount }) {
     schedule: [{ price: '1.20', quantity: '' }],
   });
   const [mints, setMints] = useState<{ base?: MintInfo | string; quote?: MintInfo | string }>({});
+  const [identity, setIdentity] = useState<{ base?: Identity | null; quote?: Identity | null }>({});
   const [created, setCreated] = useState<string | null>(null);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -83,8 +110,8 @@ function Form({ account }: { account: UiWalletAccount }) {
   return (
     <form className="mt-10 space-y-8" onSubmit={(e) => e.preventDefault()}>
       <Fieldset legend="Tokens">
-        <MintField label="Token being sold (base mint)" value={f.baseMint} onChange={(v) => set('baseMint', v)} info={mints.base} onRead={async () => { const base = await readMint(f.baseMint); setMints((m) => ({ ...m, base })); }} />
-        <MintField label="Paid in (quote mint)" value={f.quoteMint} onChange={(v) => set('quoteMint', v)} info={mints.quote} onRead={async () => { const quote = await readMint(f.quoteMint); setMints((m) => ({ ...m, quote })); }} />
+        <MintField label="Token being sold (base mint)" value={f.baseMint} onChange={(v) => set('baseMint', v)} info={mints.base} identity={identity.base} onRead={async () => { const base = await readMint(f.baseMint); setMints((m) => ({ ...m, base })); setIdentity((i) => ({ ...i, base: null })); const id = await readIdentity(f.baseMint); setIdentity((i) => ({ ...i, base: id })); }} />
+        <MintField label="Paid in (quote mint)" value={f.quoteMint} onChange={(v) => set('quoteMint', v)} info={mints.quote} identity={identity.quote} onRead={async () => { const quote = await readMint(f.quoteMint); setMints((m) => ({ ...m, quote })); setIdentity((i) => ({ ...i, quote: null })); const id = await readIdentity(f.quoteMint); setIdentity((i) => ({ ...i, quote: id })); }} />
       </Fieldset>
 
       <Fieldset legend="Format">
@@ -186,7 +213,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   );
 }
 
-function MintField({ label, value, onChange, info, onRead }: { label: string; value: string; onChange: (v: string) => void; info: MintInfo | string | undefined; onRead: () => void }) {
+function MintField({ label, value, onChange, info, identity, onRead }: { label: string; value: string; onChange: (v: string) => void; info: MintInfo | string | undefined; identity?: Identity | null | undefined; onRead: () => void }) {
   return (
     <div>
       <div className="flex items-end gap-2">
@@ -198,6 +225,12 @@ function MintField({ label, value, onChange, info, onRead }: { label: string; va
         </button>
       </div>
       {typeof info === 'string' ? <p className="mt-1 text-xs text-accent-text">{info}</p> : info ? <p className="mt-1 text-xs text-muted">{info.decimals} decimals</p> : null}
+      {identity ? (
+        <p className={`mt-1 text-xs ${identity.verdict === 'GENUINE' ? 'text-positive' : identity.verdict === 'IMPERSONATOR' || identity.verdict === 'ADDRESS_LOOKALIKE' ? 'text-accent-text' : 'text-muted'}`} data-testid="mint-identity">
+          {IDENTITY_LABEL[identity.verdict]}
+          {identity.verdict !== 'GENUINE' && identity.message ? `: ${identity.message}` : ''}
+        </p>
+      ) : null}
     </div>
   );
 }

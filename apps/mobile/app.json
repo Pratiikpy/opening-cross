@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Opening Bell",
+    "slug": "opening-bell",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "openingbell",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "app.openingbell.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": { "backgroundColor": "#0b0b0f" }
+    },
+    "web": { "bundler": "metro", "output": "single" }
+  }
+}

@@ -11,6 +11,9 @@ Newest first. Every entry names what was done, the evidence, what is not verifie
 - Not verified: `/accuracy` and the cross-page panels visually; the premium monitor in any session but `closed`; data-rights for the issuers' lists (H15). Devnet runs of cross_settle, cross_gate, cross_calendar and treasury are still open (H10 funding).
 - Next: visual pass of the new pages, premium service and `/premium`, then the rest of `bnb` worth porting, then the remaining devnet runs.
 
+- **DP11 done.** Presale Vault partner-mint path proved on devnet against Meteora's deployed program: the supply is minted once by the partner, moved into the presale's base vault by the program, the mint authority is revoked, and the sale runs to a claim at the fixed price, a creator withdrawal and an unsold refund (`docs/evidence/DP11-presale-vault.md`). The devnet helper now retries HTTP 429 from the shared public endpoint.
+- **MO2 native app built, not run on a device.** `apps/mobile` (Expo SDK 57, MWA 3.x per the specification and the package's own types): crosses, cross detail with signed band and identity panel, order entry, sealed-bid reveal, settle, claim, premium monitor. Strict typecheck, 26 unit tests, web export and an Android Hermes export pass (984 modules). No emulator was available, so the wallet round trip is unverified (HUMAN H19, ADR-0020). Excluded `apps/mobile` from the root pnpm workspace.
+
 ## 2026-10-06
 - **W3, W4, W5, MO1 done.** Investor flow (27 checks) and issuer console (11) pass end to end on a local Agave 4.0.2 validator with on-chain checks; visual pass 24/24 clean. Fixed: CORS, hydration mismatch, silent wallet reconnect, hidden mobile wallet state, 404 console noise, indexer stall when the node rejects the cursor signature (now pages by slot), stale book note after clearing, missing 'paid' line, off-grid supply price hidden, short-page footer gap. Open: API contract test flaky under concurrent DB load. A5 treasury built (4/4).
 

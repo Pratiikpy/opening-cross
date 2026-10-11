@@ -1,0 +1,42 @@
+{
+  "name": "@opening-bell/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Opening Bell for Android: crosses, orders and claims, signed with any Mobile Wallet Adapter wallet.",
+  "license": "Apache-2.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "export:web": "expo export --platform web",
+    "export:android": "expo export --platform android"
+  },
+  "dependencies": {
+    "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo/metro-runtime": "~57.0.16",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/native": "^7.5.0",
+    "@react-navigation/native-stack": "^7.20.0",
+    "@solana-mobile/mobile-wallet-adapter-protocol": "^3.0.1",
+    "expo": "^57.0.27",
+    "expo-crypto": "~57.0.3",
+    "expo-font": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
+    "react": "^19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "^0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.2",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "~0.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.18",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}
