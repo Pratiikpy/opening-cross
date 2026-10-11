@@ -8,6 +8,8 @@
     "dp:dbc": "tsx src/dbc-hook-proof.ts",
     "dp:acl": "tsx src/token-acl-proof.ts",
     "dp:core": "tsx src/core-e2e.ts",
+    "dp:presale": "tsx src/presale-vault-proof.ts",
+    "dp:latency": "tsx src/latency-proof.ts",
     "dp:oracle": "tsx src/oracle-mainnet.ts",
     "dp:oracle-pull": "tsx src/oracle-pull.ts",
     "dp:volfee": "tsx src/volatility-fee-proof.ts"
@@ -15,6 +17,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
+    "@meteora-ag/presale": "^0.1.1",
     "@opening-cross/adapters": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
@@ -29,7 +32,8 @@
     "@solana/spl-token-metadata": "^0.1.6",
     "@solana/token-acl-sdk": "0.4.0",
     "@solana/web3.js": "1.98.4",
-    "bn.js": "5.2.2"
+    "bn.js": "5.2.2",
+    "decimal.js": "^10.6.0"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",
