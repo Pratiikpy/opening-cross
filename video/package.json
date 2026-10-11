@@ -1,0 +1,25 @@
+{
+  "name": "@opening-cross/video",
+  "private": true,
+  "description": "The Opening Bell product film, built with Remotion from real recorded screens and measured numbers.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:1080": "remotion render src/index.ts Film out/opening-bell-1080p.mp4 --codec h264 --crf 16",
+    "render:4k": "remotion render src/index.ts Film out/opening-bell-4k.mp4 --codec h264 --crf 16 --scale 2",
+    "render:60": "remotion render src/index.ts Short out/opening-bell-60s.mp4 --codec h264 --crf 16",
+    "still": "remotion still src/index.ts"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.490",
+    "@remotion/google-fonts": "4.0.490",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.490"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "5.9.3"
+  }
+}
