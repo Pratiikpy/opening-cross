@@ -18,6 +18,8 @@
     "@opening-cross/cross-settle-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
     "@opening-cross/keeper": "workspace:*",
+    "@opening-cross/promiser": "workspace:*",
+    "@opening-cross/promises": "workspace:*",
     "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/treasury-client": "workspace:*",

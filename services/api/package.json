@@ -9,13 +9,17 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "tsx src/main.ts"
+    "start": "tsx src/main.ts",
+    "test": "vitest run test"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/websocket": "11.3.3",
+    "@opening-cross/authenticity": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/promiser": "workspace:*",
+    "@opening-cross/promises": "workspace:*",
     "@opening-cross/router": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
@@ -29,6 +33,7 @@
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
     "tsx": "^4.23.15",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
   }
 }

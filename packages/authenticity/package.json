@@ -1,0 +1,40 @@
+{
+  "name": "@opening-cross/authenticity",
+  "version": "0.1.0",
+  "description": "Answers \"is this the issuer's real token?\" for a Solana mint: issuer-list membership, on-chain authority fingerprint, and impersonation signals.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/authenticity"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "dist",
+    "data",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run test/unit",
+    "test:mainnet": "vitest run test/mainnet",
+    "refresh": "tsx tools/refresh.ts"
+  },
+  "dependencies": {
+    "@opening-cross/token-safety": "workspace:*",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3",
+    "tsx": "^4.23.15"
+  }
+}

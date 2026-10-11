@@ -1,0 +1,56 @@
+{
+  "name": "@opening-cross/promises",
+  "version": "0.1.0",
+  "description": "Signed, graded promises for Opening Cross: every price band the product shows is signed, scored against the on-chain outcome, and reported with its measured coverage.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/promises"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "opening-cross-verify-promise": "src/cli.ts"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+      "opening-cross-verify-promise": "dist/cli.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "verify": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/verifier": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

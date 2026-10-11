@@ -12,6 +12,9 @@ import { type Address, isAddress } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
 import { referenceClear, verifyCross } from '@opening-cross/verifier';
 import { loadBook } from '@opening-cross/router';
+import { anchorFor, getInputs, getPromise, latestForCross, records, samples } from '@opening-cross/promiser';
+import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promises';
+import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -23,6 +26,8 @@ export type ApiDeps = {
   lifetime: () => Promise<Lifetime>;
   /** Cluster the indexer follows (`devnet`, `mainnet-beta`, `localnet`), reported with every total. */
   network?: string;
+  /** Public key that signs promises (the promiser's key); promises by any other key are not ours. */
+  promiseSigner?: string;
   /** Allowed browser origins; default any. */
   corsOrigins?: string[];
   /** A dedicated connection for LISTEN; the API owns it once passed. */
@@ -200,6 +205,68 @@ export async function buildServer(d: ApiDeps) {
             ? 'Sealed bids carry no price until they are revealed; only revealed orders appear here.'
             : 'Indicative until the call closes: later orders can move it.',
     });
+  });
+
+  // ---- signed, graded promises (ADR-0015)
+  const cluster = d.network ?? 'unknown';
+  const promiseView = async (id: string) => {
+    const row = await getPromise(d.db, id);
+    if (!row) return null;
+    return { ...row.signed, grade: row.grade, anchor: await anchorFor(d.db, id) };
+  };
+
+  app.get('/v1/promises/signer', async (_req, reply) => send(reply, { schema: PROMISE_SCHEMA, cluster, signer: d.promiseSigner ?? null }));
+
+  // ---- is this real? Identity of a mint against the issuers' own lists and the chain.
+  // The registry describes mainnet mints, so on any other network there is no meaningful verdict.
+  const authenticityBook = loadBundledBook();
+  const authenticity = async (mint: Address) => {
+    if (cluster !== 'mainnet-beta') return null;
+    return classifyMint(authenticityBook, await observeVia(async (a) => d.account(a), mint));
+  };
+  const registryInfo = { network: 'mainnet-beta', snapshotHash: authenticityBook.data.snapshotHash, generatedAt: authenticityBook.data.generatedAt, sources: authenticityBook.data.sources.map((s) => ({ id: s.id, url: s.url, fetchedAt: s.fetchedAt, count: s.count })) };
+  const NOT_COMPARABLE = `The authenticity registry lists mainnet mints; this API follows ${cluster}, where the same issuers have no listed mints, so no verdict is given.`;
+
+  app.get('/v1/tokens/:mint/authenticity', async (req, reply) => {
+    const mint = address((req.params as { mint: string }).mint, 'mint');
+    const verdict = await authenticity(mint);
+    return send(reply, verdict ? { comparable: true, verdict, registry: registryInfo } : { comparable: false, network: cluster, note: NOT_COMPARABLE, registry: registryInfo });
+  });
+
+  app.get('/v1/crosses/:address/authenticity', async (req, reply) => {
+    const { data } = await crossView(address((req.params as { address: string }).address, 'address'));
+    const base = data.baseBound ? await authenticity(data.baseMint) : null;
+    const quote = await authenticity(data.quoteMint);
+    if (cluster !== 'mainnet-beta') return send(reply, { comparable: false, network: cluster, note: NOT_COMPARABLE, registry: registryInfo });
+    return send(reply, { comparable: true, base: base ? { mint: data.baseMint, verdict: base } : null, quote: { mint: data.quoteMint, verdict: quote }, registry: registryInfo });
+  });
+
+  app.get('/v1/crosses/:address/promise', async (req, reply) => {
+    const a = address((req.params as { address: string }).address, 'address');
+    const last = await latestForCross(d.db, a);
+    if (!last) throw new RequestError(404, 'no promise has been issued for this cross (sealed crosses and books that do not cross yet have none)');
+    return send(reply, await promiseView(last.signed.promise.id));
+  });
+
+  app.get('/v1/promises/:id', async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    if (!/^[0-9a-f]{64}$/.test(id)) throw new RequestError(400, 'id must be 64 lowercase hex characters');
+    const v = await promiseView(id);
+    if (!v) throw new RequestError(404, `promise ${id} not found`);
+    return send(reply, v);
+  });
+
+  app.get('/v1/promises/:id/inputs', async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    if (!/^[0-9a-f]{64}$/.test(id)) throw new RequestError(400, 'id must be 64 lowercase hex characters');
+    const inputs = await getInputs(d.db, id);
+    if (!inputs) throw new RequestError(404, `promise ${id} not found`);
+    return send(reply, inputs);
+  });
+
+  app.get('/v1/accuracy', async (_req, reply) => {
+    const { rows } = await records(d.db, cluster);
+    return send(reply, { cluster, signer: d.promiseSigner ?? null, ...accuracyReport(rows, await samples(d.db, cluster)) });
   });
 
   app.get('/v1/crosses/:address/proof', async (req, reply) => {

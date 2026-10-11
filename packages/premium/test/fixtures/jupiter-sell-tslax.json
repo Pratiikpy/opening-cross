@@ -1,0 +1,16 @@
+{
+ "inputMint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+ "inAmount": "100000000",
+ "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+ "outAmount": "383046066",
+ "priceImpactPct": "0.0001943458396837677146275144",
+ "routePlan": [
+  {
+   "swapInfo": {
+    "label": "Riptide"
+   },
+   "percent": 100
+  }
+ ],
+ "contextSlot": 455711080
+}

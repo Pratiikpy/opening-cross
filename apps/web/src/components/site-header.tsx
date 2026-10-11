@@ -7,6 +7,7 @@ export const NAV = [
   { href: '/crosses', label: 'Crosses' },
   { href: '/issue', label: 'Open a cross' },
   { href: '/#how', label: 'How it works' },
+  { href: '/accuracy', label: 'Track record' },
   { href: '/developers', label: 'Developers' },
   { href: '/status', label: 'Status' },
 ];

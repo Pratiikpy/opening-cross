@@ -1,0 +1,28 @@
+{
+  "name": "@opening-cross/promiser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Issues, signs, grades and anchors Opening Cross promises, and serves the data behind the public accuracy page.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/indexer": "workspace:*",
+    "@opening-cross/promises": "workspace:*",
+    "@opening-cross/router": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

@@ -45,6 +45,8 @@ export type CrossOptions = {
   schedule?: { price: bigint; quantity: bigint }[];
   settler?: Address | null;
   calendar?: Address | null;
+  /** Defaults to T0. The harness clock is set to it after creation. */
+  openTs?: bigint;
   closeTs?: bigint;
   oracle?: { feedId: Uint8Array; maxDivergenceBps: number; maxStalenessSecs: number } | null;
   settleDeadlineTs?: bigint;
@@ -128,7 +130,7 @@ export class World {
       tick: o.tick ?? 100_000n,
       ticks: o.ticks ?? 20,
       priceScale: SCALE,
-      openTs: T0,
+      openTs: o.openTs ?? T0,
       closeTs: o.closeTs ?? T0 + 100n,
       revealEndTs: (o.closeTs ?? T0 + 100n) + 100n,
       referencePrice: o.reference ?? null,
@@ -148,7 +150,7 @@ export class World {
     });
     await this.h.send([create], this.creator);
     for (const s of shards) await this.h.send([s], this.creator);
-    this.h.setTime(T0);
+    this.h.setTime(o.openTs ?? T0);
     return this.view(cross);
   }
 

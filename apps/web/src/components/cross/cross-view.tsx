@@ -8,9 +8,11 @@ import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatDuration, formatPrice, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
 import { BookChart } from './book-chart';
+import { IdentityPanel } from './identity-panel';
 import { MyOrders } from './my-orders';
 import { OrderTicket } from './order-ticket';
 import { SettlePanel } from './settle-panel';
+import { SignedBand } from './signed-band';
 import { useSigner } from './use-signer';
 
 export type Phase = 'upcoming' | 'open' | 'reveal' | 'awaiting-settlement' | 'settled';
@@ -137,6 +139,8 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
         </section>
 
         <div className="space-y-6">
+          <SignedBand address={cross.address} market={m} version={version} />
+          <IdentityPanel address={cross.address} />
           {account ? <Connected account={account} cross={cross} phase={phase} market={m} version={version} onChanged={refresh} /> : <ConnectPrompt phase={phase} />}
           {phase === 'awaiting-settlement' && !account ? (
             <p className="rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">

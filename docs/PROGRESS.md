@@ -2,6 +2,15 @@
 
 Newest first. Every entry names what was done, the evidence, what is not verified, and what is next.
 
+## 2026-10-11
+- **Trust layer ported from `bnb` and rebuilt for Solana (M2b, T1–T4).** The four gaps named in the brief were real: no signed graded promises, no premium monitor, no authenticity check, no volatility-aware fees. Each is now built, tested and measured; ADRs 0015–0018.
+- **T4 done, with a finding.** Real swaps on devnet DBC: the fee model matches the chain to 0.012 bps, but a swap pays for the volatility earlier swaps left behind, and decay shows one swap late (`docs/evidence/DP-volatility-fee.md`). Session-aware fees do not exist in DBC or DAMM v2; not built.
+- **T3 first run found two false-accusation classes** (another issuer's tokenized stock; an I/l letter swap) before any user saw them; both fixed and tested. Registry: 1,774 mints from the issuers' own lists, every one confirmed as a token mint on mainnet.
+- **T1 integration run found the test, not the code, wrong** (concurrent sends on one blockhash; an assertion about price movement the scenario did not produce). Core suite 107/107.
+- **Environment:** GitHub release downloads from this machine run at ~40 KB/s per connection; the SBF toolchain was fetched with 64 parallel ranged requests (3.6 hours down to 15 minutes). Programs rebuilt in WSL.
+- Not verified: `/accuracy` and the cross-page panels visually; the premium monitor in any session but `closed`; data-rights for the issuers' lists (H15). Devnet runs of cross_settle, cross_gate, cross_calendar and treasury are still open (H10 funding).
+- Next: visual pass of the new pages, premium service and `/premium`, then the rest of `bnb` worth porting, then the remaining devnet runs.
+
 ## 2026-10-06
 - **W3, W4, W5, MO1 done.** Investor flow (27 checks) and issuer console (11) pass end to end on a local Agave 4.0.2 validator with on-chain checks; visual pass 24/24 clean. Fixed: CORS, hydration mismatch, silent wallet reconnect, hidden mobile wallet state, 404 console noise, indexer stall when the node rejects the cursor signature (now pages by slot), stale book note after clearing, missing 'paid' line, off-grid supply price hidden, short-page footer gap. Open: API contract test flaky under concurrent DB load. A5 treasury built (4/4).
 

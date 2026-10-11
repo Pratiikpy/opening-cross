@@ -17,12 +17,14 @@ import { PublicKey } from '@solana/web3.js';
 import {
   type BuildCurveWithCustomSqrtPricesParams,
   type ConfigParameters,
+  type DynamicFeeParameters,
   TokenAuthorityOption,
   TokenType,
   buildCurveWithCustomSqrtPrices,
   deriveDbcPoolAddress,
   deriveDbcPoolAuthority,
   deriveDbcTokenVaultAddress,
+  validateDynamicFee,
 } from '@meteora-ag/dynamic-bonding-curve-sdk';
 import {
   CROSS_SETTLE_PROGRAM_ADDRESS,
@@ -69,6 +71,11 @@ export type ContinuationDesign = Omit<BuildCurveWithCustomSqrtPricesParams, 'sqr
   /** Sqrt-price multiples of the start price for each later curve point, e.g. [2, 4, 10] for a
    *  curve that reaches 4×, 16× and 100× the clearing price. Strictly increasing, all > 1. */
   sqrtPriceMultiples: number[];
+  /**
+   * Explicit dynamic-fee parameters, normally from `volatilityFeeParams`. Replaces the SDK helper's fixed
+   * "up to 20% of the base fee" convention; requires `fee.dynamicFeeEnabled`.
+   */
+  dynamicFee?: DynamicFeeParameters;
 };
 
 /** DBC config parameters for a curve that starts exactly at P*. */
@@ -81,14 +88,19 @@ export function buildContinuationConfig(clearingPrice: bigint, priceScale: bigin
   }
   // Multiples are applied in fixed point (1e9) so the result is deterministic.
   const sqrtPrices = [start, ...design.sqrtPriceMultiples.map((m) => (start * BigInt(Math.round(m * 1e9))) / 1_000_000_000n)].map((v) => new BN(v.toString()));
-  const { sqrtPriceMultiples, token, ...rest } = design;
+  const { sqrtPriceMultiples, token, dynamicFee, ...rest } = design;
   void sqrtPriceMultiples;
+  if (dynamicFee && !design.fee.dynamicFeeEnabled) throw new Error('dynamicFee is set but fee.dynamicFeeEnabled is false');
   const config = buildCurveWithCustomSqrtPrices({
     ...rest,
     token: { ...token, tokenType: TokenType.Token2022, tokenAuthorityOption: TokenAuthorityOption.PartnerUpdateAndMintAuthority },
     sqrtPrices,
   });
   if (BigInt(config.sqrtStartPrice.toString()) !== start) throw new Error('DBC SDK changed the start price; refusing to continue');
+  if (dynamicFee) {
+    if (!validateDynamicFee(dynamicFee)) throw new Error('dynamicFee does not pass the DBC validation rules');
+    config.poolFees.dynamicFee = dynamicFee;
+  }
   return config;
 }
 
@@ -190,5 +202,6 @@ export async function buildBindDbcMint(cross: CrossView, payer: TransactionSigne
   });
 }
 export * from './damm.js';
+export * from './fees.js';
 export * from './dlmm.js';
 export * from './raydium.js';

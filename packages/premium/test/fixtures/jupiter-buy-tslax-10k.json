@@ -1,0 +1,22 @@
+{
+ "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+ "inAmount": "10000000000",
+ "outputMint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+ "outAmount": "2600107809",
+ "priceImpactPct": "0.0038453340716658607885052343",
+ "routePlan": [
+  {
+   "swapInfo": {
+    "label": "Raydium CLMM"
+   },
+   "percent": 2
+  },
+  {
+   "swapInfo": {
+    "label": "BinaryFi"
+   },
+   "percent": 98
+  }
+ ],
+ "contextSlot": 455711079
+}
