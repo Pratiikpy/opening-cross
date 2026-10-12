@@ -51,7 +51,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | D1, X17 DAMM v2 Compounding graduation | PARTIAL | Full-range pool at exactly P* (`A2`); permanent liquidity lock and compounding fee mode through Meteora's own instructions, proven on the real cp-amm binary in LiteSVM (`D1-damm-lock-compounding.md`, ADR-0022) | Not run on devnet (no SOL); no market-cap scheduler or reward slots; partial locks and vesting not built |
 | D10, Z0 graduation by holder vote | NOT BUILT | none | No governance program (ADR-0013 covers admin only) |
 | D4, VM8, X18 greenshoe | NOT BUILT | none | |
-| D5 DLMM conviction pool | NOT BUILT | `open_dlmm_pair` is a plain pair at P* | |
+| D5 DLMM conviction pool | PARTIAL | `open_dlmm_pair` opens the pair at P*; `buildDlmmConvictionLadder` commits unsold base tokens as one-sided depth above P* through Meteora's own instructions, proven on the real lb_clmm binary in LiteSVM (`D5-dlmm-conviction-ladder.md`, ADR-0023) | Not run on devnet (no SOL); only the `taper` shape was swapped through; limit-order variant not built |
 | F4, VM4, B15 batch-opened graduation | NOT BUILT | none | |
 | W10 pool pause and rebalance | NOT BUILT | none | |
 | X12, C1 stock-quoted pools | PARTIAL | Adapters accept any quote mint; mint properties read (`DP14.md`) | No badge check, no stock quote mint run on devnet, no Alpha Vault entry (Token Badge: H9) |

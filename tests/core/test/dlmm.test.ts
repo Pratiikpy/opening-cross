@@ -11,7 +11,7 @@ import { createKeyPairSignerFromBytes } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { OrderSide, ata } from '@opening-cross/sdk';
-import { DLMM_PROGRAM_ADDRESS, binPriceQ64, buildOpenDlmmPair } from '@opening-cross/adapters';
+import { DLMM_PROGRAM_ADDRESS, binArrayAddress, binArrayIndex, binPriceQ64, buildDlmmConvictionLadder, buildOpenDlmmPair, ladderStrategy } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DLMM_FIXTURE, fromLegacy } from '../src/harness.js';
 
@@ -144,5 +144,87 @@ describe.skipIf(!existsSync(DLMM_FIXTURE))('Meteora DLMM pair', () => {
     const mallory = await w.trader(10_000_000_000n, 10_000_000_000n);
     const stolen = await buildOpenDlmmPair({ cross, creator: mallory, binStep: 10, baseFactor: 10_000 });
     expect(await w.h.fail([cu, stolen.instruction], mallory)).toContain('NotCreator');
+  });
+});
+
+describe.skipIf(!existsSync(DLMM_FIXTURE))('Meteora DLMM conviction ladder', () => {
+  it('commits unsold base tokens above P*, and buyers walk up it at rising bin prices', async () => {
+    const w = await World.create();
+    const cross = await clearedCross(w);
+    const pStar = cross.data.clearing.__option === 'Some' ? cross.data.clearing.value.price : 0n;
+    await w.h.fund(w.baseMint, w.admin, w.creator.address, 10_000_000_000n);
+    const open = await buildOpenDlmmPair({ cross, creator: w.creator, binStep: 10, baseFactor: 10_000 });
+    await w.h.send([cu, open.instruction], w.creator);
+
+    const posKp = Keypair.generate();
+    const position = await createKeyPairSignerFromBytes(posKp.secretKey);
+    const baseBefore = await w.h.balanceOf(w.creator.address, w.baseMint);
+    const BINS = 20;
+    const ladder = await buildDlmmConvictionLadder({ cross, creator: w.creator, position, activeId: open.activeId, bins: BINS, baseAmount: 2_000_000_000n, shape: 'taper' });
+    expect(ladder.upperBinId - ladder.lowerBinId + 1).toBe(BINS);
+    await w.h.send([cu, ...ladder.instructions], w.creator);
+    // The issuer's tokens left its wallet and sit in the pair's X reserve, none of it quote.
+    // DLMM keeps a few atoms of rounding dust with the depositor; everything else moves into the pair's X reserve.
+    const moved = baseBefore - (await w.h.balanceOf(w.creator.address, w.baseMint));
+    expect(moved <= 2_000_000_000n && moved >= 2_000_000_000n - 100n).toBe(true);
+    const tokenAmount = (addr: string) => {
+      const acct = w.h.svm.getAccount(addr as never);
+      if (!acct.exists) throw new Error('reserve missing');
+      return Buffer.from(acct.data).readBigUInt64LE(64);
+    };
+    expect(tokenAmount(open.addresses.reserveX)).toBe(moved);
+    expect(tokenAmount(open.addresses.reserveY)).toBe(0n);
+
+    // A buyer swaps quote for base through DLMM's own instruction, over the bin arrays the ladder uses.
+    const lbPair = new PublicKey(open.addresses.lbPair);
+    const arrays = [] as PublicKey[];
+    for (let i = binArrayIndex(open.activeId); i <= binArrayIndex(ladder.upperBinId); i++) arrays.push(new PublicKey(binArrayAddress(open.addresses.lbPair, i)));
+    const buy = async (quoteIn: bigint) => {
+      const buyer = await w.trader(0n, 0n);
+      await w.h.fund(w.quoteMint, w.admin, buyer.address, quoteIn);
+      await w.h.ata(buyer.address, w.baseMint, w.admin);
+      const ix = await m
+        .swap2(new BN(quoteIn.toString()), new BN(0), { slices: [] })
+        .accounts({
+          lbPair,
+          binArrayBitmapExtension: PID,
+          reserveX: new PublicKey(open.addresses.reserveX),
+          reserveY: new PublicKey(open.addresses.reserveY),
+          userTokenIn: new PublicKey(await ata(buyer.address, cross.data.quoteMint, TOKEN_2022_PROGRAM_ADDRESS)),
+          userTokenOut: new PublicKey(await ata(buyer.address, cross.data.baseMint, TOKEN_2022_PROGRAM_ADDRESS)),
+          tokenXMint: new PublicKey(cross.data.baseMint),
+          tokenYMint: new PublicKey(cross.data.quoteMint),
+          oracle: new PublicKey(open.addresses.oracle),
+          hostFeeIn: PID,
+          user: new PublicKey(buyer.address),
+          tokenXProgram: T22,
+          tokenYProgram: T22,
+          memoProgram: MEMO,
+        } as never)
+        .remainingAccounts(arrays.map((pubkey) => ({ pubkey, isSigner: false, isWritable: true })))
+        .instruction();
+      await w.h.send([cu, fromLegacy(ix, { [buyer.address]: buyer })], buyer);
+      const got = await w.h.balanceOf(buyer.address, w.baseMint);
+      return { got, price: Number(quoteIn) / Number(got) };
+    };
+    const small = await buy(100_000_000n);
+    const large = await buy(1_500_000_000n);
+    const firstBin = Number(binPriceQ64(ladder.lowerBinId, 10)) / 2 ** 64;
+    const topBin = Number(binPriceQ64(ladder.upperBinId, 10)) / 2 ** 64;
+    console.table({ clearing_price: Number(pStar) / 1e6, first_ladder_bin: firstBin, top_ladder_bin: topBin, small_buy_avg_price: small.price, large_buy_avg_price: large.price });
+    // Nothing is sold below the first ladder bin (less the pair's fee), and a bigger buy climbs further up the ladder.
+    expect(small.got > 0n && large.got > small.got).toBe(true);
+    expect(small.price >= firstBin * 0.9999).toBe(true);
+    expect(large.price > small.price).toBe(true);
+    expect(large.price <= topBin * 1.03).toBe(true);
+  });
+
+  it('maps shapes to Meteora one-sided strategies and bin ids to their arrays', () => {
+    expect([ladderStrategy('flat'), ladderStrategy('taper'), ladderStrategy('wall')]).toEqual([6, 7, 8]);
+    const strat = idl.types.find((t: { name: string }) => t.name === 'StrategyType').type.variants.map((v: { name: string }) => v.name);
+    expect(strat.slice(6, 9)).toEqual(['SpotImBalanced', 'CurveImBalanced', 'BidAskImBalanced']);
+    expect(binArrayIndex(-1)).toBe(-1);
+    expect(binArrayIndex(69)).toBe(0);
+    expect(binArrayIndex(70)).toBe(1);
   });
 });
