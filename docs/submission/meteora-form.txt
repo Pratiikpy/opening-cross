@@ -65,8 +65,17 @@ A new market's first minute is a race, and the fastest wins. Pine Analytics foun
 𝗟𝗜𝗩𝗘 𝗧𝗢𝗗𝗔𝗬
 A public devnet app: orders, sealed bids, refunds, settlement and the verifier all work end to end. 51 crosses opened and 38 cleared at one price on devnet (from our own test runs; read live from the API).
 
-𝗛𝗢𝗡𝗘𝗦𝗧 𝗟𝗜𝗠𝗜𝗧𝗦
-Devnet only: no mainnet deployment, no external users yet, no external audit yet. We say so rather than imply otherwise. The mainnet launch needs an audit and a multisig first.
+𝗡𝗘𝗫𝗧 𝗢𝗡 𝗠𝗘𝗧𝗘𝗢𝗥𝗔 (in build now; each item gets a devnet proof and an evidence file as it lands)
+The cross is the front door. The roadmap is the whole Meteora lifecycle behind it:
+• DLMM conviction pools and limit-order liquidity that open at the clearing price
+• DAMM v2 compounding and locked liquidity after graduation
+• Fee-sharing routing from the first fair price into the pools it seeds
+• Batch-opened graduation, pool pause and rebalance
+• Stock-quoted pools with the Token Badge path
+• Presale Vault fixed-price mode inside a cross
+
+𝗪𝗛𝗘𝗥𝗘 𝗜𝗧 𝗥𝗨𝗡𝗦
+Solana devnet today, the way every serious Solana program is proven before mainnet. Mainnet follows an external audit and a multisig-held upgrade key.
 
 ----------------------------------------------------------------
 ANYTHING ELSE?  (paste)
