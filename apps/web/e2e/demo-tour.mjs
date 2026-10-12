@@ -12,8 +12,9 @@ mkdirSync(dirname(OUT), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const crosses = (await (await fetch(`${API}/v1/crosses?limit=200`)).json()).crosses;
-const settled = crosses.find((c) => c.state === 'Finalized' && c.clearing_price && Number(c.matched) > 0);
-const open = crosses.find((c) => c.state === 'Live') ?? settled;
+const settled = crosses.filter((c) => c.state === 'Finalized' && c.clearing_price && Number(c.matched) > 0).sort((a, b) => Number(b.orders_committed) - Number(a.orders_committed))[0];
+const now = Math.floor(Date.now() / 1000);
+const open = crosses.find((c) => c.state === 'Live' && Number(c.close_ts) > now);
 if (!settled) throw new Error('no settled cross to show');
 
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
@@ -49,8 +50,8 @@ await visit('/crosses', 'Every cross is public: open, sealed, cleared or settled
 await visit(`/crosses/${settled.address}`, 'A settled cross: one clearing price, and every filled order pays it', 5500);
 await scrollTo(500); await caption('The order book as it cleared, with the fills and refunds'); await sleep(4500);
 await scrollTo(900); await caption('An independent implementation recomputed this cross and matched it'); await sleep(4500);
-if (open && open.address !== settled.address) { await visit(`/crosses/${open.address}`, 'An open cross: connect a wallet to place an order', 5000); await scrollTo(500); await sleep(2500); }
-await visit('/accuracy', 'Signed price bands with a public track record, graded after every cross', 5500);
+if (open) { await visit(`/crosses/${open.address}`, 'An open cross: connect a wallet to place an order', 5000); await scrollTo(500); await sleep(2500); }
+await visit('/accuracy', 'Every price band is signed before the close and graded after it: the record starts with the first live cross', 5500);
 await visit('/premium', 'A live premium monitor for tokenized stocks, measured on mainnet', 5500);
 await visit('/developers', 'An SDK, a verifier, REST and WebSocket APIs, and an MCP server for agents', 5500);
 await scrollTo(800); await sleep(3000);
