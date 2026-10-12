@@ -56,7 +56,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | W10 pool pause and rebalance | NOT BUILT | none | |
 | X12, C1 stock-quoted pools | PARTIAL | Adapters accept any quote mint; mint properties read (`DP14.md`) | No badge check, no stock quote mint run on devnet, no Alpha Vault entry (Token Badge: H9) |
 | X14, R1 Meteora volume engine | NOT BUILT | none | |
-| D7 fee sharing routing | NOT BUILT | none | |
+| D7 fee sharing routing | PARTIAL | Meteora Dynamic Fee Sharing vault: create (1 to 5 recipients), fund, claim, proven on the real program binary in LiteSVM (`D7-fee-sharing-vault.md`, ADR-0024) | The DAMM v2 and DBC bridges that pull fees straight into the vault are not built; not run on devnet (no SOL) |
 | R4 multi-asset pairing | NOT BUILT | none | |
 | B4 Presale Vault fixed-price mode | PARTIAL | Devnet proof only | Not integrated into a cross or the app |
 | D6, D8, D9, R3 | NOT BUILT | none | OS or later |

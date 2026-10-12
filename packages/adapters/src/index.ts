@@ -205,3 +205,4 @@ export * from './damm.js';
 export * from './fees.js';
 export * from './dlmm.js';
 export * from './raydium.js';
+export * from './feeshare.js';

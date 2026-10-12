@@ -44,6 +44,7 @@ import { address } from '@solana/kit';
 export const DBC_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_bonding_curve.so`;
 export const DLMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}lb_clmm.so`;
 export const DAMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}cp_amm.so`;
+export const DFS_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_fee_sharing.so`;
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 export const T0 = 1_800_000_000n;
@@ -66,6 +67,7 @@ export class Harness {
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
     if (existsSync(DLMM_FIXTURE)) this.svm.addProgramFromFile(address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'), DLMM_FIXTURE);
     if (existsSync(DAMM_FIXTURE)) this.svm.addProgramFromFile(address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'), DAMM_FIXTURE);
+    if (existsSync(DFS_FIXTURE)) this.svm.addProgramFromFile(address('dfsdo2UqvwfN8DuUVrMRNfQe11VaiNoKcMqLHVvDPzh'), DFS_FIXTURE);
     this.setTime(T0);
   }
 
