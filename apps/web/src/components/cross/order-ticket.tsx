@@ -47,20 +47,17 @@ export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross
       {cross.supplyMode !== 'escrow' ? (
         <p className="mt-1 text-sm text-muted">The issuer's supply is set by its schedule; this cross takes buy orders only.</p>
       ) : null}
-      <div role="radiogroup" aria-label="Side" className={`mt-4 grid rounded-full border border-border p-1 text-sm ${cross.supplyMode === 'escrow' ? 'grid-cols-2' : 'hidden'}`}>
+      <fieldset className={`mt-4 grid rounded-full border border-border p-1 text-sm ${cross.supplyMode === 'escrow' ? 'grid-cols-2' : 'hidden'}`}>
+        <legend className="sr-only">Side</legend>
         {(['buy', 'sell'] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="radio"
-            aria-checked={side === s}
-            onClick={() => setSide(s)}
-            className={`rounded-full py-2 capitalize ${side === s ? 'bg-ink text-bg' : 'text-muted hover:text-ink'}`}
-          >
-            {s}
-          </button>
+          <label key={s} className="block">
+            <input type="radio" name="side" value={s} checked={side === s} onChange={() => setSide(s)} className="peer sr-only" />
+            <span className="block cursor-pointer rounded-full py-2 text-center capitalize text-muted peer-checked:bg-ink peer-checked:text-bg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--focus)] hover:text-ink peer-checked:hover:text-bg">
+              {s}
+            </span>
+          </label>
         ))}
-      </div>
+      </fieldset>
       <label className="mt-4 block text-sm">
         <span className="text-muted">{side === 'buy' ? 'Most you would pay per token' : 'Least you would take per token'}</span>
         <input

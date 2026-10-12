@@ -124,7 +124,7 @@ await A.page.getByRole('button', { name: 'Place order' }).click();
 await A.page.getByText('Order placed.').waitFor({ timeout: 60_000 });
 log(quoteBefore - (await balance(A.address, seed.quoteMint)) === 780_000_000n, 'on chain: 780 quote moved into escrow');
 log((await orderStatuses(A)).includes('in the book'), "the buyer's order shows in the book");
-await A.page.waitForFunction(() => document.querySelector('[data-testid="price"]')?.textContent?.trim() !== '—', null, { timeout: 30_000 });
+await A.page.waitForFunction(() => !['—', 'No price yet', 'Sealed', undefined].includes(document.querySelector('[data-testid="price"]')?.textContent?.trim()), null, { timeout: 30_000 });
 // The issuer schedule offers 1,000 at 1.20: a lone 600 bid at 1.30 trades 600 at every price from
 // 1.20 to 1.30 with the same imbalance, and the rule takes the lowest, 1.20.
 log((await A.page.getByTestId('price').textContent()).trim() === '1.2', 'indicative price comes from the live book (1.20: lowest of the tied prices)');
@@ -207,6 +207,20 @@ await A.page.getByText(/Result independently verified|Result did not verify/).wa
 await shot(A, '07-sealed-cross-claimed');
 
 }
+
+// --- the orders page lists everything this wallet did, with the results
+await A.page.goto(`${BASE}/orders`, { waitUntil: 'domcontentloaded' });
+await A.page.getByTestId('orders-list').waitFor({ timeout: 90_000 });
+for (let i = 0; i < 90; i++) {
+  const texts = await A.page.getByTestId('order-row').allTextContents();
+  if (texts.filter((x) => x.includes('Settled')).length >= 2) break;
+  await A.page.waitForTimeout(1000);
+}
+const orderRows = await A.page.getByTestId('order-row').allTextContents();
+log(orderRows.some((x) => x.includes('Settled') && x.includes('Filled600 tokens')), 'orders page: the open-cross buy shows Settled with its 600-token fill');
+log(orderRows.some((x) => x.includes('Settled') && x.includes('Filled500 tokens')), 'orders page: the sealed-cross buy shows Settled with its 500-token fill');
+log((await A.page.getByRole('link', { name: /^Cross / }).count()) >= 2, 'orders page: each order links to its cross');
+await shot(A, '08-my-orders');
 
 for (const u of [A, B]) log(u.problems.length === 0, `${u.name}: zero console and page errors${u.problems.length ? ` (${u.problems.slice(0, 3).join(' | ')})` : ''}`);
 await browser.close();

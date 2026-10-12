@@ -46,11 +46,14 @@ export default function Developers() {
     <div className="mx-auto max-w-[1000px] px-4 py-12 sm:px-6">
       <h1 className="text-[34px] font-semibold tracking-tight">Developers</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        Opening Cross is open source (Apache-2.0). Everything this app does goes through the same SDK, API and programs available to you.
+        Opening Cross is Apache-2.0 licensed. Everything this app does goes through the same SDK, API and programs available to you.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold">Run a full cross in five minutes</h2>
-      <p className="mt-2 text-sm text-muted">These are the commands CI runs on a fresh machine for every change.</p>
+      <h2 className="mt-12 text-xl font-semibold">Run a full cross locally</h2>
+      <p className="mt-2 text-sm text-muted">
+        These are the commands CI runs on a fresh machine for every change. They need Linux (or WSL on Windows), Node 22, pnpm 10, Rust 1.96.1
+        and Agave 4.0.2 (<code className="font-mono">cargo build-sbf</code>); the first program build takes several minutes.
+      </p>
       <pre tabIndex={0} className="mt-4 overflow-x-auto rounded-[var(--radius-card)] bg-inverse-bg p-4 font-mono text-[13px] leading-6 text-inverse-ink">
         <code>{QUICKSTART}</code>
       </pre>
@@ -64,7 +67,7 @@ export default function Developers() {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm text-muted">Registry publishing is pending; until then install from the repository or the packed tarballs.</p>
+      <p className="mt-3 text-sm text-muted">These packages are not on a public registry yet. Until they are, use them from the repository (`pnpm install` links them) or from the tarballs `examples/ts-quickstart/run.sh` packs.</p>
 
       <h2 className="mt-12 text-xl font-semibold">API</h2>
       <p className="mt-2 text-sm text-muted">
@@ -82,8 +85,9 @@ export default function Developers() {
 
       <h2 className="mt-12 text-xl font-semibold">Check any result yourself</h2>
       <pre tabIndex={0} className="mt-4 overflow-x-auto rounded-[var(--radius-card)] bg-inverse-bg p-4 font-mono text-[13px] leading-6 text-inverse-ink">
-        <code>{`npx opening-cross-verify <cross-address> --rpc <your RPC URL>
-npx opening-cross-conformance     # 525 vectors from the on-chain clearing code`}</code>
+        <code>{`# from a clone of the repository, after pnpm install
+pnpm --filter @opening-cross/verifier verify <cross-address> --rpc <your RPC URL>
+pnpm --filter @opening-cross/verifier conformance     # 525 vectors from the on-chain clearing code`}</code>
       </pre>
     </div>
   );

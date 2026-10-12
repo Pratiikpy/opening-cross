@@ -2,7 +2,7 @@
   "name": "@opening-bell/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Opening Bell web app: landing, cross pages, portfolio, issuer console and developer portal.",
+  "description": "Opening Bell web app: landing, cross pages, issuer console, trust pages and developer portal.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {

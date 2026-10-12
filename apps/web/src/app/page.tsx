@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CrossingChart } from '@/components/crossing-chart';
 import { ExampleTag } from '@/components/example-tag';
 import { type CrossSummary, type Stats, get } from '@/lib/api';
@@ -16,9 +17,9 @@ export default async function Home() {
       <section className="mx-auto grid max-w-[1200px] gap-12 px-4 pb-16 pt-14 sm:px-6 md:grid-cols-[1.1fr_1fr] md:pt-20">
         <div className="flex flex-col justify-center">
           {liveCross ? (
-            <p className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted">
-              <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" /> A cross is open now
-            </p>
+            <Link href={`/crosses/${liveCross.address}`} className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-border-strong hover:text-ink">
+              <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" /> A cross is open now: view it
+            </Link>
           ) : null}
           <h1 className="text-[44px] font-semibold leading-[1.02] tracking-tight sm:text-[64px]">
             One price for everyone.
@@ -112,8 +113,8 @@ export default async function Home() {
             fairness proof.
           </Card>
           <Card title="Markets open at the price">
-            After a launch, the market can open on Meteora or Raydium at exactly the clearing price, so the first trade starts where the
-            cross ended.
+            After a launch, the market can open on Meteora (DBC, DAMM v2 or DLMM) or Raydium at the clearing price, so the first trade starts
+            where the cross ended.
           </Card>
         </div>
       </section>
@@ -124,21 +125,26 @@ export default async function Home() {
           <div>
             <p className="font-mono text-xs uppercase tracking-widest text-accent">Built to be checked</p>
             <h2 className="mt-4 text-[34px] font-semibold leading-tight tracking-tight sm:text-[44px]">
-              Nothing to take on trust. <span className="text-inverse-muted">Everything is public.</span>
+              Every result can be checked. <span className="text-inverse-muted">Every cross is public.</span>
             </h2>
             <dl className="mt-10 divide-y divide-white/10 border-y border-white/10 text-sm">
               <ProofRow title="Escrow">Every order sits in a program-owned vault until the cross settles.</ProofRow>
               <ProofRow title="Recompute">
-                <code className="font-mono">npx opening-cross-verify &lt;cross&gt;</code> rebuilds the result from chain data alone.
+                <code className="font-mono">pnpm --filter @opening-cross/verifier verify &lt;cross&gt;</code> rebuilds the result from chain data alone. See Developers.
               </ProofRow>
-              <ProofRow title="Conformance">525 published test vectors; the program and an independent implementation agree on every one.</ProofRow>
+              <ProofRow title="Conformance">525 conformance test vectors in the repository; the program and an independent implementation agree on every one the program can represent (523 of 525).</ProofRow>
               <ProofRow title="Audit">No external audit yet. One is required before mainnet, and its findings will be published in full.</ProofRow>
             </dl>
+            <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <Link href="/accuracy" className="underline decoration-accent underline-offset-4 hover:text-inverse-muted">Track record of signed price bands</Link>
+              <Link href="/premium" className="underline decoration-accent underline-offset-4 hover:text-inverse-muted">Premium monitor</Link>
+              <Link href="/status" className="underline decoration-accent underline-offset-4 hover:text-inverse-muted">Live status</Link>
+            </p>
           </div>
           <div className="self-center overflow-hidden rounded-[var(--radius-card)] border border-white/10 bg-white/5">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 font-mono text-xs text-inverse-muted">
               <span>Fairness proof for any cross</span>
-              <span>REST</span>
+              <span>REST · illustrative values</span>
             </div>
             <pre tabIndex={0} aria-label="Example fairness proof request and response" className="overflow-x-auto p-4 font-mono text-[13px] leading-6">
               <code>{`curl ${'$'}API/v1/crosses/<address>/proof
@@ -186,7 +192,7 @@ export default async function Home() {
           <DevItem title="TypeScript SDK" code="@opening-cross/sdk">Instruction builders for every step of a cross, on @solana/kit.</DevItem>
           <DevItem title="Rust CPI crate" code="opening-cross-cpi">Route your users&apos; orders into a cross from your own program.</DevItem>
           <DevItem title="REST and WebSocket API" code="/v1/stream">Reads checked against chain, unsigned transactions, live events.</DevItem>
-          <DevItem title="Verifier" code="opening-cross-verify">Recompute any cross and get a fairness proof.</DevItem>
+          <DevItem title="Verifier" code="@opening-cross/verifier">Recompute any cross and get a fairness proof.</DevItem>
           <DevItem title="Router" code="@opening-cross/router">Compare a cross with a live DEX route before you place an order.</DevItem>
         </div>
       </section>

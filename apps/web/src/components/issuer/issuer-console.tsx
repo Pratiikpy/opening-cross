@@ -2,7 +2,7 @@
 
 import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { ActionButton } from '@/components/cross/action-button';
 import { useSigner } from '@/components/cross/use-signer';
 import { API_URL } from '@/lib/api';
@@ -54,7 +54,12 @@ const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() *
 
 export function IssuerConsole() {
   const { account } = useWallet();
-  if (!account) return <p className="mt-10 rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">Connect the wallet that will own this cross to continue.</p>;
+  if (!account)
+    return (
+      <p role="status" className="mt-10 rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">
+        Connect the wallet that will own this cross to continue. Use Connect wallet at the top right; the form opens once a wallet is connected.
+      </p>
+    );
   return <Form account={account} />;
 }
 
@@ -70,6 +75,8 @@ function Form({ account }: { account: UiWalletAccount }) {
   const [mints, setMints] = useState<{ base?: MintInfo | string; quote?: MintInfo | string }>({});
   const [identity, setIdentity] = useState<{ base?: Identity | null; quote?: Identity | null }>({});
   const [created, setCreated] = useState<string | null>(null);
+  // A create is several transactions; if the later ones fail, the cross exists on chain without all its shards and must be finished.
+  const [unfinished, setUnfinished] = useState<{ cross: string; landed: number; total: number } | null>(null);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
   const baseInfo = typeof mints.base === 'object' ? mints.base : null;
@@ -107,17 +114,32 @@ function Form({ account }: { account: UiWalletAccount }) {
     );
   }
 
+  if (unfinished) {
+    return (
+      <div role="alert" className="mt-10 rounded-[var(--radius-card)] border border-border p-6">
+        <p className="font-medium">Your cross exists but its setup stopped part way.</p>
+        <p className="mt-1 text-sm text-muted">
+          {unfinished.landed} of {unfinished.total} setup transactions landed. Nothing is lost and nothing can trade yet; finishing it sends only the missing
+          ones. The cross is <span className="break-all font-mono">{unfinished.cross}</span>.
+        </p>
+        <div className="mt-4">
+          <ActionButton label="Finish setting up the cross" path="/v1/tx/init-shards" body={() => ({ cross: unfinished.cross, payer: account.address })} sign={sign} onDone={() => { setCreated(unfinished.cross); setUnfinished(null); }} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form className="mt-10 space-y-8" onSubmit={(e) => e.preventDefault()}>
       <Fieldset legend="Tokens">
-        <MintField label="Token being sold (base mint)" value={f.baseMint} onChange={(v) => set('baseMint', v)} info={mints.base} identity={identity.base} onRead={async () => { const base = await readMint(f.baseMint); setMints((m) => ({ ...m, base })); setIdentity((i) => ({ ...i, base: null })); const id = await readIdentity(f.baseMint); setIdentity((i) => ({ ...i, base: id })); }} />
-        <MintField label="Paid in (quote mint)" value={f.quoteMint} onChange={(v) => set('quoteMint', v)} info={mints.quote} identity={identity.quote} onRead={async () => { const quote = await readMint(f.quoteMint); setMints((m) => ({ ...m, quote })); setIdentity((i) => ({ ...i, quote: null })); const id = await readIdentity(f.quoteMint); setIdentity((i) => ({ ...i, quote: id })); }} />
+        <MintField label="Token being sold (base mint)" value={f.baseMint} onChange={(v) => { set('baseMint', v); setMints((m) => ({ ...m, base: undefined })); setIdentity((i) => ({ ...i, base: undefined })); }} info={mints.base} identity={identity.base} onRead={async () => { const base = await readMint(f.baseMint); setMints((m) => ({ ...m, base })); setIdentity((i) => ({ ...i, base: null })); const id = await readIdentity(f.baseMint); setIdentity((i) => ({ ...i, base: id })); }} />
+        <MintField label="Paid in (quote mint)" value={f.quoteMint} onChange={(v) => { set('quoteMint', v); setMints((m) => ({ ...m, quote: undefined })); setIdentity((i) => ({ ...i, quote: undefined })); }} info={mints.quote} identity={identity.quote} onRead={async () => { const quote = await readMint(f.quoteMint); setMints((m) => ({ ...m, quote })); setIdentity((i) => ({ ...i, quote: null })); const id = await readIdentity(f.quoteMint); setIdentity((i) => ({ ...i, quote: id })); }} />
       </Fieldset>
 
       <Fieldset legend="Format">
-        <Select label="Bids" value={f.disclosure} onChange={(v) => set('disclosure', v as 'sealed' | 'open')} options={[['sealed', 'Sealed until reveal'], ['open', 'Open book']]} />
-        <Select label="Supply" value={f.supplyMode} onChange={(v) => set('supplyMode', v as 'escrow' | 'mint')} options={[['mint', 'Minted at settlement from a schedule'], ['escrow', 'Sell orders from escrow']]} />
-        <Select label="Kind" value={f.kind} onChange={(v) => set('kind', v as IssuerForm['kind'])} options={[['launch', 'Launch'], ['reopen', 'Reopen'], ['tender', 'Tender'], ['recurring', 'Recurring']]} />
+        <Select label="Bids" value={f.disclosure} onChange={(v) => set('disclosure', v as 'sealed' | 'open')} options={[['sealed', 'Sealed until reveal'], ['open', 'Open book']]} hint={f.disclosure === 'sealed' ? 'Only a commitment is on chain until the reveal window. A bid that is not revealed in time is excluded and refunded in full.' : 'Orders and their prices are public as they arrive.'} />
+        <Select label="Supply" value={f.supplyMode} onChange={(v) => set('supplyMode', v as 'escrow' | 'mint')} options={[['mint', 'Minted at settlement from a schedule'], ['escrow', 'Sell orders from escrow']]} hint={f.supplyMode === 'mint' ? 'The token is minted at settlement, only at the clearing price, and only for the schedule below.' : 'Sellers deposit tokens into escrow and place sell orders; supply is whatever is offered.'} />
+        <Select label="Kind" value={f.kind} onChange={(v) => set('kind', v as IssuerForm['kind'])} options={[['launch', 'Launch'], ['reopen', 'Reopen'], ['tender', 'Tender'], ['recurring', 'Recurring']]} hint="Names the use of the cross and selects its protocol fee tier. It does not change how the cross clears." />
       </Fieldset>
 
       <Fieldset legend="Price grid">
@@ -151,9 +173,9 @@ function Form({ account }: { account: UiWalletAccount }) {
       ) : null}
 
       <Fieldset legend="Guards">
-        <Text label="Minimum tokens traded to print (optional)" value={f.minMatched} onChange={(v) => set('minMatched', v)} error={err('minMatched')} />
-        <Text label="Maximum imbalance, % (optional)" value={f.maxImbalancePct} onChange={(v) => set('maxImbalancePct', v)} error={err('maxImbalancePct')} />
-        <Num label="Maximum orders" value={f.maxOrders} onChange={(v) => set('maxOrders', v)} error={err('maxOrders')} />
+        <Text label="Minimum tokens traded to print (optional)" value={f.minMatched} onChange={(v) => set('minMatched', v)} error={err('minMatched')} hint="If fewer tokens than this would trade, the cross does not print and everyone is refunded." />
+        <Text label="Maximum imbalance, % (optional)" value={f.maxImbalancePct} onChange={(v) => set('maxImbalancePct', v)} error={err('maxImbalancePct')} hint="If the unmatched quantity at the clearing price is larger than this share of the tokens traded, the cross does not print." />
+        <Num label="Maximum orders" value={f.maxOrders} onChange={(v) => set('maxOrders', v)} error={err('maxOrders')} hint="The call stops accepting orders at this count." />
       </Fieldset>
 
       {f.supplyMode === 'mint' ? (
@@ -163,6 +185,11 @@ function Form({ account }: { account: UiWalletAccount }) {
         </p>
       ) : null}
       {!baseInfo || !quoteInfo ? <p className="text-sm text-muted">Check both mints to continue.</p> : null}
+      <p className="text-sm text-muted" data-testid="create-cost">
+        Creating a cross costs about 0.17 SOL in rent (the cross, its book and its {f.shards} shards; measured on devnet) plus network fees, and a small
+        bond in the quote token (about 0.003 of one token at the defaults, growing with Maximum orders), so the wallet needs both. If a setup transaction fails part way you can
+        finish it from this page.
+      </p>
       <ActionButton
         label="Create the cross"
         path="/v1/tx/create-cross"
@@ -170,6 +197,7 @@ function Form({ account }: { account: UiWalletAccount }) {
         body={() => (checked?.ok ? checked.body : {})}
         sign={sign}
         onDone={(_s, extra) => setCreated(String(extra.cross))}
+        onPartial={(extra, landed, total) => setUnfinished({ cross: String(extra.cross), landed, total })}
       />
     </form>
   );
@@ -184,32 +212,77 @@ function Fieldset({ legend, children }: { legend: string; children: React.ReactN
   );
 }
 
-function Text({ label, value, onChange, error, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; error?: string | undefined; type?: string }) {
+function Text({ label, value, onChange, onBlur, error, hint, type = 'text', inputMode }: { label: string; value: string; onChange: (v: string) => void; onBlur?: () => void; error?: string | undefined; hint?: string; type?: string; inputMode?: 'numeric' | 'decimal' }) {
+  const errorId = useId();
+  const hintId = useId();
   return (
-    <label className="block text-sm">
-      <span className="text-muted">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} className="mt-1 w-full rounded-lg border border-border-strong bg-bg px-3 py-2.5 font-mono" />
-      {error ? <span className="mt-1 block text-xs text-accent-text">{error}</span> : null}
-    </label>
+    <div className="text-sm">
+      <label className="block">
+        <span className="text-muted">{label}</span>
+        <input
+          type={type}
+          value={value}
+          inputMode={inputMode}
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
+          className="mt-1 w-full rounded-lg border border-border-strong bg-bg px-3 py-2.5 font-mono"
+        />
+      </label>
+      {error ? (
+        <span id={errorId} className="mt-1 block text-xs text-accent-text">
+          {error}
+        </span>
+      ) : hint ? (
+        <span id={hintId} className="mt-1 block text-xs text-muted">
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
-function Num({ label, value, onChange, error }: { label: string; value: number; onChange: (v: number) => void; error?: string | undefined }) {
-  return <Text label={label} value={String(value)} onChange={(v) => onChange(Number(v))} error={error} />;
+/** A whole-number field. It keeps what the person typed (an empty box stays empty) and reports NaN until the text is a number. */
+function Num({ label, value, onChange, error, hint }: { label: string; value: number; onChange: (v: number) => void; error?: string | undefined; hint?: string }) {
+  const [text, setText] = useState(String(value));
+  return (
+    <Text
+      label={label}
+      value={text}
+      inputMode="numeric"
+      onChange={(v) => {
+        setText(v);
+        onChange(v.trim() === '' ? Number.NaN : Number(v));
+      }}
+      error={error}
+      {...(hint ? { hint } : {})}
+    />
+  );
 }
 
-function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][] }) {
+function Select({ label, value, onChange, options, hint }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][]; hint?: string }) {
+  const hintId = useId();
   return (
-    <label className="block text-sm">
-      <span className="text-muted">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-border-strong bg-bg px-3 py-2.5">
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="text-sm">
+      <label className="block">
+        <span className="text-muted">{label}</span>
+        <select value={value} onChange={(e) => onChange(e.target.value)} aria-describedby={hint ? hintId : undefined} className="mt-1 w-full rounded-lg border border-border-strong bg-bg px-3 py-2.5">
+          {options.map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+      </label>
+      {hint ? (
+        <span id={hintId} className="mt-1 block text-xs text-muted">
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -218,7 +291,7 @@ function MintField({ label, value, onChange, info, identity, onRead }: { label: 
     <div>
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <Text label={label} value={value} onChange={onChange} />
+          <Text label={label} value={value} onChange={onChange} onBlur={() => value.trim() && onRead()} />
         </div>
         <button type="button" onClick={onRead} disabled={!value} className="mb-0.5 rounded-full border border-border-strong px-4 py-2.5 text-sm disabled:opacity-50">
           Check mint

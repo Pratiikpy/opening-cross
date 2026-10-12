@@ -31,7 +31,7 @@ Sources:
 - **GO, by composition**, for issuers who launch on Genesis and want a later cross. An unlocked
   bucket names the issuer (or its treasury) as recipient; once claimed, the issuer supplies those
   tokens to an escrow-mode cross like any other seller. No CPI is needed, and both programs stay
-  unmodified. The permissionless claim is read from the client's account definitions; running it
-  on devnet waits on H10.
+  unmodified. The permissionless claim is read from the client's account definitions; it has **not** been run on devnet (a
+  Genesis launch with an unlocked outflow bucket, then the claim and an escrow cross: NOT VERIFIED).
 - Related work: Genesis's own uniform-price auction bucket is prior art for launch auctions on
   Solana. See DP10.

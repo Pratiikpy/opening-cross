@@ -99,7 +99,7 @@ export default async function Accuracy() {
         <p className="mt-2 text-muted">
           A band claims a hit rate only after enough crosses have been graded to test it, and it loses that claim if it under-covers. Until then it is provisional and its error is recorded without a claim. Each band is a signed record anyone can verify with the open-source checker in the repository, which also recomputes the price from the published book:
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-surface p-3 font-mono text-xs">{`pnpm --filter @opening-cross/promises verify ${API_URL}/v1/promises/<promise id> --inputs ${API_URL}/v1/promises/<promise id>/inputs`}</pre>
+        <pre tabIndex={0} className="mt-3 overflow-x-auto rounded-lg bg-surface p-3 font-mono text-xs">{`pnpm --filter @opening-cross/promises verify ${API_URL}/v1/promises/<promise id> --inputs ${API_URL}/v1/promises/<promise id>/inputs`}</pre>
         <p className="mt-3 text-muted">
           {res.ok && res.data.signer ? `Bands are signed by ${shortAddress(res.data.signer)}; any other signer is not ours. ` : ''}
           Bands are also folded into a Merkle root written to Solana, which bounds when each was issued.

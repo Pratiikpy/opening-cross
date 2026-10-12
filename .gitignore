@@ -10,6 +10,7 @@
 !/crates/
 !/packages/
 !/apps/
+!/deploy/
 !/video/
 !/services/
 !/scripts/
@@ -51,3 +52,5 @@ tests/fixtures/*.json
 video/out/
 video/public/shots/
 video/public/clips/
+
+.vercel

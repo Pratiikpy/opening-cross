@@ -21,8 +21,8 @@ pass completes. Full suite: 17 files, 88/88 passed.
 `getProgramAccounts` and planned `finalize` and `settle`; devnet refused both with
 `AccountOwnedByWrongProgram` (accounts `base_mint`, `shard`). Cause: the cross_core deployed on
 devnet (slot 507686092) predates the current account layout, so crosses it created do not match
-today's program. Upgrading needs a ~3.9 SOL buffer; the key holds 0.80 SOL and the CLI faucet is
-rate-limited — HUMAN_TASKS H10. Devnet chaos run: PENDING H10.
+today's program. Resolved 2026-10-12: cross_core was upgraded on devnet and the chaos run was made; see
+`docs/evidence/D2-keeper-devnet.md` (three keepers, four crosses of every shape to Finalized, one keeper killed mid-work).
 
 ## Scope notes
 - Calendar sessions are not keeper work: creating a cross is the issuer's signed action, and

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Logo } from './logo';
-import { NAV } from './site-header';
+import { MORE_NAV, NAV } from './nav-items';
 
 export function SiteFooter() {
   return (
@@ -14,18 +14,23 @@ export function SiteFooter() {
         </div>
         <nav aria-label="Footer" className="space-y-2 text-sm">
           <p className="font-medium">Opening Bell</p>
-          {[...NAV, { href: '/#proof', label: 'Proof' }, { href: '/#issuers', label: 'For issuers' }].map((n) => (
+          {[...NAV.slice(0, 2), { href: '/#how', label: 'How it works' }, { href: '/#proof', label: 'Proof' }, { href: '/#issuers', label: 'For issuers' }, { href: '/orders', label: 'My orders' }].map((n) => (
             <Link key={n.href} href={n.href} prefetch={false} className="block text-muted hover:text-ink">
               {n.label}
             </Link>
           ))}
         </nav>
-        <div className="space-y-2 text-sm">
-          <p className="font-medium">Open source</p>
-          <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross">GitHub</a>
+        <nav aria-label="Trust and developers" className="space-y-2 text-sm">
+          <p className="font-medium">Check the work</p>
+          {[MORE_NAV[1]!, MORE_NAV[2]!, MORE_NAV[3]!, NAV[2]!].map((n) => (
+            <Link key={n.href} href={n.href} prefetch={false} className="block text-muted hover:text-ink">
+              {n.label}
+            </Link>
+          ))}
           <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/tree/main/docs/adr">Design decisions</a>
           <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/blob/main/docs/ROADMAP.md">Roadmap</a>
-        </div>
+          <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross">GitHub</a>
+        </nav>
       </div>
       <div className="mx-auto max-w-[1200px] border-t border-border px-4 py-6 text-xs text-muted sm:px-6">
         Early development. Opening Cross runs on Solana devnet and is not deployed to mainnet. Nothing on this site is an offer of

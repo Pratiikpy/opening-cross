@@ -30,6 +30,6 @@ owner + discriminator checked); a finalized cross was described as "not settled 
 
 Full suite: 18 files, 90/90 passed, three consecutive runs (each DB test in its own schema).
 
-Not covered: a hosted deployment and a devnet run of the API (devnet cross_core needs the
-upgrade in HUMAN_TASKS H10). Rate limiting and auth for a public endpoint belong to the hosted
-deployment and are tracked with launch (L-track).
+Not covered: rate limiting and auth for a public endpoint, which belong to the hosted deployment and are tracked with launch
+(L-track). Since this run the API has also served a devnet stack (indexer, API and promiser against public devnet:
+`docs/evidence/T-trust-devnet.md`, `D2-keeper-devnet.md`).

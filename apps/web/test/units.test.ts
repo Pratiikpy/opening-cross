@@ -40,3 +40,28 @@ describe('units', () => {
     expect(formatDuration(-5n)).toBe('0m 00s');
   });
 });
+
+describe('units at the edges', () => {
+  it('formats the largest on-chain amount and very small ones without rounding', () => {
+    expect(formatAtoms(18_446_744_073_709_551_615n, 9)).toBe('18,446,744,073.709551615');
+    expect(formatAtoms(18_446_744_073_709_551_615n, 0)).toBe('18,446,744,073,709,551,615');
+    expect(formatAtoms(1n, 18)).toBe('0.000000000000000001');
+    expect(parseAtoms('18,446,744,073.709551615', 9)).toBe(18_446_744_073_709_551_615n);
+  });
+
+  it('trims digits only when asked to, and never turns a small nonzero amount into a bare zero by accident', () => {
+    expect(formatAtoms(1_234_567n, 6, 2)).toBe('1.23');
+    expect(formatAtoms(1_000_000_000n, 6, 2)).toBe('1,000');
+  });
+
+  it('refuses malformed and ambiguous input', () => {
+    for (const bad of ['1.2.3', '.', ' ', '1 000', '１２', '0x10', '1,,2e', 'NaN', 'Infinity']) expect(parseAtoms(bad, 6)).toBeNull();
+    expect(parseAtoms('  1.5  ', 6)).toBe(1_500_000n);
+  });
+
+  it('keeps a price exact for a 9-decimal base against a 6-decimal quote at a large scale', () => {
+    const N = { priceScale: 1_000_000_000n, baseDecimals: 9, quoteDecimals: 6 };
+    expect(formatPrice(999_999_999_999n, N)).toBe('999,999.999999');
+    expect(parsePrice('999999.999999', N)).toBe(999_999_999_999n);
+  });
+});

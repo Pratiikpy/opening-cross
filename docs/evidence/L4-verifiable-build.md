@@ -1,6 +1,6 @@
 # L4: verifiable builds and the mainnet deployment runbook
 
-Status 2026-10-11: **IN PROGRESS.** The build and hash tooling exists, was run, and reproduces the tested binaries from the commit; the mainnet deployment itself needs a funded deployer key, the multisig member keys and one decision from the founder (HUMAN_TASKS H18). Nothing has been deployed to mainnet.
+Status 2026-10-12: **IN PROGRESS (human-only remainder).** The build and hash tooling exists, was run, and reproduces the tested binaries from the commit; the mainnet deployment itself needs a funded deployer key, the multisig member keys and one decision from the founder (HUMAN_TASKS H18). Nothing has been deployed to mainnet.
 
 ## 1. What "the hash matches the repo" means here
 
@@ -21,15 +21,20 @@ Built with `cargo build-sbf` in WSL (Agave 4.0.2, platform-tools v1.53) from the
 | cross_gate | 364,032 | `44067144756195012c3a5938ce06c0c47164320d0b8c213dfe31ce6f7345cad8` | `b0183ec01a363dffd8135736734ff8e872a24328d83185ef64a36ef55bacb5a6` |
 | cross_settle | 360,288 | `ed8bae6da940f8b8fcb28d9008c6af3692e400ed51c99573286278e35de533bb` | `4d2d7a60859ef98d9e0fd4fcd5b2042bfd33f4341e91a14257aa572f2e6907dc` |
 | cross_calendar | 172,504 | `e055ea1c4fd1c53afac9bf2b1ca43173064822f839ac7bb4624df20108341801` | `cfd44af46a0d7f82505e2cfa20f8f0eae656899925ab2542566610ac7d042011` |
-| treasury | 274,184 | `ca9d219547a5d7268078b8b9ede8c071da89cc6bee1a1fef3e017a538c3d8afc` | `b6d57baadfd33fcd7cf2749cd8a470f975d3eca3282a1c8e0302e2423b34a855` |
+| treasury | 274,184 | `ce6b2b6174622a77d3767f8e5fe5542b1fac537e944cd169e53155a7317cee2c` | `856078195036afd1811d69c63aad0474b0d084e9e00ab94893c9fffeacf5d3f5` |
 
 ## 3. On-chain check, run on devnet
 
+Re-run 2026-10-12 against commit `1249986` (all five programs deployed on devnet; the treasury has its second program id, `HoRbUkEX…`, after the first keypair was lost). `sh scripts/onchain-hash.sh <program-id> target/deploy/<name>.so devnet`:
+
 | Program on devnet | Result |
 |---|---|
-| cross_core `F5k8EDDX…` | **MATCH.** `onchain-hash.sh`: the first 573,096 bytes of the 700,000-byte program equal the local build (sha256 `9ad204bb…`). `solana-verify get-program-hash -u devnet` gives `780d1105…`, equal to the local executable hash. |
-| cross_gate `2pE7gApa…` | **DIFFERENT, as expected.** The deployed program is 314,304 bytes and predates the current source (364,032 bytes). It must be upgraded (devnet funding, H10) before it can match. The script reports this rather than hiding it. |
-| cross_settle, cross_calendar, treasury | Not deployed on devnet. |
+| cross_core `F5k8EDDX…` | **MATCH.** The first 573,096 bytes of the 700,000-byte program equal the local build (sha256 `9ad204bb…`). `solana-verify get-program-hash -u devnet` gives `780d1105…`, equal to the local executable hash. |
+| cross_gate `2pE7gApa…` | **MATCH.** First 364,032 of 374,304 bytes (sha256 `44067144…`). The earlier mismatch was a stale deployment; it has since been upgraded. |
+| cross_settle `2EVpoks9…` | **MATCH.** 360,288 of 360,288 bytes (sha256 `ed8bae6d…`). |
+| cross_calendar `CxtZKYwS…` | **MATCH.** 172,504 of 172,504 bytes (sha256 `e055ea1c…`). |
+| treasury `HoRbUkEX…` | **MATCH.** 274,184 of 274,184 bytes (sha256 `ce6b2b61…`; executable hash `85607819…`, equal on chain and locally). |
+| cross_settle `devnet-raydium` `4nH5srCT…` | Byte-for-byte match recorded in `A4-raydium-cpmm-devnet.md` (sha256 `4e617656…`). |
 
 ## 4. Verifiable build, run
 
@@ -43,7 +48,7 @@ Built with `cargo build-sbf` in WSL (Agave 4.0.2, platform-tools v1.53) from the
 | cross_calendar | `cfd44af4…2011` | yes |
 | treasury | `b6d57baa…a855` | yes |
 
-So the tested binaries are the ones a stranger rebuilds from the commit, and devnet `cross_core` (section 3) is that same binary. Two things this does not show: a second machine reproducing the hash, and the repository's pinned host Rust 1.96.1 (the image builds with its own 1.93.1, and the SBF output was the same either way). Two defects found and fixed while getting here: `solana-verify build .` fails with a mangled manifest path, so the script passes the absolute mount path; and the container writes root-owned files, so the script removes its work directory from inside the container when a plain `rm` is refused.
+The Docker run below predates the treasury's new program id (commit `ab80051`), so its treasury row is the hash of the old binary: **the treasury was not re-built in Docker at the current commit (NOT VERIFIED).** The other four rows are unaffected, since their sources did not change. So the tested binaries are the ones a stranger rebuilds from the commit, and devnet `cross_core` (section 3) is that same binary. Two things this does not show: a second machine reproducing the hash, and the repository's pinned host Rust 1.96.1 (the image builds with its own 1.93.1, and the SBF output was the same either way). Two defects found and fixed while getting here: `solana-verify build .` fails with a mangled manifest path, so the script passes the absolute mount path; and the container writes root-owned files, so the script removes its work directory from inside the container when a plain `rm` is refused.
 
 ## 5. Mainnet runbook, with caps
 
@@ -70,6 +75,6 @@ Adding a program-level cap (for example a protocol-wide limit on escrow per cros
 
 ## 6. Not verified here
 
-- A mainnet deployment, a fresh-cluster run of `init-protocol.ts`, a Squads handover on a real cluster (rehearsed on LiteSVM only; devnet run waits on H10 funding).
+- A mainnet deployment, a fresh-cluster run of `init-protocol.ts`, a Squads handover on a real cluster (rehearsed on LiteSVM only; a devnet run of the handover itself has not been done).
 - That the Docker image reproduces the same hash on a second machine (needs one more run elsewhere).
 - Third-party verification through OtterSec's service (`solana-verify remote submit-job`), which needs the upgrade authority to upload the build record after deployment.

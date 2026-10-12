@@ -21,7 +21,8 @@ import {
   buildCancel,
   buildClaim,
   buildCreateCross,
-  buildFinalize,
+  buildFinalizeWithAccounts,
+  buildMissingShards,
   buildPlaceOrder,
   buildReveal,
   buildSettleBook,
@@ -93,18 +94,25 @@ export async function claimTx(fetch: Fetch, cross: CrossView, b: { payer: Addres
 }
 
 export async function finalizeTx(cross: CrossView, payer: Address, lt: Lifetime) {
-  return compile(payer, [await buildFinalize(cross, createNoopSigner(payer))], lt);
+  return compile(payer, await buildFinalizeWithAccounts(cross, createNoopSigner(payer)), lt);
+}
+
+/** The shard transactions a create left undone, one each (shards are large). Anyone may pay for them. */
+export async function initShardsTxs(fetch: Fetch, cross: CrossView, payer: Address, lt: Lifetime) {
+  const ixs = await buildMissingShards(cross, createNoopSigner(payer), async (a) => (await fetch(a)) !== null);
+  if (ixs.length === 0) throw new RequestError(409, 'every shard of this cross already exists');
+  return { transactions: ixs.map((ix) => compile(payer, [ix], lt)) };
 }
 
 export async function createCrossTxs(input: Omit<Parameters<typeof buildCreateCross>[0], 'creator'> & { creator: Address }, lt: Lifetime) {
-  const { cross, create, shards } = await buildCreateCross({ ...input, creator: createNoopSigner(input.creator) });
+  const { cross, create, shards, ensureCreatorQuote } = await buildCreateCross({ ...input, creator: createNoopSigner(input.creator) });
   // A minting cross must own its base mint's mint authority. Hand it over in the same transaction
   // as the create, signed by the issuer who holds it now, so the issuer signs once.
   const handover: Instruction[] =
     Number(input.supplyMode) === 1 && input.baseMint
       ? [getSetAuthorityInstruction({ owned: input.baseMint, owner: createNoopSigner(input.creator), authorityType: AuthorityType.MintTokens, newAuthority: cross }, { programAddress: input.baseTokenProgram })]
       : [];
-  return { cross, transactions: [compile(input.creator, [...handover, create], lt), ...shards.map((s) => compile(input.creator, [s], lt))] };
+  return { cross, transactions: [compile(input.creator, [ensureCreatorQuote, ...handover, create], lt), ...shards.map((s) => compile(input.creator, [s], lt))] };
 }
 
 export { OrderSide };

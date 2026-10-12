@@ -59,7 +59,7 @@ Open gaps are listed at the end. They are not hidden in the rows above them.
 
 1. **No external audit.** L2, HUMAN_TASKS H6.
 2. **Single-key upgrade authority.** It must move to a Squads multisig with a timelock (L3) before L4.
-3. **Public API rate limiting and abuse controls** are not implemented. They belong to the hosted deployment (L4), along with a WAF.
+3. **Public API abuse controls.** A per-address request limit exists in the API (`services/api/src/rate-limit.ts`, 600 requests a minute by default, tested in `services/api/test/rate-limit.test.ts`). It is in memory per process and keyed by client address, so it does not stop a distributed attack. A WAF, per-key quotas and RPC-side limits belong to the hosted deployment (L4).
 4. **Encrypted default reveal (Arcium)** is not built (decision 3). Until then, an unrevealed sealed bid is refunded rather than revealed by default.
 5. **Oracle availability.** Reopen crosses with an oracle guard need fresh Pyth pull updates. Hermes requires an API key (H11).
-6. **Devnet deployment** predates the current account layout and needs an upgrade (H10).
+6. **Mainnet deployment has not happened.** All five programs run on devnet and match the local builds byte for byte (`docs/evidence/L4-verifiable-build.md` section 3); the mainnet runbook is H18.

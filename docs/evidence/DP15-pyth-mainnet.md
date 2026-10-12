@@ -1,6 +1,6 @@
 # DP15 — Pyth price accounts on mainnet
 
-Run: 2026-10-05T10:40:06.257Z · RPC https://api.devnet.solana.com
+Run: 2026-10-05T10:40:06.257Z · RPC https://api.mainnet-beta.solana.com (header corrected 2026-10-12: the run read mainnet accounts; the earlier header printed the shared devnet constant)
 Script `tests/devnet/src/oracle-mainnet.ts`; feed ids from Hermes `/v2/price_feeds?asset_type=equity`
 Accounts = push-oracle PDA `[shard 0 (u16 LE), feed_id]` under the pre-upgrade (`pythWSn…`) and upgraded (`pyt2F4…`) programs; parsed with `@opening-cross/sdk`, same layout as `cross_core::oracle`
 A stale or missing push account is a finding, not a failure: crosses use the pull model (fresh update posted by the keeper), which needs a Pyth API key (HUMAN_TASKS H11).

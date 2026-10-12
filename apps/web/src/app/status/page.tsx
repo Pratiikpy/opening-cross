@@ -5,6 +5,9 @@ import { RPC_URL } from '@/lib/config';
 export const metadata: Metadata = { title: 'Status' };
 export const dynamic = 'force-dynamic';
 
+/** A healthy indexer polls every few seconds; a public RPC that is rate limiting can stretch a poll, so allow two minutes. */
+const STALE_AFTER_SECONDS = 120;
+
 type Check = { name: string; ok: boolean; detail: string };
 
 async function timed<T>(f: () => Promise<T>): Promise<[T | null, number, string | null]> {
@@ -19,7 +22,7 @@ async function timed<T>(f: () => Promise<T>): Promise<[T | null, number, string 
 export default async function Status() {
   const [health, apiMs, apiErr] = await timed(async () => {
     const r = await fetch(`${API_URL}/v1/health`, { cache: 'no-store' });
-    return (await r.json()) as { ok: boolean; indexedSlot: string | null; recentDriftAlerts: number };
+    return (await r.json()) as { ok: boolean; indexedSlot: string | null; recentDriftAlerts: number; indexer?: { caughtUpToSlot: string; secondsSinceLastCaughtUp: number } | null };
   });
   const [slot, rpcMs, rpcErr] = await timed(async () => {
     const r = await fetch(RPC_URL, { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSlot', params: [{ commitment: 'finalized' }] }) });
@@ -29,9 +32,16 @@ export default async function Status() {
     { name: 'API', ok: Boolean(health), detail: health ? `Responding in ${apiMs} ms.` : `Unreachable: ${apiErr}` },
     { name: 'Network RPC', ok: slot !== null, detail: slot !== null ? `Finalized slot ${slot}, ${rpcMs} ms.` : `Unreachable: ${rpcErr}` },
     {
-      name: 'Indexer',
-      ok: Boolean(health),
-      detail: health?.indexedSlot ? `Newest indexed event at slot ${health.indexedSlot}.` : 'No events indexed yet.',
+      name: 'Indexed data',
+      // The indexer writes a heartbeat after every poll that finished; a stale or missing one means it is behind, stuck or stopped.
+      ok: Boolean(health?.indexer) && (health?.indexer?.secondsSinceLastCaughtUp ?? Infinity) <= STALE_AFTER_SECONDS,
+      detail: !health
+        ? 'Unknown while the API is unreachable.'
+        : !health.indexer
+          ? 'The indexer has not reported yet: it is starting, still catching up on history, or not running.'
+          : health.indexer.secondsSinceLastCaughtUp <= STALE_AFTER_SECONDS
+            ? `The indexer caught up to finalized slot ${health.indexer.caughtUpToSlot} ${health.indexer.secondsSinceLastCaughtUp} s ago.`
+            : `The indexer last caught up ${Math.round(health.indexer.secondsSinceLastCaughtUp / 60)} min ago (to slot ${health.indexer.caughtUpToSlot}); figures on this site may be behind the chain.`,
     },
     {
       name: 'Reconciliation',

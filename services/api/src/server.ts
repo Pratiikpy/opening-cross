@@ -17,7 +17,8 @@ import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promise
 import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
 import { groupObservations } from '@opening-cross/premium';
 import { coverage as premiumCoverage, latestPerTicker, observationsSince } from '@opening-cross/premium-service';
-import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, placeOrderTx, revealTx, settleTxs } from './tx.js';
+import { type RateLimit, createLimiter } from './rate-limit.js';
+import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
 
@@ -32,6 +33,10 @@ export type ApiDeps = {
   promiseSigner?: string;
   /** Allowed browser origins; default any. */
   corsOrigins?: string[];
+  /** Per-address request limit; omit to leave the API unlimited (the tests do). */
+  rateLimit?: RateLimit;
+  /** Trust X-Forwarded-For from the reverse proxy in front of the API, so the limiter sees client addresses. */
+  trustProxy?: boolean;
   /** A dedicated connection for LISTEN; the API owns it once passed. */
   listen?: () => Promise<pg.Client>;
 };
@@ -73,16 +78,32 @@ const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'] as const;
 const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable'] as const;
 
 export async function buildServer(d: ApiDeps) {
-  const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
+  const app = Fastify({ logger: false, bodyLimit: 64 * 1024, ...(d.trustProxy ? { trustProxy: true } : {}) });
+  if (d.rateLimit) {
+    const limiter = createLimiter({ exempt: ['/v1/health'], ...d.rateLimit });
+    app.addHook('onRequest', async (req, reply) => {
+      if (req.method === 'OPTIONS') return;
+      const verdict = limiter.check(req.ip, req.url.split('?')[0] ?? req.url);
+      if (!verdict.allowed) {
+        reply.header('retry-after', String(verdict.retryAfterSeconds));
+        return send(reply, { error: 'too many requests from this address; retry in ' + verdict.retryAfterSeconds + ' s' }, 429);
+      }
+    });
+  }
   // Browsers call the API directly (wallet flows). It holds no credentials and every write is an
   // unsigned transaction, so any origin may read it unless CORS_ORIGINS narrows the list.
   await app.register(fastifyCors, { origin: d.corsOrigins ?? '*', methods: ['GET', 'POST'] });
   await app.register(fastifyWebsocket);
 
-  app.setErrorHandler((err, _req, reply) => {
+  app.setErrorHandler((err, req, reply) => {
     if (err instanceof RequestError) return send(reply, { error: err.message }, err.status);
     const e = err as { statusCode?: number; message?: string };
     if (e.statusCode && e.statusCode < 500) return send(reply, { error: e.message ?? 'bad request' }, e.statusCode);
+    // The caller only sees a generic message; the operator needs the cause (an RPC that kept answering 429, a database error).
+    // A cluster endpoint that is rate limiting or unreachable is the API's upstream, not a fault in the request or the API.
+    const upstream = /\b429\b|HTTP error|fetch failed|ETIMEDOUT|ECONNRESET/.test(`${String(err)} ${JSON.stringify((err as { context?: unknown }).context ?? {})}`);
+    console.error(JSON.stringify({ at: new Date().toISOString(), status: upstream ? 503 : 500, method: req.method, url: req.url.split('?')[0], error: String(err) }));
+    if (upstream) return send(reply.header('retry-after', '5'), { error: 'the Solana RPC endpoint is busy or unreachable; retry in a few seconds' }, 503);
     return send(reply, { error: 'internal error' }, 500);
   });
   app.setNotFoundHandler((_req, reply) => send(reply, { error: 'no such route' }, 404));
@@ -130,9 +151,12 @@ export async function buildServer(d: ApiDeps) {
 
   // ---------------------------------------------------------------- reads
   app.get('/v1/health', async (_req, reply) => {
-    const { rows } = await d.db.query(`SELECT (SELECT max(last_slot) FROM cursors) AS slot, (SELECT count(*)::int FROM reconciliation_alerts WHERE at > now() - interval '1 hour') AS alerts`);
+    const { rows } = await d.db.query(`SELECT (SELECT max(last_slot) FROM cursors) AS slot, (SELECT count(*)::int FROM reconciliation_alerts WHERE at > now() - interval '1 hour') AS alerts,
+      (SELECT head_slot FROM indexer_heartbeat WHERE id = 1) AS head, (SELECT floor(extract(epoch FROM now() - polled_at))::int FROM indexer_heartbeat WHERE id = 1) AS age`);
     const ok = rows[0].alerts === 0;
-    return send(reply, { ok, indexedSlot: rows[0].slot, recentDriftAlerts: rows[0].alerts }, ok ? 200 : 503);
+    // The indexer's heartbeat: the finalized slot it had caught up to and how many seconds ago. Null until the first poll finishes.
+    const indexer = rows[0].age === null ? null : { caughtUpToSlot: rows[0].head, secondsSinceLastCaughtUp: rows[0].age };
+    return send(reply, { ok, indexedSlot: rows[0].slot, recentDriftAlerts: rows[0].alerts, indexer }, ok ? 200 : 503);
   });
 
   // Protocol-wide totals for the landing page. Every figure is computed from indexed events; the
@@ -388,6 +412,13 @@ export async function buildServer(d: ApiDeps) {
     const cross = await crossView(address(b.cross, 'cross'));
     if (cross.data.ordersOpen !== 0) throw new RequestError(409, `${cross.data.ordersOpen} orders are still open`);
     return send(reply, await finalizeTx(cross, address(b.payer, 'payer'), await d.lifetime()));
+  });
+
+  // Finishes a cross whose create transaction landed but whose shard transactions did not (see buildMissingShards).
+  app.post('/v1/tx/init-shards', async (req, reply) => {
+    const b = body(req.body);
+    const cross = await crossView(address(b.cross, 'cross'));
+    return send(reply, await initShardsTxs(fetchOwned, cross, address(b.payer, 'payer'), await d.lifetime()));
   });
 
   app.post('/v1/tx/create-cross', async (req, reply) => {

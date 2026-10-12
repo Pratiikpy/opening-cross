@@ -26,7 +26,10 @@ const fetcher = async (a: Address) => {
 await migrate(db);
 for (let tick = 0; ; tick++) {
   try {
+    const head = await rpc.getSlot({ commitment: 'finalized' }).send();
     const n = await pollOnce(db, rpc);
+    // Written only after a poll that finished, so a long backfill or a stuck RPC shows up as an old heartbeat.
+    await db.query('INSERT INTO indexer_heartbeat (id, head_slot, polled_at) VALUES (1, $1, now()) ON CONFLICT (id) DO UPDATE SET head_slot = EXCLUDED.head_slot, polled_at = EXCLUDED.polled_at', [head.toString()]);
     if (n) console.log(JSON.stringify({ at: new Date().toISOString(), applied: n }));
     if (tick % reconcileEvery === 0) {
       const drift = await reconcileSettled(db, fetcher, () => pollOnce(db, rpc), { record: true, waitMs: pollMs, attempts: 5 });

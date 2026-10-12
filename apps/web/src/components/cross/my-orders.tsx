@@ -88,8 +88,8 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
             return (
               <li key={o.address} className="rounded-lg border border-border p-3 text-sm" data-testid="order">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium capitalize">
-                    {o.side}
+                  <span className="font-medium">
+                    <span className="capitalize">{o.side}</span>
                     {quantity ? ` ${formatAtoms(BigInt(quantity), m.baseDecimals)}` : ''}
                     {price ? ` at ${formatPrice(BigInt(price), m)}` : ''}
                   </span>
@@ -107,16 +107,16 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
                       <>
                         <dt className="text-muted">Tokens received</dt>
                         <dd>{formatAtoms(BigInt(o.base_out ?? '0'), m.baseDecimals)}</dd>
-                        <dt className="text-muted">Paid</dt>
+                        <dt className="text-muted">Paid (quote)</dt>
                         <dd>{formatAtoms(BigInt(o.escrow) - BigInt(o.quote_out ?? '0'), m.quoteDecimals)}{cross.clearing ? ` at ${formatPrice(BigInt(cross.clearing.price), m)}` : ''}</dd>
-                        <dt className="text-muted">Refunded</dt>
+                        <dt className="text-muted">Refunded (quote)</dt>
                         <dd>{formatAtoms(BigInt(o.quote_out ?? '0'), m.quoteDecimals)}</dd>
                       </>
                     ) : (
                       <>
-                        <dt className="text-muted">Received</dt>
+                        <dt className="text-muted">Received (quote)</dt>
                         <dd>{formatAtoms(BigInt(o.quote_out ?? '0'), m.quoteDecimals)}</dd>
-                        <dt className="text-muted">Fee</dt>
+                        <dt className="text-muted">Fee (quote)</dt>
                         <dd>{formatAtoms(BigInt(o.fee ?? '0'), m.quoteDecimals)}</dd>
                         <dt className="text-muted">Tokens returned</dt>
                         <dd>{formatAtoms(BigInt(o.base_out ?? '0'), m.baseDecimals)}</dd>

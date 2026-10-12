@@ -91,6 +91,8 @@ export class Evidence {
     private readonly file: string,
     private readonly title: string,
     private readonly header: string[],
+    /** The endpoint the run read from, when it is not the shared devnet RPC (a mainnet read, for example). */
+    private readonly rpcLabel: string = RPC,
   ) {}
 
   record(s: Step): void {
@@ -107,7 +109,7 @@ export class Evidence {
     const lines = [
       `# ${this.title}`,
       '',
-      `Run: ${new Date().toISOString()} · RPC ${RPC}`,
+      `Run: ${new Date().toISOString()} · RPC ${this.rpcLabel}`,
       ...this.header,
       '',
       `Overall: **${ok ? 'PASS' : 'FAIL'}**`,

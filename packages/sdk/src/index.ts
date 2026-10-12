@@ -119,7 +119,7 @@ export type CreateCrossInput = Omit<CreateCrossInstructionDataArgs, 'discriminat
 
 /** Create the cross and every shard. Returns instruction groups to send in order (shards are
  *  ~6 KB each, so they go in their own transactions). */
-export async function buildCreateCross(input: CreateCrossInput): Promise<{ cross: Address; create: Instruction; shards: Instruction[] }> {
+export async function buildCreateCross(input: CreateCrossInput): Promise<{ cross: Address; create: Instruction; shards: Instruction[]; ensureCreatorQuote: Instruction }> {
   const crossId = BigInt(input.crossId);
   const cross = await crossAddress(input.creator.address, crossId);
   const { creator, baseMint, quoteMint, baseTokenProgram, quoteTokenProgram, ...params } = input;
@@ -141,7 +141,22 @@ export async function buildCreateCross(input: CreateCrossInput): Promise<{ cross
   for (let i = 0; i < Number(input.shards); i++) {
     shards.push(getInitShardInstruction({ payer: creator, cross, shard: await shardAddress(cross, i), index: i }));
   }
-  return { cross, create, shards };
+  // create_cross reads the creator's quote account (the bond, if any, is paid from it), so it must exist even for an issuer
+  // that has never held the quote token. Send this instruction first; it is a no-op when the account already exists.
+  const ensureCreatorQuote = getCreateAssociatedTokenIdempotentInstruction({ payer: creator, ata: await ata(creator.address, quoteMint, quoteTokenProgram), owner: creator.address, mint: quoteMint, tokenProgram: quoteTokenProgram });
+  return { cross, create, shards, ensureCreatorQuote };
+}
+
+/** Init instructions for the shards of `cross` that do not exist yet. A create that stopped after its first transaction (a dropped
+ *  connection, a rate-limited RPC, an empty fee payer) leaves a cross without all its shards, and nothing can clear it. Any wallet may
+ *  pay for them: init_shard has no authority check, the shard's address is derived from the cross and its index. */
+export async function buildMissingShards(cross: CrossView, payer: TransactionSigner, exists: (address: Address) => Promise<boolean>): Promise<Instruction[]> {
+  const ixs: Instruction[] = [];
+  for (let i = 0; i < Number(cross.data.shards); i++) {
+    const shard = await shardAddress(cross.address, i);
+    if (!(await exists(shard))) ixs.push(getInitShardInstruction({ payer, cross: cross.address, shard, index: i }));
+  }
+  return ixs;
 }
 
 export type PlaceOrderInput = {
@@ -278,6 +293,20 @@ export async function buildFinalize(cross: CrossView, payer: TransactionSigner):
     baseTokenProgram: c.baseTokenProgram,
     quoteTokenProgram: c.quoteTokenProgram,
   });
+}
+
+/** Finalize pays the protocol fee, the integrator fee and the proceeds into token accounts that must exist; a quote mint the
+ *  fee recipient has never held has no such account yet. This creates whichever are missing (idempotent, paid by `payer`) and
+ *  then finalizes, so one transaction finishes any cross, not only crosses whose accounts someone prepared. */
+export async function buildFinalizeWithAccounts(cross: CrossView, payer: TransactionSigner): Promise<Instruction[]> {
+  const c = cross.data;
+  const ensure = async (owner: Address, mint: Address, tokenProgram: Address) => getCreateAssociatedTokenIdempotentInstruction({ payer, ata: await ata(owner, mint, tokenProgram), owner, mint, tokenProgram });
+  const owners = [...new Set<Address>([c.feeRecipient, c.integrator, c.proceedsTo])];
+  const ixs: Instruction[] = [];
+  for (const owner of owners) ixs.push(await ensure(owner, c.quoteMint, c.quoteTokenProgram));
+  if (c.supplyMode === SupplyMode.Escrow) ixs.push(await ensure(c.proceedsTo, c.baseMint, c.baseTokenProgram));
+  ixs.push(await buildFinalize(cross, payer));
+  return ixs;
 }
 
 export function isSettled(state: CrossState): boolean {

@@ -4,7 +4,8 @@ import { createSolanaRpc, fetchEncodedAccount } from '@solana/kit';
 import { PYTH_PUSH_ORACLE, PYTH_PUSH_ORACLE_UPGRADED, hexToBytes, isPythReceiver, oracleToCrossUnits, parsePriceUpdate, pythFeedAccount } from '@opening-cross/sdk';
 import { Evidence } from './lib.js';
 
-const rpc = createSolanaRpc(process.env.MAINNET_RPC ?? 'https://api.mainnet-beta.solana.com');
+const MAINNET_RPC = process.env.MAINNET_RPC ?? 'https://api.mainnet-beta.solana.com';
+const rpc = createSolanaRpc(MAINNET_RPC);
 const FEEDS: [string, string][] = [
   ['Crypto.SOL/USD (control, sponsored)', 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d'],
   ['Equity.US.NVDA/USD', 'b1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593'],
@@ -16,7 +17,7 @@ const ev = new Evidence('DP15-pyth-mainnet.md', 'DP15 — Pyth price accounts on
   'Script `tests/devnet/src/oracle-mainnet.ts`; feed ids from Hermes `/v2/price_feeds?asset_type=equity`',
   'Accounts = push-oracle PDA `[shard 0 (u16 LE), feed_id]` under the pre-upgrade (`pythWSn…`) and upgraded (`pyt2F4…`) programs; parsed with `@opening-cross/sdk`, same layout as `cross_core::oracle`',
   'A stale or missing push account is a finding, not a failure: crosses use the pull model (fresh update posted by the keeper), which needs a Pyth API key (HUMAN_TASKS H11).',
-]);
+], new URL(MAINNET_RPC).origin);
 
 async function main() {
   const now = BigInt(Math.floor(Date.now() / 1000));

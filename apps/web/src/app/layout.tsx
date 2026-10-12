@@ -3,14 +3,22 @@ import { Hanken_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { Providers } from '@/components/providers';
+import { siteUrl } from '@/lib/site';
 import './globals.css';
 
 const hanken = Hanken_Grotesk({ subsets: ['latin'], variable: '--font-hanken', display: 'swap' });
 const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-plex-mono', display: 'swap' });
 
+const DESCRIPTION = 'Opening crosses for launches, reopens and tenders on Solana: orders collect, then everyone who trades pays one clearing price. Every result can be recomputed from the chain.';
+const base = siteUrl();
+
 export const metadata: Metadata = {
-  title: { default: 'Opening Bell — one fair price for every new market on Solana', template: '%s · Opening Bell' },
-  description: 'Opening crosses for launches, reopens and tenders on Solana: orders collect, then everyone who trades pays one clearing price. Every result can be recomputed from the chain.',
+  ...(base ? { metadataBase: new URL(base) } : {}),
+  applicationName: 'Opening Bell',
+  title: { default: 'Opening Bell: one fair price for every new market on Solana', template: '%s · Opening Bell' },
+  description: DESCRIPTION,
+  openGraph: { type: 'website', siteName: 'Opening Bell', title: 'Opening Bell: one fair price for every new market on Solana', description: DESCRIPTION, locale: 'en_US' },
+  twitter: { card: 'summary_large_image', title: 'Opening Bell: one fair price for every new market on Solana', description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {

@@ -1,5 +1,6 @@
 // API process: DATABASE_URL (the indexer's database) and RPC_URL are required; PORT and HOST
-// default to 8080 and 0.0.0.0.
+// default to 8080 and 0.0.0.0. RATE_LIMIT_PER_MINUTE (default 600, 0 turns it off) limits requests per client address;
+// set TRUST_PROXY=1 behind a reverse proxy so the address is the client's, not the proxy's.
 import { type Address, fetchEncodedAccount } from '@solana/kit';
 import pg from 'pg';
 import { createIndexerRpc, migrate } from '@opening-cross/indexer';
@@ -16,6 +17,8 @@ await migrate(db);
 const app = await buildServer({
   db,
   network: process.env.NETWORK ?? 'devnet',
+  rateLimit: { perWindow: Number(process.env.RATE_LIMIT_PER_MINUTE ?? 600) },
+  ...(process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true' ? { trustProxy: true } : {}),
   ...(process.env.PROMISE_SIGNER ? { promiseSigner: process.env.PROMISE_SIGNER } : {}),
   ...(process.env.CORS_ORIGINS ? { corsOrigins: process.env.CORS_ORIGINS.split(',') } : {}),
   account: async (a: Address) => {

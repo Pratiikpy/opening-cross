@@ -1,0 +1,172 @@
+# Opening Cross backend: Postgres 17, the indexer, the API, the keeper, the promiser, the premium monitor, and
+# Caddy for automatic HTTPS and WSS. Every service runs the same image (./Dockerfile) with a different command.
+# Configuration comes from ./.env (copy .env.example); keypairs are mounted read-only from ./.secrets.
+name: opening-bell
+
+x-service: &service
+  image: opening-bell-services:latest
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: 20m
+      max-file: "5"
+  environment: &env
+    DATABASE_URL: postgres://oc:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/oc
+    RPC_URL: ${RPC_URL:-https://api.devnet.solana.com}
+    NETWORK: ${NETWORK:-devnet}
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: oc
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oc -d oc"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  # One-shot: applies services/indexer/migrations before anything else starts, so no two services race to create
+  # the schema.
+  migrate:
+    <<: *service
+    restart: "no"
+    build:
+      context: ${REPO_ROOT:-..}
+      dockerfile: deploy/Dockerfile
+    working_dir: /app/services/api
+    command: ["node", "--import", "tsx", "migrate.ts"]
+    volumes:
+      - ./migrate.ts:/app/services/api/migrate.ts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  indexer:
+    <<: *service
+    working_dir: /app/services/indexer
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      POLL_MS: ${INDEXER_POLL_MS:-8000}
+      RECONCILE_EVERY: ${INDEXER_RECONCILE_EVERY:-20}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    <<: *service
+    working_dir: /app/services/api
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      PORT: "8080"
+      HOST: 0.0.0.0
+      # Caddy is the only client the API sees; trust its X-Forwarded-For so the rate limiter counts real clients.
+      TRUST_PROXY: "1"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
+      PROMISE_SIGNER: ${PROMISE_SIGNER:?set PROMISE_SIGNER (the promiser's public key) in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 40s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  keeper:
+    <<: *service
+    working_dir: /app/services/keeper
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      KEEPER_KEYPAIR: /run/secrets/keeper.json
+      # Only act on crosses made by these creators; an empty value would make the keeper serve every cross on
+      # the cluster, so the compose file refuses to start without it.
+      KEEPER_CREATORS: ${KEEPER_CREATORS:?set KEEPER_CREATORS (comma-separated creator addresses) in .env}
+      PASS_MS: ${KEEPER_PASS_MS:-15000}
+    volumes:
+      - ./.secrets/keeper.json:/run/secrets/keeper.json:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  promiser:
+    <<: *service
+    working_dir: /app/services/promiser
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      PROMISE_KEYPAIR: /run/secrets/promiser.json
+      ROUND_MS: ${PROMISER_ROUND_MS:-15000}
+      ANCHOR_EVERY_MS: ${PROMISER_ANCHOR_MS:-600000}
+    volumes:
+      - ./.secrets/promiser.json:/run/secrets/promiser.json:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # The premium monitor measures real MAINNET stock-token liquidity whatever cluster the rest of the stack follows,
+  # so it ignores NETWORK/RPC_URL above and uses PREMIUM_RPC_URL.
+  premium:
+    <<: *service
+    working_dir: /app/services/premium
+    # TICKERS must be absent, not empty, to measure the full universe; the shell sets it only when given.
+    command: ["sh", "-c", "if [ -n \"$$PREMIUM_TICKERS\" ]; then export TICKERS=\"$$PREMIUM_TICKERS\"; fi; exec node --import tsx src/main.ts"]
+    environment:
+      DATABASE_URL: postgres://oc:${POSTGRES_PASSWORD}@db:5432/oc
+      RPC_URL: ${PREMIUM_RPC_URL:-https://api.mainnet-beta.solana.com}
+      NETWORK: mainnet-beta
+      ROUND_MS: ${PREMIUM_ROUND_MS:-60000}
+      PREMIUM_TICKERS: ${PREMIUM_TICKERS:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_HOST: ${SITE_HOST:?set SITE_HOST in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -5,7 +5,7 @@
 // failure (often a competing keeper that got there first) never stops the rest of the pass.
 import type { Address, Instruction, TransactionSigner } from '@solana/kit';
 import { type Cross, getAbandonSettlementInstruction, getCrossDecoder, getOrderDecoder } from '@opening-cross/cross-core-client';
-import { buildClaim, buildFinalize, buildSettleBook } from '@opening-cross/sdk';
+import { buildClaim, buildFinalizeWithAccounts, buildSettleBook } from '@opening-cross/sdk';
 import { type Action, type OpenOrder, type Skip, plan } from './plan.js';
 
 export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
@@ -102,7 +102,7 @@ async function instructionsFor(a: Action, view: { address: Address; data: Cross 
     case 'claim':
       return [await buildClaim(view, d.payer, a.order.owner, a.order.nonce)];
     case 'finalize':
-      return [[await buildFinalize(view, d.payer)]];
+      return [await buildFinalizeWithAccounts(view, d.payer)];
   }
 }
 

@@ -9,6 +9,8 @@ type Props = {
   body: () => unknown;
   sign: Signer;
   onDone: (signatures: string[], extra: Record<string, unknown>) => void;
+  /** Called when a multi-transaction action failed after some of its transactions had already landed. */
+  onPartial?: (extra: Record<string, unknown>, landed: number, total: number) => void;
   variant?: 'primary' | 'secondary';
   disabled?: boolean;
   /** Runs before anything is built; throw an ActionError to stop with a message. */
@@ -16,7 +18,7 @@ type Props = {
 };
 
 /** Builds via the API, signs in the wallet, sends, confirms; shows each step and any refusal. */
-export function ActionButton({ label, path, body, sign, onDone, variant = 'primary', disabled, before }: Props) {
+export function ActionButton({ label, path, body, sign, onDone, onPartial, variant = 'primary', disabled, before }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const busy = status !== null;
@@ -28,12 +30,14 @@ export function ActionButton({ label, path, body, sign, onDone, variant = 'prima
         onClick={async () => {
           setError(null);
           setStatus('Preparing…');
+          let built: Awaited<ReturnType<typeof build>> | null = null;
           try {
             before?.();
-            const { txs, extra } = await build(path, body());
-            const sigs = await signSendConfirm(txs, sign, setStatus);
-            onDone(sigs, extra);
+            built = await build(path, body());
+            const sigs = await signSendConfirm(built.txs, sign, setStatus);
+            onDone(sigs, built.extra);
           } catch (e) {
+            if (built && e instanceof ActionError && e.completed > 0) onPartial?.(built.extra, e.completed, built.txs.length);
             setError(e instanceof ActionError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
           } finally {
             setStatus(null);

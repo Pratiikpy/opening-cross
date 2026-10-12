@@ -40,5 +40,5 @@ were fixed:
 
 Full suite: 19 files, 91/91.
 
-Remaining: running the verifier over every devnet cross needs devnet cross_core on the current
-layout (HUMAN_TASKS H10).
+Done since: the verifier was run over every cross account on devnet (48 accounts, 38 verified, 0 mismatched, 10 not yet cleared):
+`docs/evidence/D5-verifier-devnet-sweep.md`.

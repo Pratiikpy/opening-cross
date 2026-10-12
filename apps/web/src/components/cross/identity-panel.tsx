@@ -40,14 +40,16 @@ function Row({ role, v }: { role: string; v: AuthenticityVerdict }) {
 }
 
 /** "Is this real?" for both tokens of a cross, from the issuers' own lists and the chain. Mainnet mints only. */
-export function IdentityPanel({ address }: { address: string }) {
-  const [a, setA] = useState<AuthenticityView | null>(null);
+export function IdentityPanel({ address, initial = null }: { address: string; initial?: AuthenticityView | null }) {
+  const [a, setA] = useState<AuthenticityView | null>(initial);
   useEffect(() => {
+    // The server's read is the first paint; the browser then asks again, so a result the server missed or that has changed
+    // replaces it. A failed read keeps what is already shown.
     let live = true;
     fetch(`${API_URL}/v1/crosses/${address}/authenticity`, { cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<AuthenticityView>) : null))
-      .then((v) => live && setA(v))
-      .catch(() => live && setA(null));
+      .then((v) => live && v && setA(v))
+      .catch(() => undefined);
     return () => {
       live = false;
     };
@@ -55,7 +57,7 @@ export function IdentityPanel({ address }: { address: string }) {
   if (!a) return null;
   if (!a.comparable) {
     return (
-      <p className="rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted" data-testid="identity-not-comparable">
+      <p className="px-1 text-xs text-muted" data-testid="identity-not-comparable">
         Identity check: {a.note}
       </p>
     );

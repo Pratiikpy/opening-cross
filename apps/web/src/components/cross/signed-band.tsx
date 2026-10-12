@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
 import type { PromiseView } from '@/lib/trust-types';
@@ -27,8 +28,8 @@ function outcomeLine(g: NonNullable<PromiseView['grade']>): string | null {
  * The signed price band for a cross. A calibrated band claims a coverage and is graded against the result; a
  * provisional one claims none and says why. Either way the promise is signed, so anyone can check it.
  */
-export function SignedBand({ address, market, version }: { address: string; market: Market; version: number }) {
-  const [p, setP] = useState<PromiseView | null>(null);
+export function SignedBand({ address, market, version, initial = null }: { address: string; market: Market; version: number; initial?: PromiseView | null }) {
+  const [p, setP] = useState<PromiseView | null>(initial);
   useEffect(() => {
     let live = true;
     fetch(`${API_URL}/v1/crosses/${address}/promise?optional=1`, { cache: 'no-store' })
@@ -72,9 +73,9 @@ export function SignedBand({ address, market, version }: { address: string; mark
           signed record
         </a>{' '}
         ·{' '}
-        <a className="text-accent-text underline" href="/accuracy">
+        <Link className="text-accent-text underline" href="/accuracy" prefetch={false}>
           track record
-        </a>
+        </Link>
         {p.anchor ? ' · anchored on chain' : ''}
       </p>
     </section>

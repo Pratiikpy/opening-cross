@@ -1,0 +1,14 @@
+# Automatic HTTPS (Let's Encrypt) for SITE_HOST. reverse_proxy upgrades WebSocket connections itself, so
+# /v1/stream works over wss:// with no extra directive.
+{$SITE_HOST} {
+	encode zstd gzip
+	reverse_proxy api:8080 {
+		# Long-lived /v1/stream connections must not be cut by an idle timeout.
+		stream_close_delay 5m
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}

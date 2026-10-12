@@ -51,4 +51,4 @@ These build on this program without changing its accounts' meaning.
   6,000 and 4,000 of 10,000.000001, with 1 atom of dust left.
 - A renewed attestation clears a recorded lapse before the grace period ends.
 
-The devnet run waits on H10.
+The devnet run was made on 2026-10-12: 26 steps pass against the deployed program and a real SAS attestation (`docs/evidence/A5-treasury-devnet.md`).

@@ -20,7 +20,7 @@ Choose, among feasible prices with `V > 0`:
 3. then, if a reference price is supplied (reopens: the pre-halt or oracle price), the price closest to it;
 4. then the **lowest** price.
 
-Rule 4 settles VM6 in favour of the buyer-side (k+1)th-price convention: when several prices clear the same volume, bidders pay the lowest. It keeps truthful bidding a dominant strategy for single-unit retail demand and makes the issuer's revenue come from demand, not from tie-breaking. If no feasible price has `V > 0`, the cross does not print and every order is refunded.
+Rule 4 settles VM6 in favour of the buyer-side (k+1)th-price convention: when several prices clear the same volume, bidders pay the lowest. It is intended to make truthful bidding the best response for single-unit retail demand (NOT VERIFIED: no proof or simulation of incentive compatibility exists in this repository, and pro-rata rationing at the margin weakens it), and it makes the issuer's revenue come from demand, not from tie-breaking. If no feasible price has `V > 0`, the cross does not print and every order is refunded.
 
 **Fills.** Orders strictly better than `P*` fill in full; orders worse than `P*` do not fill. Orders exactly at `P*` on the side with excess quantity are rationed pro-rata against the remaining volume `R` over the marginal quantity `Q`:
 - rationed buys get `floor(q·R/Q)`;

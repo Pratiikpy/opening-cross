@@ -4,6 +4,7 @@ import type { UiWalletAccount } from '@wallet-standard/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { StateBadge } from '@/components/state-badge';
 import { API_URL } from '@/lib/api';
+import type { AuthenticityView, PromiseView } from '@/lib/trust-types';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatDuration, formatPrice, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
@@ -38,7 +39,7 @@ async function getJson<T>(path: string): Promise<T | null> {
   }
 }
 
-export function CrossView({ initial, serverNow }: { initial: CrossDetail; serverNow: string }) {
+export function CrossView({ initial, serverNow, initialIdentity, initialBand }: { initial: CrossDetail; serverNow: string; initialIdentity: AuthenticityView | null; initialBand: PromiseView | null }) {
   const [cross, setCross] = useState(initial);
   const [book, setBook] = useState<BookResponse | null>(null);
   // Start from the server's clock so the first client render matches the server HTML exactly.
@@ -90,12 +91,12 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
         {cross.gateMint ? ' · eligibility pass required' : ''}
       </p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
         <section aria-labelledby="price" className="rounded-[var(--radius-card)] border border-border p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 id="price" className="font-mono text-xs uppercase tracking-widest text-muted">
-                {cross.clearing ? 'Clearing price' : phase === 'settled' ? 'Result' : 'Price if it closed now'}
+                {cross.clearing ? 'Clearing price' : phase === 'settled' ? 'Result' : phase === 'upcoming' || phase === 'open' ? 'Price if it closed now' : 'Price once it settles'}
               </h2>
               <p className="mt-2 text-[44px] font-semibold leading-none tracking-tight" data-testid="price">
                 {cross.clearing
@@ -104,7 +105,9 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
                     ? 'No print'
                     : book?.indicative
                       ? formatPrice(BigInt(book.indicative.price), m)
-                      : '—'}
+                      : cross.disclosure === 'sealed' && phase !== 'settled'
+                        ? 'Sealed'
+                        : 'No price yet'}
               </p>
               <p className="mt-2 text-sm text-muted">
                 {cross.clearing
@@ -112,7 +115,7 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
                   : cross.noPrintReason
                     ? `Did not print (${cross.noPrintReason}); every order is refunded in full.`
                     : book?.indicative
-                      ? `${formatAtoms(BigInt(book.indicative.matched), m.baseDecimals)} tokens would trade. Indicative until the call closes.`
+                      ? `${formatAtoms(BigInt(book.indicative.matched), m.baseDecimals)} tokens would trade. ${phase === 'upcoming' || phase === 'open' ? 'Indicative until the call closes.' : 'Indicative: settling the cross fixes the final price.'}`
                       : cross.disclosure === 'sealed'
                         ? 'Sealed: prices stay hidden until bids are revealed.'
                         : 'No crossing orders yet.'}
@@ -139,14 +142,15 @@ export function CrossView({ initial, serverNow }: { initial: CrossDetail; server
         </section>
 
         <div className="space-y-6">
-          <SignedBand address={cross.address} market={m} version={version} />
-          <IdentityPanel address={cross.address} />
+          {/* What a person can do comes first; the panels that load after the page (band, identity, proof) go below it so they never push it down. */}
           {account ? <Connected account={account} cross={cross} phase={phase} market={m} version={version} onChanged={refresh} /> : <ConnectPrompt phase={phase} />}
           {phase === 'awaiting-settlement' && !account ? (
             <p className="rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">
               This cross is ready to settle. Anyone can settle it; connect a wallet to do so, or wait for a keeper.
             </p>
           ) : null}
+          <SignedBand address={cross.address} market={m} version={version} initial={initialBand} />
+          <IdentityPanel address={cross.address} initial={initialIdentity} />
           {cross.state !== 'Live' ? <ProofLink address={cross.address} /> : null}
         </div>
       </div>

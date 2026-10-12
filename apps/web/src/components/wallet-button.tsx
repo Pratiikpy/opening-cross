@@ -1,9 +1,12 @@
 'use client';
 
 import type { UiWallet } from '@wallet-standard/ui';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { CHAIN, useConnect, useDisconnect, useWallet } from '@/lib/wallet';
 import { shortAddress } from '@/lib/units';
+import { useDismissableDetails } from './nav';
 
 export function WalletButton() {
   const { wallet, account, wallets, clear } = useWallet();
@@ -16,27 +19,7 @@ export function WalletButton() {
     if (!open && d.open) d.close();
   }, [open]);
 
-  if (wallet && account) {
-    return (
-      <details className="relative">
-        <summary
-          className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-border px-3 py-2 font-mono text-xs hover:border-border-strong [&::-webkit-details-marker]:hidden"
-          title={account.address}
-          aria-label={`Connected as ${account.address}`}
-        >
-          <span className="size-1.5 rounded-full bg-positive" aria-hidden="true" />
-          {shortAddress(account.address)}
-        </summary>
-        <div className="absolute right-0 z-50 mt-2 w-56 rounded-[var(--radius-card)] border border-border bg-bg p-3 shadow-lg">
-          <p className="text-xs text-muted">Connected with {wallet.name}</p>
-          <p className="mt-1 break-all font-mono text-xs">{account.address}</p>
-          <div className="mt-3">
-            <Disconnect wallet={wallet} onDone={clear} />
-          </div>
-        </div>
-      </details>
-    );
-  }
+  if (wallet && account) return <AccountMenu wallet={wallet} address={account.address} onDisconnected={clear} />;
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-bg transition-opacity hover:opacity-90">
@@ -45,6 +28,10 @@ export function WalletButton() {
       <dialog
         ref={dialog}
         onClose={() => setOpen(false)}
+        onClick={(e) => {
+          // A click on the backdrop lands on the dialog element itself, not on its content.
+          if (e.target === e.currentTarget) setOpen(false);
+        }}
         aria-labelledby="wallet-title"
         className="m-auto w-[min(92vw,420px)] rounded-[var(--radius-card)] border border-border bg-bg p-0 text-ink backdrop:bg-black/50"
       >
@@ -89,6 +76,33 @@ export function WalletButton() {
         </div>
       </dialog>
     </>
+  );
+}
+
+function AccountMenu({ wallet, address, onDisconnected }: { wallet: UiWallet; address: string; onDisconnected: () => void }) {
+  const pathname = usePathname();
+  const menu = useDismissableDetails([pathname]);
+  return (
+    <details ref={menu} className="relative">
+      <summary
+        className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-border px-3 py-2 font-mono text-xs hover:border-border-strong [&::-webkit-details-marker]:hidden"
+        title={address}
+        aria-label={`Connected as ${address}`}
+      >
+        <span className="size-1.5 rounded-full bg-positive" aria-hidden="true" />
+        {shortAddress(address)}
+      </summary>
+      <div className="absolute right-0 z-50 mt-2 w-56 rounded-[var(--radius-card)] border border-border bg-bg p-3 shadow-lg">
+        <p className="text-xs text-muted">Connected with {wallet.name}</p>
+        <p className="mt-1 break-all font-mono text-xs">{address}</p>
+        <Link href="/orders" prefetch={false} className="mt-3 block rounded-full border border-border px-3 py-2 text-center text-sm hover:border-border-strong">
+          My orders
+        </Link>
+        <div className="mt-2">
+          <Disconnect wallet={wallet} onDone={onDisconnected} />
+        </div>
+      </div>
+    </details>
   );
 }
 

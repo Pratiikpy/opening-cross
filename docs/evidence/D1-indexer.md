@@ -27,5 +27,6 @@ is the production fallback and is what ran above.
 
 Caveat found during D2: the devnet crosses above were created by an older cross_core build whose
 account layout predates the current one, so this run proves the RPC source, cursor and replay
-path, not decoding of current-layout accounts on devnet. That repeat run waits on the devnet
-upgrade (HUMAN_TASKS H10); current-layout decoding is covered by the LiteSVM test.
+path, not decoding of current-layout accounts on devnet. Resolved 2026-10-12: devnet `cross_core` was upgraded to the
+current layout, and the indexer ran against crosses of every shape on devnet (`D2-keeper-devnet.md`, `D5-verifier-devnet-sweep.md`);
+current-layout decoding is also covered by the LiteSVM test.
