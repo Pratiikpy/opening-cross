@@ -168,7 +168,7 @@ export async function buildServer(d: ApiDeps) {
       (SELECT count(DISTINCT owner)::int FROM orders WHERE side = 0 AND fill IS NOT NULL AND fill > 0) AS buyers_filled,
       (SELECT coalesce(sum(quote_out), 0)::text FROM orders WHERE side = 1 AND status = 'claimed') AS quote_to_sellers,
       (SELECT coalesce(sum(quote_out), 0)::text FROM orders WHERE side = 0 AND status = 'claimed') AS quote_refunded_to_buyers,
-      (SELECT count(*)::int FROM crosses WHERE state = 'NoPrint') AS crosses_no_print`);
+      (SELECT count(*)::int FROM crosses WHERE state = 'NoPrint' OR (state = 'Finalized' AND clearing_price IS NULL)) AS crosses_no_print`);
     return send(reply, { network: d.network ?? 'unknown', ...rows[0] });
   });
 

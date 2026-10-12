@@ -1,0 +1,78 @@
+CRYPTO WORLD'S FAIR TRACK SUBMISSION: BEST USE OF METEORA'S DYNAMIC BONDING CURVE
+Paste each block into the field named above it. Fields marked (YOU) need your own link.
+
+----------------------------------------------------------------
+LINK TO YOUR SUBMISSION
+https://opening-bell-psi.vercel.app
+(the live app: the most useful single link, because a judge can open a real devnet cross and press the verifier link)
+
+TWEET LINK
+(leave blank: no X post yet. Optional: paste your launch post once it is live)
+
+PROJECT NAME
+Opening Bell
+
+PROJECT GITHUB LINK
+https://github.com/Pratiikpy/opening-cross
+(YOU: make the repository public first, or add GitHub users dannxbt and hackathon@colosseum.com as read collaborators)
+
+PROJECT WEBSITE
+https://opening-bell-psi.vercel.app
+
+PROJECT X LINK
+(leave blank until the account exists)
+
+LINK TO YOUR PITCH DECK OR LOOM/VIDEO PRESENTATION
+https://youtu.be/KNXe5vVPTy4
+
+DID YOU SUBMIT THIS PROJECT TO THE OFFICIAL CRYPTO WORLD'S FAIR HACKATHON ON COLOSSEUM?
+Yes
+(answer Yes only after your Colosseum submission is confirmed)
+
+LINK TO COLOSSEUM PROJECT
+(YOU: the project URL Colosseum shows after you submit)
+
+LINK TO YOUR PROJECT'S COLOSSEUM PROFILE
+(YOU: your colosseum.com profile URL)
+
+----------------------------------------------------------------
+PROJECT DESCRIPTION  (paste everything below this line)
+
+𝗢𝗣𝗘𝗡𝗜𝗡𝗚 𝗕𝗘𝗟𝗟: 𝗧𝗛𝗘 𝗙𝗔𝗜𝗥 𝗙𝗜𝗥𝗦𝗧 𝗣𝗥𝗜𝗖𝗘 𝗙𝗢𝗥 𝗘𝗩𝗘𝗥𝗬 𝗡𝗘𝗪 𝗠𝗔𝗥𝗞𝗘𝗧, 𝗦𝗘𝗔𝗧𝗘𝗗 𝗢𝗡 𝗠𝗘𝗧𝗘𝗢𝗥𝗔
+
+A new market's first minute is a race, and the fastest wins. Pine Analytics found that over half of pump.fun tokens are sniped in the block they are created, and Memento Research found 84.7% of 2025 launches (100 of 118) trade below their launch valuation. Opening Bell replaces the race with a call auction, then hands the result to Meteora.
+
+𝗛𝗢𝗪 𝗜𝗧 𝗪𝗢𝗥𝗞𝗦
+1. Orders are escrowed on chain during a call window. Bids can be sealed (commit then reveal), so nobody sees a price to jump ahead of.
+2. At the close, one clearing price P* is found where demand meets supply. Every filled order pays P*. Unfilled money is refunded, and anyone can trigger settlement.
+3. The market then opens on Meteora at exactly P*, so the first trade starts where the auction ended.
+
+𝗪𝗛𝗔𝗧 𝗪𝗘 𝗕𝗨𝗜𝗟𝗧 𝗢𝗡 𝗠𝗘𝗧𝗘𝗢𝗥𝗔 (all driven by real CPIs into Meteora's own deployed programs, proven on Solana devnet)
+• 𝗗𝗕𝗖: our program creates the issuer's pre-committed curve with the transfer hook variant and the pool's start price must equal sqrt(P*) to within one unit, or the program refuses. Mint authority is handed to the cross, tokens are minted at P*, and mint authority is None after finalize. Open pool: https://explorer.solana.com/tx/3cUyecZWb1sa5gch4vH9rsvr1ZrH8VqB3YDr1f5ZkB87kbVM1DWF67yEb9s3GY5yckbHYcsNknS5yfBfUjVid1wa?cluster=devnet
+• 𝗗𝗕𝗖 𝘀𝘄𝗮𝗽 𝗼𝗻 𝘁𝗵𝗮𝘁 𝗽𝗼𝗼𝗹: a winner bought 32,999,998 base for 50,000,000 quote against 33,000,000 expected from P* and the 1% fee, with the gating hook running in the same swap: https://explorer.solana.com/tx/3Bffnhc9CyjoBWVh9JmaM9bXsEdiVGbfTv79VVeNCeNjnWuo87sGATCE8DpwTarhD5KXnotVvRG7ThQDiH2KQzhN?cluster=devnet
+• 𝗩𝗼𝗹𝗮𝘁𝗶𝗹𝗶𝘁𝘆-𝗮𝘄𝗮𝗿𝗲 𝗱𝘆𝗻𝗮𝗺𝗶𝗰 𝗳𝗲𝗲: base 100 bps rising to a designed 200 bps cap through a burst that moved price 8,511 bps, then decaying to 101.66 bps; seven swaps matched our model within 0.012 bps: https://explorer.solana.com/tx/2EkZAD9QYcZWVJjLDTn9Gh5eZE4SdubQMkANvfZi7XFbuCNPvWh1yVG7j1JjTU1Kn85vaKeH9kLKAja6nGRqG8wr?cluster=devnet
+• 𝗗𝗔𝗠𝗠 𝘃𝟮: full-range pool opened at P* 1.3, pool sqrt price equal to expected, real swap within model error.
+• 𝗗𝗟𝗠𝗠: pair opened with the active bin nearest P*, off by 0.0495%, inside the half-bin bound; a two-step-away bin is refused.
+• 𝗣𝗿𝗲𝘀𝗮𝗹𝗲 𝗩𝗮𝘂𝗹𝘁: partner-mint path proven (deposit, claim at fixed price, unsold refunded).
+• 𝗗𝗕𝗖 𝘁𝗼 𝗗𝗔𝗠𝗠 𝘃𝟮 𝗺𝗶𝗴𝗿𝗮𝘁𝗶𝗼𝗻 proven with extra supply outstanding and an active lock record.
+
+𝗪𝗛𝗬 𝗜𝗧 𝗜𝗦 𝗧𝗘𝗖𝗛𝗡𝗜𝗖𝗔𝗟𝗟𝗬 𝗗𝗜𝗙𝗙𝗘𝗥𝗘𝗡𝗧
+• One clearing rule in a no_std Rust crate shared by the program and a conformance generator: an independent TypeScript implementation reproduces all 525 vectors, and the program reproduces the 523 it can represent on LiteSVM, with 0 mismatches.
+• A stranger can check any cross: the verifier recomputes it from its on-chain book. Sweep of every devnet cross: 38 verified, 0 mismatched, 10 not yet cleared.
+• Scale: 100,000 real orders at 21,633 compute units each, settled in 33 transactions.
+• Everything is an API and an SDK, plus a Rust CPI crate and an MCP server, so any launchpad or agent can use the cross as its front door.
+
+𝗟𝗜𝗩𝗘 𝗧𝗢𝗗𝗔𝗬
+A public devnet app: orders, sealed bids, refunds, settlement and the verifier all work end to end. 51 crosses opened and 38 cleared at one price on devnet (from our own test runs; read live from the API).
+
+𝗛𝗢𝗡𝗘𝗦𝗧 𝗟𝗜𝗠𝗜𝗧𝗦
+Devnet only: no mainnet deployment, no external users yet, no external audit yet. We say so rather than imply otherwise. The mainnet launch needs an audit and a multisig first.
+
+----------------------------------------------------------------
+ANYTHING ELSE?  (paste)
+
+Meteora depth, instruction by instruction, with every devnet transaction: docs/submission/meteora-dbc-pack.md in the repository.
+Evidence files: docs/evidence/A1-dbc-continuation-devnet.md, A2-damm-v2-devnet.md, A3-dlmm-devnet.md, DP-volatility-fee.md, DP11-presale-vault.md, D5-conformance.md, D5-verifier-devnet-sweep.md.
+Verify a cross yourself: pnpm --filter @opening-cross/verifier verify <cross> --rpc https://api.devnet.solana.com
+Our programs on devnet: cross_core F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ, cross_settle 2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ.
+Built in India on Solana.
