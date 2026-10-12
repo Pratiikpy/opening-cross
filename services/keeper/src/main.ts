@@ -16,11 +16,13 @@ if (!RPC_URL || !KEEPER_KEYPAIR) {
 }
 const passMs = Number(process.env.PASS_MS ?? 10_000);
 // KEEPER_CREATORS (comma-separated addresses) limits this keeper to crosses made by those creators.
-const creators = process.env.KEEPER_CREATORS ? new Set(process.env.KEEPER_CREATORS.split(',').map((a) => a.trim()).filter(Boolean)) : null;
+const creatorList = (process.env.KEEPER_CREATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean) as Address[];
+const creators = creatorList.length ? new Set<string>(creatorList) : null;
+const scope = creators ? { creators: creatorList } : {};
 const rpc = createIndexerRpc(RPC_URL);
 const payer = await createKeyPairSignerFromBytes(Uint8Array.from(JSON.parse(readFileSync(KEEPER_KEYPAIR, 'utf8'))));
 const send = pollingSender(rpc, payer);
-const discovery = DATABASE_URL ? fromIndexer(new pg.Pool({ connectionString: DATABASE_URL })) : fromProgramAccounts(rpc);
+const discovery = DATABASE_URL ? fromIndexer(new pg.Pool({ connectionString: DATABASE_URL }), scope) : fromProgramAccounts(rpc, undefined, scope);
 
 for (;;) {
   try {

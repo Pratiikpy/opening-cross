@@ -73,6 +73,7 @@ const ev = new Evidence(EVIDENCE, 'D2 — Keepers racing on devnet (chaos)', [
 ]);
 const SCALE = 1_000_000n;
 const CREATOR_QUOTE = 1_000_000_000n;
+const TRADER_QUOTE = 10_000_000_000n;
 const GRID = { min: 1_000_000n, tick: 100_000n, ticks: 20 };
 const KEYS = `${ROOT}.keys/fork-d2`;
 mkdirSync(KEYS, { recursive: true });
@@ -163,10 +164,12 @@ async function newMint(payer: KeyPairSigner, authority: Address): Promise<Addres
 }
 
 // ---------------------------------------------------------------- keeper processes
-const keeperLogs: Record<string, string> = { A: '/tmp/dn-keeperA.log', B: '/tmp/dn-keeperB.log' };
+const KEEPERS = ['A', 'B', 'C'] as const;
+type KeeperName = (typeof KEEPERS)[number];
+const keeperLogs: Record<string, string> = { A: '/tmp/dn-keeperA.log', B: '/tmp/dn-keeperB.log', C: '/tmp/dn-keeperC.log' };
 const children: Record<string, ChildProcess | undefined> = {};
 let creatorScope = '';
-function startKeeper(name: 'A' | 'B'): void {
+function startKeeper(name: KeeperName): void {
   const fd = openSync(keeperLogs[name]!, 'a');
   children[name] = spawn(process.execPath, ['--import', 'tsx', 'src/main.ts'], {
     cwd: `${ROOT}services/keeper`,
@@ -174,9 +177,9 @@ function startKeeper(name: 'A' | 'B'): void {
       ...process.env,
       RPC_URL: RPC,
       KEEPER_KEYPAIR: `${KEYS}/keeper${name}.json`,
-      PASS_MS: '10000',
+      PASS_MS: '6000',
       KEEPER_CREATORS: creatorScope,
-      // Keeper A discovers through the indexer, keeper B through a getProgramAccounts scan.
+      // Keeper A discovers through the indexer; B and C through a getProgramAccounts scan.
       ...(name === 'A' ? { DATABASE_URL } : { DATABASE_URL: '' }),
     },
     stdio: ['ignore', fd, fd],
@@ -197,13 +200,14 @@ async function main() {
   const creator = await loadSigner(`creator-${process.env.RUN ?? new Date().toISOString().slice(0, 16).replace(/[^0-9]/g, '')}`); // a fresh creator per run: no leftovers from earlier attempts
   const keeperA = await loadSigner('keeperA');
   const keeperB = await loadSigner('keeperB');
+  const keeperC = await loadSigner('keeperC');
   const traders = await Promise.all(Array.from({ length: 9 }, (_, i) => loadSigner(`t${i}`)));
   const settler = await loadSigner('settler');
   creatorScope = creator.address; // the keepers serve this run's crosses only, never another job's
-  const names = new Map<string, string>([[creator.address, 'creator'], [keeperA.address, 'keeperA'], [keeperB.address, 'keeperB'], ...traders.map((t, i) => [t.address, `t${i}`] as [string, string])]);
+  const names = new Map<string, string>([[creator.address, 'creator'], [keeperA.address, 'keeperA'], [keeperB.address, 'keeperB'], [keeperC.address, 'keeperC'], ...traders.map((t, i) => [t.address, `t${i}`] as [string, string])]);
 
   // Fund: top each key up to its target from the funder (a throwaway devnet key).
-  const targets: [KeyPairSigner, bigint][] = [[creator, 400_000_000n], [keeperA, 30_000_000n], [keeperB, 30_000_000n], ...traders.map((t) => [t, 10_000_000n] as [KeyPairSigner, bigint])];
+  const targets: [KeyPairSigner, bigint][] = [[creator, 400_000_000n], [keeperA, 30_000_000n], [keeperB, 30_000_000n], [keeperC, 30_000_000n], ...traders.map((t) => [t, 10_000_000n] as [KeyPairSigner, bigint])];
   const needs: [Address, bigint][] = [];
   for (const [who, target] of targets) {
     const have = (await rpc.getBalance(who.address, { commitment: 'confirmed' }).send()).value;
@@ -215,7 +219,7 @@ async function main() {
   let source = funder;
   if ((await rpc.getBalance(funder.address, { commitment: 'confirmed' }).send()).value < total + 10_000_000n) source = operator;
   if (needs.length) await sendChunks(needs.map(([destination, amount]) => getTransferSolInstruction({ source, destination, amount })), source, 5);
-  ev.check('fund', 'creator, two keepers and nine traders funded with devnet SOL (total under 0.5 SOL)', true, `${total} lamports moved from ${source.address === funder.address ? 'the throwaway funder' : 'the operator key'}; creator ${creator.address}, keeper A ${keeperA.address}, keeper B ${keeperB.address}`);
+  ev.check('fund', 'creator, three keepers and nine traders funded with devnet SOL (total under 0.5 SOL)', true, `${total} lamports moved from ${source.address === funder.address ? 'the throwaway funder' : 'the operator key'}; creator ${creator.address}, keeper A ${keeperA.address}, keeper B ${keeperB.address}, keeper C ${keeperC.address}`);
 
   const protocol = await protocolAddress();
   const prot = getProtocolDecoder().decode((await maybeAccount(protocol))!.data);
@@ -236,7 +240,7 @@ async function main() {
   await mkAta(traders[7]!.address, BN);
   await sendChunks(atas, creator, 4);
   const mints: Instruction[] = [];
-  for (const t of traders) mints.push(getMintToInstruction({ mint: Q, token: await ata(t.address, Q), mintAuthority: creator, amount: 10_000_000_000n }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS }));
+  for (const t of traders) mints.push(getMintToInstruction({ mint: Q, token: await ata(t.address, Q), mintAuthority: creator, amount: TRADER_QUOTE }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS }));
   // The creator posts a dust bond in quote at creation (returned when the cross finalizes).
   mints.push(getMintToInstruction({ mint: Q, token: await ata(creator.address, Q), mintAuthority: creator, amount: CREATOR_QUOTE }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS }));
   mints.push(getMintToInstruction({ mint: BS, token: await ata(traders[3]!.address, BS), mintAuthority: creator, amount: 1_000_000_000n }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS }));
@@ -247,8 +251,8 @@ async function main() {
   // The four crosses. Windows are generous: devnet lands transactions in 1–17 s.
   const t0 = await chainTime();
   const closeL = t0 + 630n;
-  const closeS = t0 + 600n, revealS = closeS + 120n;
-  const closeN = t0 + 600n, closeD = t0 + 600n, deadlineD = t0 + 800n;
+  const closeS = t0 + 600n, revealS = closeS + 300n;
+  const closeN = t0 + 600n, closeD = t0 + 600n, deadlineD = t0 + 950n;
   const common = { creator, quoteMint: Q, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, minPrice: GRID.min, tick: GRID.tick, ticks: GRID.ticks, priceScale: SCALE, openTs: t0 - 5n, integratorFeeBps: 20, integrator: creator.address, gateMint: null, proceedsTo: creator.address, referencePrice: null, maxImbalanceBps: null, oracle: null, calendar: null, settler: null, settleDeadlineTs: 0n, minMatched: 0n, shards: 2, maxOrders: 16 };
   const scheduleL = [{ price: 1_000_000n, quantity: 1_000_000_000n }, { price: 1_200_000n, quantity: 1_000_000_000n }, { price: 1_500_000n, quantity: 1_000_000_000n }];
   const create = async (label: string, input: Parameters<typeof buildCreateCross>[0]) => {
@@ -289,24 +293,24 @@ async function main() {
   if (nowAfter >= closeS - 60n) throw new Error(`setup took too long: chain time ${nowAfter}, close ${closeS}`);
 
   // Owners reveal their sealed orders after the call (the unrevealed bidder never does).
+  let revealError: unknown;
   const revealTask = (async () => {
     await waitUntil(closeS + 1n);
     const view = await crossView(S);
     await Promise.all(sealedPlan.filter((p) => p[4]).map(([i, , price, quantity, , nonce]) => buildReveal(view, traders[i]!, nonce, price, quantity, salts[i]!).then((ix) => send([ix], traders[i]!))));
-  })();
+  })().catch((e) => { revealError = e; });
 
   // Baseline for the ledger and the refund checks.
-  const quoteBefore = new Map<string, bigint>();
-  for (const t of traders) quoteBefore.set(t.address, await balanceOf(t.address, Q));
+  // Every trader was minted exactly this much quote before any order was placed.
+  const quoteBefore = new Map<string, bigint>(traders.map((t) => [t.address, TRADER_QUOTE]));
 
   // Keepers start now; nothing may happen until a reveal window ends.
-  startKeeper('A');
-  startKeeper('B');
+  for (const k of KEEPERS) startKeeper(k);
   const keepersStarted = await chainTime();
-  ev.check('keepers-up', 'two keeper processes started (A via the indexer, B via getProgramAccounts), each with its own payer', true, `A ${keeperA.address} · B ${keeperB.address}`);
+  ev.check('keepers-up', 'three keeper processes started (A via the indexer, B and C via getProgramAccounts), each with its own payer, all scoped to this run creator', true, `A ${keeperA.address} · B ${keeperB.address} · C ${keeperC.address}`);
 
   // ---- chaos loop
-  let killedAt = 0, restarted = false, thirdParty = '';
+  let killedAt = 0, firstSettled = 0, restarted = false, thirdParty = '';
   let killedInfo = '';
   const hard = Date.now() + 30 * 60_000;
   let lastPrint = 0;
@@ -314,20 +318,22 @@ async function main() {
     if (Date.now() > hard) throw new Error('crosses did not all finalize within 30 minutes');
     const views = await Promise.all(crosses.map((c) => crossView(c.address)));
     if (Date.now() - lastPrint > 20_000) {
-      console.log(new Date().toISOString(), views.map((v, i) => `${crosses[i]!.name}:${CrossState[v.data.state]}/${v.data.ordersOpen}`).join(' '), `A done ${doneCount('A')} · B done ${doneCount('B')}`);
+      console.log(new Date().toISOString(), views.map((v, i) => `${crosses[i]!.name}:${CrossState[v.data.state]}/${v.data.ordersOpen}`).join(' '), `A done ${doneCount('A')} · B done ${doneCount('B')} · C done ${doneCount('C')}`);
       lastPrint = Date.now();
     }
     const anySettled = views.some((v) => v.data.state === CrossState.Cleared || v.data.state === CrossState.NoPrint);
-    if (anySettled && !killedAt) {
+    if (anySettled && !firstSettled) firstSettled = Date.now();
+    // Kill A mid-work: as soon as it has landed an action, or after 60 s of the cross being settled if it never got there first.
+    if (anySettled && !killedAt && (doneCount('A') >= 1 || Date.now() - firstSettled > 60_000)) {
       children.A?.kill('SIGKILL');
       killedAt = Date.now();
-      killedInfo = `SIGKILL to keeper A with ${doneCount('A')} action(s) logged; keeper B has ${doneCount('B')}`;
-      ev.check('chaos-kill', 'keeper A killed (SIGKILL) the moment the first cross settled', true, killedInfo);
+      killedInfo = `SIGKILL to keeper A with ${doneCount('A')} action(s) logged; keeper B has ${doneCount('B')}, keeper C ${doneCount('C')}`;
+      ev.check('chaos-kill', 'keeper A killed (SIGKILL) mid-work, after the first cross settled', true, killedInfo);
     }
     if (killedAt && !restarted && Date.now() - killedAt > 30_000) {
       startKeeper('A');
       restarted = true;
-      ev.check('chaos-restart', 'keeper A restarted 30 s later and rejoined the race', true, `A done ${doneCount('A')} · B done ${doneCount('B')}`);
+      ev.check('chaos-restart', 'keeper A restarted 30 s later and rejoined the race', true, `A done ${doneCount('A')} · B done ${doneCount('B')} · C done ${doneCount('C')}`);
     }
     const lView = views[0]!;
     if (!thirdParty && lView.data.state === CrossState.Cleared && lView.data.ordersOpen > 0) {
@@ -344,9 +350,10 @@ async function main() {
     await sleep(5_000);
   }
   await revealTask;
+  ev.check('reveal', 'the two owners who revealed their sealed orders did so inside the reveal window', !revealError, revealError ? String(revealError).slice(0, 200) : 'both reveals landed');
   const finalizedAt = Date.now();
-  const doneAtFinal = { A: doneCount('A'), B: doneCount('B') };
-  ev.check('finalized', 'all four crosses reached Finalized', true, `A performed ${doneAtFinal.A} actions, B ${doneAtFinal.B}`);
+  const doneAtFinal = { A: doneCount('A'), B: doneCount('B'), C: doneCount('C') };
+  ev.check('finalized', 'all four crosses reached Finalized', true, `A performed ${doneAtFinal.A} actions, B ${doneAtFinal.B}, C ${doneAtFinal.C}`);
 
   // ---- outcomes against the independent reference
   const views = await Promise.all(crosses.map((c) => crossView(c.address)));
@@ -394,14 +401,14 @@ async function main() {
   const quoteParties = [...traders.map((t) => t.address), creator.address, feeRecipient];
   const quoteTotal = (await Promise.all(quoteParties.map((a) => balanceOf(a, Q)))).reduce((a, b) => a + b, 0n);
   const vaultsLeft = (await Promise.all(crosses.map(async (c) => { const a = await maybeAccount(await quoteVaultAddress(c.address)); return a ? getTokenDecoder().decode(a.data).amount : 0n; }))).reduce((a, b) => a + b, 0n);
-  ev.check('conservation-quote', 'quote is conserved: owners + creator + fee recipient hold exactly what was minted, and every quote vault is empty', quoteTotal === 9n * 10_000_000_000n + CREATOR_QUOTE && vaultsLeft === 0n, `total ${quoteTotal} (minted ${9n * 10_000_000_000n + CREATOR_QUOTE}), vaults ${vaultsLeft}`);
+  ev.check('conservation-quote', 'quote is conserved: owners + creator + fee recipient hold exactly what was minted, and every quote vault is empty', quoteTotal === 9n * TRADER_QUOTE + CREATOR_QUOTE && vaultsLeft === 0n, `total ${quoteTotal} (minted ${9n * TRADER_QUOTE + CREATOR_QUOTE}), vaults ${vaultsLeft}`);
   const baseSumS = (await Promise.all([...[3, 4, 5].map((i) => balanceOf(traders[i]!.address, BS)), balanceOf(creator.address, BS)])).reduce((a, b) => a + b, 0n);
   ev.check('conservation-base', 'sealed-cross base is conserved between seller, buyer and the creator\'s proceeds account', baseSumS === 1_000_000_000n, `total ${baseSumS}`);
 
   // ---- idle: both keepers keep running; nothing may happen
   await sleep(60_000);
-  const idleA = doneCount('A') - doneAtFinal.A, idleB = doneCount('B') - doneAtFinal.B;
-  ev.check('idempotent-idle', 'after Finalized, both keepers ran at least eight passes each and performed zero actions', idleA === 0 && idleB === 0, `A +${idleA}, B +${idleB} actions in 60 s (${Math.round((Date.now() - finalizedAt) / 1000)} s since the last cross finalized)`);
+  const idleA = doneCount('A') - doneAtFinal.A, idleB = doneCount('B') - doneAtFinal.B, idleC = doneCount('C') - doneAtFinal.C;
+  ev.check('idempotent-idle', 'after Finalized, all three keepers ran about ten passes each and performed zero actions', idleA === 0 && idleB === 0 && idleC === 0, `A +${idleA}, B +${idleB}, C +${idleC} actions in 60 s (${Math.round((Date.now() - finalizedAt) / 1000)} s since the last cross finalized)`);
 
   // ---- duplicate manual actions are refused, never double-paying
   const dupClaim = await send(await buildClaim(vL, creator, traders[0]!.address, 0n), creator).then((s) => `LANDED ${s}`, (e) => String(e).split('\n').slice(0, 2).join(' ').slice(0, 220));
@@ -409,7 +416,7 @@ async function main() {
   const dupFin = await send([await buildFinalize(vL, creator)], creator).then((s) => `LANDED ${s}`, (e) => String(e).split('\n').slice(0, 2).join(' ').slice(0, 220));
   ev.check('dup-finalize', 'finalizing an already-finalized cross again is refused', !dupFin.startsWith('LANDED'), dupFin);
 
-  for (const k of ['A', 'B'] as const) children[k]?.kill('SIGTERM');
+  for (const k of KEEPERS) children[k]?.kill('SIGTERM');
 
   // ---- who did what, from chain
   const roles = new Map(names);
@@ -423,18 +430,18 @@ async function main() {
       const payer = tx?.transaction.message.accountKeys[0];
       const who = payer ? (roles.get(payer) ?? payer) : '?';
       const logs = tx?.meta?.logMessages ?? [];
-      const instr = logs.find((l) => /Instruction: (MergeShard|Clear|Claim|Finalize|AbandonSettlement|CommitOrder|RevealOrder|CreateCross|InitShard)/.test(l))?.replace(/^.*Instruction: /, '') ?? '';
+      const instr = logs.flatMap((l) => /Program log: Instruction: (w+)/.exec(l)?.[1] ?? []).filter((n) => !/^(CreateIdempotent|Create|InitializeAccount3|InitializeImmutableOwner|GetAccountDataSize|Transfer|TransferChecked|MintTo|MintToChecked|CloseAccount|SetAuthority|Burn)$/.test(n))[0] ?? '';
       if (s.err) landedFailed.push(`${c.name}/${s.signature.slice(0, 8)}… ${who} ${instr}`);
-      if (who === 'keeperA' || who === 'keeperB') perPayer[`${c.name}/${who}`] = (perPayer[`${c.name}/${who}`] ?? 0) + (s.err ? 0 : 1);
+      if (who.startsWith('keeper')) perPayer[`${c.name}/${who}`] = (perPayer[`${c.name}/${who}`] ?? 0) + (s.err ? 0 : 1);
       rows.push(`| ${c.name} | ${s.blockTime ?? ''} | ${who} | ${instr || '—'} | ${s.err ? 'FAILED' : 'ok'} | [${s.signature.slice(0, 8)}…](https://explorer.solana.com/tx/${s.signature}?cluster=devnet) |`);
     }
   }
   const settleBy = (n: string) => Object.entries(perPayer).filter(([k]) => k.endsWith(n)).reduce((a, [, v]) => a + v, 0);
-  ev.check('both-keepers-worked', 'both keepers landed transactions (the race was real, not one keeper doing everything)', settleBy('keeperA') > 0 && settleBy('keeperB') > 0, `landed transactions: keeper A ${settleBy('keeperA')}, keeper B ${settleBy('keeperB')}`);
+  ev.check('both-keepers-worked', 'at least two keepers landed transactions on these crosses (the race was real, not one keeper doing everything)', KEEPERS.filter((k) => settleBy(`keeper${k}`) > 0).length >= 2, `landed transactions on these crosses: ${KEEPERS.map((k) => `keeper ${k} ${settleBy(`keeper${k}`)}`).join(', ')}`);
 
   const logEntries = (n: string) => readLog(n);
-  const lostRaces = ['A', 'B'].flatMap((k) => logEntries(k).flatMap((e) => (e.failed ?? []).map((f) => `${k}: ${f.action.kind} → ${f.error.slice(0, 120)}`)));
-  const keeperErrors = ['A', 'B'].flatMap((k) => logEntries(k).flatMap((e) => (e.error ? [`${k}: ${e.error.slice(0, 160)}`] : [])));
+  const lostRaces = KEEPERS.flatMap((k) => logEntries(k).flatMap((e) => (e.failed ?? []).map((f) => `${k}: ${f.action.kind} → ${f.error.slice(0, 120)}`)));
+  const keeperErrors = KEEPERS.flatMap((k) => logEntries(k).flatMap((e) => (e.error ? [`${k}: ${e.error.slice(0, 160)}`] : [])));
 
   ev.write();
   const extra = [
@@ -452,7 +459,7 @@ async function main() {
 
 main().then(() => process.exit(process.exitCode ?? 0), (e) => {
   console.error(e);
-  for (const k of ['A', 'B']) children[k]?.kill('SIGKILL');
+  for (const k of KEEPERS) children[k]?.kill('SIGKILL');
   ev.write(e);
   process.exit(1);
 });
