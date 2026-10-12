@@ -198,7 +198,7 @@ async function main() {
   const names = new Map<string, string>([[creator.address, 'creator'], [keeperA.address, 'keeperA'], [keeperB.address, 'keeperB'], ...traders.map((t, i) => [t.address, `t${i}`] as [string, string])]);
 
   // Fund: top each key up to its target from the funder (a throwaway devnet key).
-  const targets: [KeyPairSigner, bigint][] = [[creator, 150_000_000n], [keeperA, 30_000_000n], [keeperB, 30_000_000n], ...traders.map((t) => [t, 10_000_000n] as [KeyPairSigner, bigint])];
+  const targets: [KeyPairSigner, bigint][] = [[creator, 400_000_000n], [keeperA, 30_000_000n], [keeperB, 30_000_000n], ...traders.map((t) => [t, 10_000_000n] as [KeyPairSigner, bigint])];
   const needs: [Address, bigint][] = [];
   for (const [who, target] of targets) {
     const have = (await rpc.getBalance(who.address, { commitment: 'confirmed' }).send()).value;
