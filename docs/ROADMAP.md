@@ -104,3 +104,7 @@ Status values: `TODO` · `IN PROGRESS` · `DONE` · `HUMAN` · `NO-GO` (a proof 
 | L5 | Legal entity and counsel sign-off on asset classes | Written opinion | — | HUMAN | HUMAN_TASKS H1–H2 |
 | L6 | First mainnet cross with external users | ≥ 1 cross, external wallets, public receipt | Indexer + verifier | HUMAN (H8) | Status was TODO: the remaining step is human-only (see HUMAN_TASKS).  |
 | G1 | Hackathon and sidetrack submissions (Colosseum, Meteora, India) | Submitted before 2026-10-13 06:59 UTC | — | HUMAN | HUMAN_TASKS H3–H5 |
+| M1 | Meteora lifecycle depth: DAMM v2 lock, vesting and compounding; DLMM conviction ladder; fee-sharing vault with the DAMM v2 bridge | Each proven on Meteora's real binaries | LiteSVM, then devnet | DONE on LiteSVM (devnet: HUMAN, needs devnet SOL, H10) | `D1-damm-lock-compounding.md` (6 tests), `D5-dlmm-conviction-ladder.md` (4), `D7-fee-sharing-vault.md` (3); ADR-0022 to 0024. Nothing here changes a deployed program, so the devnet builds still equal the repo. |
+| M2 | Premium monitor survives a wide universe | No absurd premium on the public page | Live API + browser | DONE | A quote more than 25% from the reference counts as "no market at this size"; live medians now 0.33% (buy) and -0.30% (sell) in regular hours (`packages/premium/src/stats.ts`) |
+| M3 | Live product demo recording | Scripted, reproducible, from the real site | Playwright video | DONE | `apps/web/e2e/demo-tour.mjs`; read-only (no wallet), about 85 seconds |
+
