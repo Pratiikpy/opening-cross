@@ -5,7 +5,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 : "${DATABASE_URL:?set DATABASE_URL}"
 export RPC_URL=${RPC_URL:-http://127.0.0.1:8899}
-trap 'kill 0' EXIT INT TERM
+trap 'trap - EXIT INT TERM; kill 0' EXIT INT TERM
 (cd "$ROOT/services/indexer" && POLL_MS=1000 RECONCILE_EVERY=30 node --import tsx src/main.ts >/tmp/oc-indexer.log 2>&1) &
 (cd "$ROOT/services/api" && NETWORK=localnet PORT=8080 HOST=0.0.0.0 PROMISE_SIGNER="${PROMISE_SIGNER:-}" node --import tsx src/main.ts >/tmp/oc-api.log 2>&1) &
 # Trust layer (optional): the promiser signs and grades bands for the local validator's crosses; the premium

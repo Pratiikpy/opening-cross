@@ -10,7 +10,7 @@ import { AccountRole, type Instruction, address } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { CrossState, OrderSide, ata } from '@opening-cross/sdk';
-import { DAMM_V2_PROGRAM_ADDRESS, buildSeedDammV2, sqrtPriceQ64 } from '@opening-cross/adapters';
+import { DAMM_V2_PROGRAM_ADDRESS, DammCollectFeeMode, buildLockDammPosition, buildSeedDammV2, sqrtPriceQ64 } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DAMM_FIXTURE } from '../src/harness.js';
 
@@ -94,5 +94,106 @@ describe.skipIf(!existsSync(DAMM_FIXTURE))('Meteora DAMM v2 seeding', () => {
     const stolen = await buildSeedDammV2({ cross, creator: mallory, baseAmount: 1_000_000_000n, quoteAmount: 1_000_000_000n, feeBps: 30 });
     expect(await w.h.fail([cu, stolen.instruction], mallory)).toContain('NotCreator');
     void address;
+  });
+});
+
+// Meteora's own lock and compounding instructions on the pool the adapter opens, against the real cp-amm binary.
+describe.skipIf(!existsSync(DAMM_FIXTURE))('Meteora DAMM v2 locked and compounding liquidity', () => {
+  const swapIx = async (w: World, seed: Awaited<ReturnType<typeof buildSeedDammV2>>, trader: Awaited<ReturnType<World['trader']>>, amountIn: bigint): Promise<Instruction> => ({
+    programAddress: DAMM_V2_PROGRAM_ADDRESS,
+    accounts: [
+      { address: seed.addresses.poolAuthority, role: AccountRole.READONLY },
+      { address: seed.addresses.pool, role: AccountRole.WRITABLE },
+      { address: await ata(trader.address, w.baseMint, TOKEN_2022_PROGRAM_ADDRESS), role: AccountRole.WRITABLE },
+      { address: await ata(trader.address, w.quoteMint, TOKEN_2022_PROGRAM_ADDRESS), role: AccountRole.WRITABLE },
+      { address: seed.addresses.tokenAVault, role: AccountRole.WRITABLE },
+      { address: seed.addresses.tokenBVault, role: AccountRole.WRITABLE },
+      { address: w.baseMint, role: AccountRole.READONLY },
+      { address: w.quoteMint, role: AccountRole.READONLY },
+      { address: trader.address, role: AccountRole.READONLY_SIGNER, signer: trader } as never,
+      { address: TOKEN_2022_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: TOKEN_2022_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: DAMM_V2_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: seed.addresses.eventAuthority, role: AccountRole.READONLY },
+      { address: DAMM_V2_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+    ],
+    data: (() => {
+      const d = Buffer.alloc(24);
+      createHash('sha256').update('global:swap').digest().copy(d, 0, 0, 8);
+      d.writeBigUInt64LE(amountIn, 8);
+      d.writeBigUInt64LE(0n, 16);
+      return new Uint8Array(d);
+    })(),
+  });
+  const decode = (w: World, name: 'Pool' | 'Position', addr: string) => {
+    const a = w.h.svm.getAccount(addr as never);
+    if (!a.exists) throw new Error(`${name} missing`);
+    return coder.decode(name, Buffer.from(a.data));
+  };
+
+  it('locks the opening liquidity permanently in the same transaction that seeds the pool', async () => {
+    const w = await World.create();
+    const cross = await clearedCross(w);
+    await w.h.fund(w.baseMint, w.admin, w.creator.address, 10_000_000_000n);
+    const seed = await buildSeedDammV2({ cross, creator: w.creator, baseAmount: 5_000_000_000n, quoteAmount: 6_000_000_000n, feeBps: 30 });
+    // Meteora's discriminator for the instruction is the one our builder derives.
+    const lockIdl = idl.instructions.find((i: { name: string }) => i.name === 'permanent_lock_position');
+    const lock = await buildLockDammPosition({ cross, creator: w.creator, liquidity: seed.liquidity });
+    expect(Array.from((lock.data as Uint8Array).slice(0, 8))).toEqual(lockIdl.discriminator);
+    await w.h.send([cu, seed.instruction], w.creator);
+    const before = decode(w, 'Position', seed.addresses.position);
+    const unlocked = BigInt(before.unlocked_liquidity.toString());
+    expect(unlocked > 0n).toBe(true);
+    const lockAll = await buildLockDammPosition({ cross, creator: w.creator, liquidity: unlocked });
+    await w.h.send([cu, lockAll], w.creator);
+    const after = decode(w, 'Position', seed.addresses.position);
+    expect(BigInt(after.permanent_locked_liquidity.toString())).toBe(unlocked);
+    expect(BigInt(after.unlocked_liquidity.toString())).toBe(0n);
+    const pool = decode(w, 'Pool', seed.addresses.pool);
+    expect(BigInt(pool.permanent_lock_liquidity.toString())).toBe(unlocked);
+    console.table({ unlockedBefore: Number(unlocked), permanentlyLocked: Number(after.permanent_locked_liquidity.toString()), unlockedAfter: Number(after.unlocked_liquidity.toString()) });
+  });
+
+  it('refuses a lock from anyone but the position owner, and a lock of more than the position holds', async () => {
+    const w = await World.create();
+    const cross = await clearedCross(w);
+    await w.h.fund(w.baseMint, w.admin, w.creator.address, 10_000_000_000n);
+    const seed = await buildSeedDammV2({ cross, creator: w.creator, baseAmount: 5_000_000_000n, quoteAmount: 6_000_000_000n, feeBps: 30 });
+    await w.h.send([cu, seed.instruction], w.creator);
+    const unlocked = BigInt(decode(w, 'Position', seed.addresses.position).unlocked_liquidity.toString());
+    const mallory = await w.trader(10_000_000_000n, 10_000_000_000n);
+    const stolen = await buildLockDammPosition({ cross, creator: mallory, liquidity: unlocked });
+    expect((await w.h.fail([cu, stolen], mallory)).length > 0).toBe(true);
+    const tooMuch = await buildLockDammPosition({ cross, creator: w.creator, liquidity: unlocked + 1n });
+    expect((await w.h.fail([cu, tooMuch], w.creator)).length > 0).toBe(true);
+    expect(BigInt(decode(w, 'Position', seed.addresses.position).permanent_locked_liquidity.toString())).toBe(0n);
+  });
+
+  it('opens a compounding pool at P* that keeps part of every fee in its reserves', async () => {
+    const run = async (mode: number, compoundingFeeBps: number) => {
+      const w = await World.create();
+      const cross = await clearedCross(w);
+      await w.h.fund(w.baseMint, w.admin, w.creator.address, 10_000_000_000n);
+      const pStar = cross.data.clearing.__option === 'Some' ? cross.data.clearing.value.price : 0n;
+      const seed = await buildSeedDammV2({ cross, creator: w.creator, baseAmount: 5_000_000_000n, quoteAmount: 6_000_000_000n, feeBps: 100, collectFeeMode: mode, compoundingFeeBps });
+      await w.h.send([cu, seed.instruction], w.creator);
+      const pool0 = decode(w, 'Pool', seed.addresses.pool);
+      expect(BigInt(pool0.sqrt_price.toString())).toBe(sqrtPriceQ64(pStar, cross.data.priceScale));
+      expect(pool0.collect_fee_mode).toBe(mode);
+      const trader = await w.trader(0n, 100_000_000n);
+      await w.h.ata(trader.address, w.quoteMint, w.admin);
+      await w.h.send([cu, await swapIx(w, seed, trader, 100_000_000n)], trader);
+      const pool1 = decode(w, 'Pool', seed.addresses.pool);
+      const limbs = (x: { toString(): string }) => x.toString().split(',').map(Number).reduceRight((acc, b) => (acc << 8n) + BigInt(b), 0n);
+      return { claimableFeeB: limbs(pool1.fee_b_per_liquidity), reserveA: BigInt(pool1.token_a_amount.toString()), liquidity: BigInt(pool1.liquidity.toString()), liquidity0: BigInt(pool0.liquidity.toString()) };
+    };
+    const plain = await run(DammCollectFeeMode.OnlyB, 0);
+    const compounding = await run(DammCollectFeeMode.Compounding, 5000);
+    console.table({ plainClaimableFeeB: Number(plain.claimableFeeB), compoundingClaimableFeeB: Number(compounding.claimableFeeB) });
+    // The whole 100 base tokens stay in the reserves, the liquidity is unchanged, and half of the fee that LPs could claim
+    // in a plain pool is left compounding inside the reserves instead.
+    expect(compounding.reserveA).toBe(5_100_000_000n);
+    expect(compounding.liquidity).toBe(compounding.liquidity0);
+    expect(compounding.claimableFeeB > 0n && compounding.claimableFeeB < plain.claimableFeeB).toBe(true);
   });
 });

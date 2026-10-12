@@ -8,7 +8,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 : "${AGAVE_BIN:?}" "${DATABASE_URL:?}" "${CHROME:?}"
 LOGS="$ROOT/target/e2e-logs"
 mkdir -p "$LOGS"
-trap 'cp /tmp/oc-*.log /tmp/oc-e2e.json "$LOGS"/ 2>/dev/null; kill 0 2>/dev/null' EXIT INT TERM
+trap 'trap - EXIT INT TERM; cp /tmp/oc-*.log /tmp/oc-e2e.json "$LOGS"/ 2>/dev/null; kill 0 2>/dev/null' EXIT INT TERM
 # Optional: a Postgres container to start first (docker name).
 if [ -n "${PG_CONTAINER:-}" ]; then docker start "$PG_CONTAINER" >/dev/null; until docker exec "$PG_CONTAINER" pg_isready -q; do sleep 1; done; fi
 rm -rf /tmp/oc-ledger

@@ -1,7 +1,8 @@
 // DAMM v2 adapter: seed a Meteora DAMM v2 pool for a cross's market at exactly P*.
 // Token A = base, token B = quote, so DAMM's price (B per A) is the cross's price.
 import BN from 'bn.js';
-import { type Address, type Instruction, type TransactionSigner, address, getProgramDerivedAddress } from '@solana/kit';
+import { AccountRole, type Address, type Instruction, type TransactionSigner, address, getProgramDerivedAddress } from '@solana/kit';
+import { createHash } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
 import {
   BaseFeeMode,
@@ -22,7 +23,7 @@ import { TOKEN_2022, sqrtPriceQ64 } from './index.js';
 
 export const DAMM_V2_PROGRAM_ADDRESS = address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG');
 /** DAMM v2 collect-fee modes (cp-amm `CollectFeeMode`). */
-export const DammCollectFeeMode = { BothToken: 0, OnlyB: 1 } as const;
+export const DammCollectFeeMode = { BothToken: 0, OnlyB: 1, Compounding: 2 } as const;
 
 const toKit = (k: PublicKey): Address => address(k.toBase58());
 const w3 = (a: Address) => new PublicKey(a);
@@ -55,6 +56,8 @@ export type SeedDammInput = {
   /** Flat trading fee for the pool, in bps. */
   feeBps: number;
   collectFeeMode?: number;
+  /** Share of each trading fee that compounds back into the pool, in bps; only meaningful with `DammCollectFeeMode.Compounding`. */
+  compoundingFeeBps?: number;
 };
 
 /** Full-range DAMM v2 pool at P* (constant-product behaviour). */
@@ -89,7 +92,7 @@ export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instructi
     baseTokenProgram: c.baseTokenProgram,
     quoteTokenProgram: c.quoteTokenProgram,
     token2022Program: TOKEN_2022,
-    poolFees: { baseFee: { data: Uint8Array.from(baseFee.data as number[]) }, compoundingFeeBps: 0, padding: 0, dynamicFee: null },
+    poolFees: { baseFee: { data: Uint8Array.from(baseFee.data as number[]) }, compoundingFeeBps: mode === DammCollectFeeMode.Compounding ? (input.compoundingFeeBps ?? 0) : 0, padding: 0, dynamicFee: null },
     sqrtMinPrice: BigInt(MIN_SQRT_PRICE.toString()),
     sqrtMaxPrice: BigInt(MAX_SQRT_PRICE.toString()),
     hasAlphaVault: false,
@@ -100,4 +103,30 @@ export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instructi
     activationPoint: null,
   });
   return { instruction, liquidity, sqrtPrice, addresses: a };
+}
+
+/**
+ * Meteora's own `permanent_lock_position`: moves `liquidity` of the cross's DAMM v2 position into a permanent lock, so the
+ * pool's opening depth can never be withdrawn (the lock cannot be undone). The creator owns the position NFT and signs;
+ * send it in the same transaction as `buildSeedDammV2` to lock liquidity from the pool's first block.
+ */
+export async function buildLockDammPosition(input: { cross: CrossView; creator: TransactionSigner; liquidity: bigint }): Promise<Instruction> {
+  const c = input.cross.data;
+  const a = await dammAddresses(input.cross.address, c.baseMint, c.quoteMint);
+  const data = Buffer.alloc(24);
+  createHash('sha256').update('global:permanent_lock_position').digest().copy(data, 0, 0, 8);
+  data.writeBigUInt64LE(input.liquidity & 0xffff_ffff_ffff_ffffn, 8);
+  data.writeBigUInt64LE(input.liquidity >> 64n, 16);
+  return {
+    programAddress: DAMM_V2_PROGRAM_ADDRESS,
+    accounts: [
+      { address: a.pool, role: AccountRole.WRITABLE },
+      { address: a.position, role: AccountRole.WRITABLE },
+      { address: a.positionNftAccount, role: AccountRole.READONLY },
+      { address: input.creator.address, role: AccountRole.READONLY_SIGNER, signer: input.creator } as never,
+      { address: a.eventAuthority, role: AccountRole.READONLY },
+      { address: DAMM_V2_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
 }
