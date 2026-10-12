@@ -6,7 +6,7 @@ const t = THEME[mode];
 
 const FIGURES = [
   { to: 100000, label: 'orders in one cross, each 21,633 CU', fmt: undefined },
-  { to: 525, label: 'conformance vectors, reproduced by the program', fmt: undefined },
+  { to: 525, label: 'conformance vectors, an independent implementation agrees on all', fmt: undefined },
   { to: 33, label: 'transactions to settle those 100,000 orders', fmt: undefined },
 ];
 
@@ -32,7 +32,8 @@ export function Close() {
         </Appear>
         <Appear p={p} start={0.7} style={{ marginTop: 70, display: 'flex', alignItems: 'center', gap: 60 }}>
           <Logo mode={mode} size={44} />
-          <span style={{ fontFamily: MONO, fontSize: 28, color: t.muted }}>github.com/Pratiikpy/opening-cross</span>
+          <span style={{ fontFamily: MONO, fontSize: 28, color: t.muted }}>opening-bell-psi.vercel.app</span>
+          <span style={{ fontFamily: MONO, fontSize: 24, color: t.subtle }}>Built in India on Solana</span>
         </Appear>
       </div>
     </Stage>

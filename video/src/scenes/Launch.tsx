@@ -8,7 +8,7 @@ const STEPS = [
   { title: 'Cross clears', body: 'One price, P*, for everyone.', mono: 'P* = 1.50' },
   { title: 'Pool opens at P*', body: 'A Meteora DBC curve whose start price is the clearing price.', mono: 'start sqrt price = √P*, read back on chain' },
   { title: 'Winners claim', body: 'Tokens minted at exactly P*. Mint authority revoked.', mono: 'mint authority: none' },
-  { title: 'Trading continues', body: 'Gated by the issuer\'s rules, then it graduates.', mono: 'DBC → DAMM v2' },
+  { title: 'Any venue', body: 'The same price seeds a Meteora or Raydium pool.', mono: 'DBC · DAMM v2 · DLMM · Raydium CPMM' },
 ];
 
 export function Launch() {
@@ -40,14 +40,14 @@ export function Launch() {
       </div>
       <div style={{ position: 'absolute', left: 140, top: 900, display: 'flex', gap: 80, fontFamily: MONO }}>
         <Appear p={p} start={0.5}>
-          <span style={{ fontSize: 44, fontWeight: 500 }}><Count p={p} start={0.5} dur={0.2} to={153098} /></span>
+          <span style={{ fontSize: 44, fontWeight: 500 }}><Count p={p} start={0.5} dur={0.2} to={152915} /></span>
           <span style={{ fontSize: 22, color: t.subtle }}> CU to open the pool</span>
         </Appear>
         <Appear p={p} start={0.54}>
-          <span style={{ fontSize: 44, fontWeight: 500 }}><Count p={p} start={0.54} dur={0.2} to={54185} /></span>
+          <span style={{ fontSize: 44, fontWeight: 500 }}><Count p={p} start={0.54} dur={0.2} to={56129} /></span>
           <span style={{ fontSize: 22, color: t.subtle }}> CU to bind the mint</span>
         </Appear>
-        <Appear p={p} start={0.6}><Caption mode={mode}>Measured against Meteora's mainnet DBC program.</Caption></Appear>
+        <Appear p={p} start={0.6}><Caption mode={mode}>Each venue proven on devnet: pool opens at exactly P*, then a real swap matches the model.</Caption></Appear>
       </div>
     </Stage>
   );

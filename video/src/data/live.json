@@ -1,0 +1,7 @@
+{
+ "fetchedAt": "2026-10-12T14:52Z",
+ "source": "GET https://98-87-59-136.sslip.io/v1/stats",
+ "crossesTotal": 51,
+ "crossesPrinted": 38,
+ "buyersFilled": 38
+}
