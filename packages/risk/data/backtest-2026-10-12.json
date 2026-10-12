@@ -1,0 +1,1642 @@
+{
+ "schema": "opening-cross/risk/backtest/v1",
+ "generatedAt": "2026-10-12",
+ "source": "Yahoo Finance public chart endpoint, daily bars, 10 years to 2026-10-12 (derived statistics only; prices are not redistributed)",
+ "policy": {
+  "alpha": {
+   "overnight": 0.005,
+   "weekend": 0.01,
+   "long": 0.02
+  },
+  "confidence": 0.95,
+  "liquidationBonusBps": 500,
+  "bufferBps": 100,
+  "capBps": 8000,
+  "minLossBps": 1000,
+  "stressFactor": 1.5,
+  "uncertifiedCapBps": 4000
+ },
+ "minHistory": 100,
+ "perPolicy": [
+  {
+   "policy": "engine (gap-aware, certified)",
+   "events": 5251,
+   "badDebt": 0,
+   "badDebtRate": 0,
+   "meanLtvBps": 5734,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 0,
+   "certifiedShare": 0.44810512283374593
+  },
+  {
+   "policy": "fixed 50%",
+   "events": 5251,
+   "badDebt": 0,
+   "badDebtRate": 0,
+   "meanLtvBps": 5000,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 0,
+   "certifiedShare": 0.44810512283374593
+  },
+  {
+   "policy": "fixed 60%",
+   "events": 5251,
+   "badDebt": 0,
+   "badDebtRate": 0,
+   "meanLtvBps": 6000,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 0,
+   "certifiedShare": 0.44810512283374593
+  },
+  {
+   "policy": "fixed 70%",
+   "events": 5251,
+   "badDebt": 2,
+   "badDebtRate": 0.00038087983241287375,
+   "meanLtvBps": 7000,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 143,
+   "certifiedShare": 0.44810512283374593
+  },
+  {
+   "policy": "fixed 80%",
+   "events": 5251,
+   "badDebt": 5,
+   "badDebtRate": 0.0009521995810321843,
+   "meanLtvBps": 8000,
+   "lossOfDebtBps": 1,
+   "worstLossOfDebtBps": 1375,
+   "certifiedShare": 0.44810512283374593
+  }
+ ],
+ "perAsset": [
+  {
+   "ticker": "SPY",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "QQQ",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "AAPL",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "MSFT",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "GOOGL",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "AMZN",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "META",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5809,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "NVDA",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "TSLA",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "NFLX",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5899,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "AMD",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5905,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "JPM",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5763,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   }
+  },
+  {
+   "ticker": "COIN",
+   "engine": {
+    "policy": "engine",
+    "events": 162,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 4000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 162,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0
+   }
+  },
+  {
+   "ticker": "HOOD",
+   "engine": {
+    "policy": "engine",
+    "events": 149,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 4000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 149,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0
+   }
+  },
+  {
+   "ticker": "MSTR",
+   "engine": {
+    "policy": "engine",
+    "events": 380,
+    "badDebt": 0,
+    "badDebtRate": 0,
+    "meanLtvBps": 5349,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 0,
+    "certifiedShare": 0.4763157894736842
+   },
+   "fixed70": {
+    "policy": "fixed 70%",
+    "events": 380,
+    "badDebt": 2,
+    "badDebtRate": 0.005263157894736842,
+    "meanLtvBps": 7000,
+    "lossOfDebtBps": 0,
+    "worstLossOfDebtBps": 143,
+    "certifiedShare": 0.4763157894736842
+   }
+  }
+ ],
+ "certifiedOnlyDefaultPolicy": [
+  {
+   "policy": "default policy, certified events",
+   "events": 2353,
+   "badDebt": 0,
+   "badDebtRate": 0,
+   "meanLtvBps": 7871,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 0,
+   "certifiedShare": 1
+  },
+  {
+   "policy": "fixed 70% on the same events",
+   "events": 2353,
+   "badDebt": 1,
+   "badDebtRate": 0.00042498937526561835,
+   "meanLtvBps": 7000,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 143,
+   "certifiedShare": 1
+  },
+  {
+   "policy": "fixed 80% on the same events",
+   "events": 2353,
+   "badDebt": 1,
+   "badDebtRate": 0.00042498937526561835,
+   "meanLtvBps": 8000,
+   "lossOfDebtBps": 1,
+   "worstLossOfDebtBps": 1375,
+   "certifiedShare": 1
+  }
+ ],
+ "modelOnlyCertified": [
+  {
+   "policy": "model only, certified events",
+   "events": 2353,
+   "badDebt": 1,
+   "badDebtRate": 0.00042498937526561835,
+   "meanLtvBps": 8216,
+   "lossOfDebtBps": 0,
+   "worstLossOfDebtBps": 108,
+   "certifiedShare": 1
+  },
+  {
+   "policy": "fixed 80% on the same events",
+   "events": 2353,
+   "badDebt": 1,
+   "badDebtRate": 0.00042498937526561835,
+   "meanLtvBps": 8000,
+   "lossOfDebtBps": 1,
+   "worstLossOfDebtBps": 1375,
+   "certifiedShare": 1
+  },
+  {
+   "policy": "fixed 90% on the same events",
+   "events": 2353,
+   "badDebt": 25,
+   "badDebtRate": 0.010624734381640459,
+   "meanLtvBps": 9000,
+   "lossOfDebtBps": 3,
+   "worstLossOfDebtBps": 2334,
+   "certifiedShare": 1
+  }
+ ],
+ "ltvToday": [
+  {
+   "ticker": "SPY",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "QQQ",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "AAPL",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "MSFT",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "GOOGL",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "AMZN",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "META",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1098
+   }
+  },
+  {
+   "ticker": "NVDA",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1418
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "TSLA",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1394
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "NFLX",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1000
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1067
+   }
+  },
+  {
+   "ticker": "AMD",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1098
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "JPM",
+   "weekendLtvBps": 8000,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 1065
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  },
+  {
+   "ticker": "COIN",
+   "weekendLtvBps": 4000,
+   "certified": false,
+   "weekend": {
+    "n": 262,
+    "rank": null,
+    "coveredLossBps": 3201
+   },
+   "overnight": {
+    "n": 1079,
+    "rank": 2,
+    "coveredLossBps": 1982
+   }
+  },
+  {
+   "ticker": "HOOD",
+   "weekendLtvBps": 4000,
+   "certified": false,
+   "weekend": {
+    "n": 249,
+    "rank": null,
+    "coveredLossBps": 2668
+   },
+   "overnight": {
+    "n": 1020,
+    "rank": 2,
+    "coveredLossBps": 1190
+   }
+  },
+  {
+   "ticker": "MSTR",
+   "weekendLtvBps": 6875,
+   "certified": true,
+   "weekend": {
+    "n": 480,
+    "rank": 2,
+    "coveredLossBps": 2658
+   },
+   "overnight": {
+    "n": 1963,
+    "rank": 5,
+    "coveredLossBps": 1000
+   }
+  }
+ ],
+ "gapSummaries": {
+  "SPY": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -65467,
+     "p005": -25904,
+     "p01": -17798,
+     "p025": -12537,
+     "p05": -9124,
+     "p50": 670,
+     "p95": 9240
+    },
+    "worst": -66919,
+    "best": 60376,
+    "below": {
+     "m5": 2,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -104485,
+     "p005": -39895,
+     "p01": -31006,
+     "p025": -16022,
+     "p05": -12058,
+     "p50": 782,
+     "p95": 9863
+    },
+    "worst": -104485,
+    "best": 39439,
+    "below": {
+     "m5": 2,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -17106,
+     "p005": -17106,
+     "p01": -17106,
+     "p025": -14704,
+     "p05": -11705,
+     "p50": -1020,
+     "p95": 12018
+    },
+    "worst": -17106,
+    "best": 21967,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "QQQ": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -57813,
+     "p005": -28770,
+     "p01": -23321,
+     "p025": -16489,
+     "p05": -12229,
+     "p50": 968,
+     "p95": 12346
+    },
+    "worst": -67257,
+    "best": 55438,
+    "below": {
+     "m5": 2,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -94572,
+     "p005": -53571,
+     "p01": -35176,
+     "p025": -20923,
+     "p05": -13931,
+     "p50": 737,
+     "p95": 12457
+    },
+    "worst": -94572,
+    "best": 38978,
+    "below": {
+     "m5": 3,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -40059,
+     "p005": -40059,
+     "p01": -40059,
+     "p025": -17271,
+     "p05": -15710,
+     "p50": -496,
+     "p95": 12927
+    },
+    "worst": -40059,
+    "best": 16111,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "AAPL": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -85835,
+     "p005": -45770,
+     "p01": -34170,
+     "p025": -21493,
+     "p05": -14330,
+     "p50": 450,
+     "p95": 14646
+    },
+    "worst": -88273,
+    "best": 78715,
+    "below": {
+     "m5": 7,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -129582,
+     "p005": -87465,
+     "p01": -50439,
+     "p025": -26787,
+     "p05": -18335,
+     "p50": 72,
+     "p95": 16325
+    },
+    "worst": -129582,
+    "best": 67070,
+    "below": {
+     "m5": 5,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -57953,
+     "p005": -57953,
+     "p01": -57953,
+     "p025": -29512,
+     "p05": -26002,
+     "p50": -1840,
+     "p95": 14456
+    },
+    "worst": -57953,
+    "best": 16176,
+    "below": {
+     "m5": 1,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "MSFT": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -77755,
+     "p005": -32158,
+     "p01": -27688,
+     "p025": -19123,
+     "p05": -13188,
+     "p50": 904,
+     "p95": 14904
+    },
+    "worst": -86456,
+    "best": 121268,
+    "below": {
+     "m5": 5,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -118554,
+     "p005": -60586,
+     "p01": -45152,
+     "p025": -20730,
+     "p05": -15216,
+     "p50": 219,
+     "p95": 14141
+    },
+    "worst": -118554,
+    "best": 42189,
+    "below": {
+     "m5": 3,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -36173,
+     "p005": -36173,
+     "p01": -36173,
+     "p025": -19761,
+     "p05": -13873,
+     "p50": -1232,
+     "p95": 13360
+    },
+    "worst": -36173,
+    "best": 15422,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "GOOGL": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -77048,
+     "p005": -51763,
+     "p01": -32661,
+     "p025": -20661,
+     "p05": -15718,
+     "p50": 739,
+     "p95": 15898
+    },
+    "worst": -81446,
+    "best": 117756,
+    "below": {
+     "m5": 12,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -102663,
+     "p005": -66963,
+     "p01": -39357,
+     "p025": -27361,
+     "p05": -17149,
+     "p50": 343,
+     "p95": 16492
+    },
+    "worst": -102663,
+    "best": 52628,
+    "below": {
+     "m5": 3,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -35549,
+     "p005": -35549,
+     "p01": -35549,
+     "p025": -27667,
+     "p05": -23699,
+     "p50": -1566,
+     "p95": 15414
+    },
+    "worst": -35549,
+    "best": 20322,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "AMZN": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -101991,
+     "p005": -63113,
+     "p01": -42521,
+     "p025": -23949,
+     "p05": -17496,
+     "p50": 1209,
+     "p95": 18393
+    },
+    "worst": -117610,
+    "best": 125265,
+    "below": {
+     "m5": 13,
+     "m10": 2,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -81537,
+     "p005": -66925,
+     "p01": -49795,
+     "p025": -25952,
+     "p05": -19087,
+     "p50": 1478,
+     "p95": 16032
+    },
+    "worst": -81537,
+    "best": 91422,
+    "below": {
+     "m5": 4,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -45717,
+     "p005": -45717,
+     "p01": -45717,
+     "p025": -23930,
+     "p05": -20534,
+     "p50": -184,
+     "p95": 15455
+    },
+    "worst": -45717,
+    "best": 18816,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "META": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -242570,
+     "p005": -64717,
+     "p01": -40654,
+     "p025": -25656,
+     "p05": -18853,
+     "p50": 764,
+     "p95": 19102
+    },
+    "worst": -245263,
+    "best": 197623,
+    "below": {
+     "m5": 15,
+     "m10": 6,
+     "m20": 2
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -105473,
+     "p005": -63449,
+     "p01": -39871,
+     "p025": -26498,
+     "p05": -19530,
+     "p50": 688,
+     "p95": 16826
+    },
+    "worst": -105473,
+    "best": 64862,
+    "below": {
+     "m5": 3,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -40498,
+     "p005": -40498,
+     "p01": -40498,
+     "p025": -25942,
+     "p05": -19944,
+     "p50": -1010,
+     "p95": 20484
+    },
+    "worst": -40498,
+    "best": 22040,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "NVDA": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -85244,
+     "p005": -49904,
+     "p01": -45853,
+     "p025": -30657,
+     "p05": -22749,
+     "p50": 2203,
+     "p95": 26895
+    },
+    "worst": -193043,
+    "best": 261477,
+    "below": {
+     "m5": 9,
+     "m10": 1,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -147362,
+     "p005": -124947,
+     "p01": -98256,
+     "p025": -44665,
+     "p05": -26488,
+     "p50": 2179,
+     "p95": 26261
+    },
+    "worst": -147362,
+    "best": 75342,
+    "below": {
+     "m5": 9,
+     "m10": 4,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -70351,
+     "p005": -70351,
+     "p01": -70351,
+     "p025": -28148,
+     "p05": -25675,
+     "p50": -438,
+     "p95": 21784
+    },
+    "worst": -70351,
+    "best": 42341,
+    "below": {
+     "m5": 1,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "TSLA": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -118469,
+     "p005": -83307,
+     "p01": -68939,
+     "p025": -44746,
+     "p05": -28268,
+     "p50": 1660,
+     "p95": 29547
+    },
+    "worst": -121163,
+    "best": 171549,
+    "below": {
+     "m5": 37,
+     "m10": 3,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -141085,
+     "p005": -108104,
+     "p01": -68812,
+     "p025": -43969,
+     "p05": -35281,
+     "p50": 2208,
+     "p95": 37220
+    },
+    "worst": -141085,
+    "best": 154851,
+    "below": {
+     "m5": 8,
+     "m10": 3,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -148977,
+     "p005": -148977,
+     "p01": -148977,
+     "p025": -76043,
+     "p05": -45879,
+     "p50": 2990,
+     "p95": 38688
+    },
+    "worst": -148977,
+    "best": 69452,
+    "below": {
+     "m5": 2,
+     "m10": 1,
+     "m20": 0
+    }
+   }
+  },
+  "NFLX": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -212140,
+     "p005": -66930,
+     "p01": -43015,
+     "p025": -22127,
+     "p05": -16444,
+     "p50": 728,
+     "p95": 17206
+    },
+    "worst": -296635,
+    "best": 169127,
+    "below": {
+     "m5": 17,
+     "m10": 6,
+     "m20": 2
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -88225,
+     "p005": -56709,
+     "p01": -40282,
+     "p025": -25424,
+     "p05": -17275,
+     "p50": 171,
+     "p95": 15630
+    },
+    "worst": -88225,
+    "best": 45816,
+    "below": {
+     "m5": 3,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -34202,
+     "p005": -34202,
+     "p01": -34202,
+     "p025": -20395,
+     "p05": -14686,
+     "p50": -842,
+     "p95": 13606
+    },
+    "worst": -34202,
+    "best": 49092,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "AMD": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -138767,
+     "p005": -77135,
+     "p01": -60473,
+     "p025": -37438,
+     "p05": -26612,
+     "p50": 1951,
+     "p95": 31168
+    },
+    "worst": -213690,
+    "best": 152649,
+    "below": {
+     "m5": 32,
+     "m10": 3,
+     "m20": 1
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -114427,
+     "p005": -95721,
+     "p01": -73415,
+     "p025": -41029,
+     "p05": -30039,
+     "p50": 2380,
+     "p95": 30783
+    },
+    "worst": -114427,
+    "best": 375175,
+    "below": {
+     "m5": 8,
+     "m10": 2,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -48287,
+     "p005": -48287,
+     "p01": -48287,
+     "p025": -38752,
+     "p05": -24937,
+     "p50": 1662,
+     "p95": 31392
+    },
+    "worst": -48287,
+    "best": 36855,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "JPM": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -66382,
+     "p005": -44404,
+     "p01": -29093,
+     "p025": -18520,
+     "p05": -12632,
+     "p50": 506,
+     "p95": 14670
+    },
+    "worst": -67649,
+    "best": 90176,
+    "below": {
+     "m5": 7,
+     "m10": 0,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -180060,
+     "p005": -34545,
+     "p01": -32028,
+     "p025": -22501,
+     "p05": -18950,
+     "p50": 460,
+     "p95": 15051
+    },
+    "worst": -180060,
+    "best": 99068,
+    "below": {
+     "m5": 2,
+     "m10": 2,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -28759,
+     "p005": -28759,
+     "p01": -28759,
+     "p025": -24726,
+     "p05": -20034,
+     "p50": -1548,
+     "p95": 16283
+    },
+    "worst": -28759,
+    "best": 38225,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "COIN": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1079,
+    "q": {
+     "p001": -198211,
+     "p005": -96426,
+     "p01": -84418,
+     "p025": -55571,
+     "p05": -41402,
+     "p50": 44,
+     "p95": 42189
+    },
+    "worst": -248527,
+    "best": 312956,
+    "below": {
+     "m5": 30,
+     "m10": 5,
+     "m20": 1
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 262,
+    "q": {
+     "p001": -213422,
+     "p005": -207543,
+     "p01": -97880,
+     "p025": -56887,
+     "p05": -45599,
+     "p50": 1734,
+     "p95": 51478
+    },
+    "worst": -213422,
+    "best": 109219,
+    "below": {
+     "m5": 10,
+     "m10": 2,
+     "m20": 2
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 39,
+    "q": {
+     "p001": -43825,
+     "p005": -43825,
+     "p01": -43825,
+     "p025": -43825,
+     "p05": -35289,
+     "p50": -2440,
+     "p95": 62135
+    },
+    "worst": -43825,
+    "best": 66627,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "HOOD": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1020,
+    "q": {
+     "p001": -119045,
+     "p005": -99898,
+     "p01": -79190,
+     "p025": -48468,
+     "p05": -33880,
+     "p50": 0,
+     "p95": 37150
+    },
+    "worst": -141258,
+    "best": 231308,
+    "below": {
+     "m5": 23,
+     "m10": 5,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 249,
+    "q": {
+     "p001": -177852,
+     "p005": -111185,
+     "p01": -78681,
+     "p025": -54577,
+     "p05": -39225,
+     "p50": -975,
+     "p95": 39046
+    },
+    "worst": -177852,
+    "best": 92642,
+    "below": {
+     "m5": 8,
+     "m10": 2,
+     "m20": 0
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 37,
+    "q": {
+     "p001": -35471,
+     "p005": -35471,
+     "p01": -35471,
+     "p025": -35471,
+     "p05": -34394,
+     "p50": -7452,
+     "p95": 28336
+    },
+    "worst": -35471,
+    "best": 36968,
+    "below": {
+     "m5": 0,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  },
+  "MSTR": {
+   "overnight": {
+    "closure": "overnight",
+    "n": 1963,
+    "q": {
+     "p001": -117577,
+     "p005": -82517,
+     "p01": -69810,
+     "p025": -48373,
+     "p05": -32919,
+     "p50": 692,
+     "p95": 40215
+    },
+    "worst": -132081,
+    "best": 180395,
+    "below": {
+     "m5": 46,
+     "m10": 4,
+     "m20": 0
+    }
+   },
+   "weekend": {
+    "closure": "weekend",
+    "n": 480,
+    "q": {
+     "p001": -273717,
+     "p005": -148687,
+     "p01": -111918,
+     "p025": -66787,
+     "p05": -50344,
+     "p50": 1325,
+     "p95": 52133
+    },
+    "worst": -273717,
+    "best": 150618,
+    "below": {
+     "m5": 24,
+     "m10": 5,
+     "m20": 2
+    }
+   },
+   "long": {
+    "closure": "long",
+    "n": 69,
+    "q": {
+     "p001": -55870,
+     "p005": -55870,
+     "p01": -55870,
+     "p025": -50913,
+     "p05": -36376,
+     "p50": -1125,
+     "p95": 71497
+    },
+    "worst": -55870,
+    "best": 138495,
+    "below": {
+     "m5": 2,
+     "m10": 0,
+     "m20": 0
+    }
+   }
+  }
+ }
+}

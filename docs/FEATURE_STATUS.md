@@ -191,4 +191,4 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 
 ## 18. OS and long-term
 
-K1, K2, R9: NOT BUILT. The premium monitor is not a risk engine.
+K2 PARTIAL: `packages/risk` is a working weekend risk engine (gap statistics, gap-aware maximum LTV with a distribution-free guarantee, fair value with confidence bands, band-tied liquidation decisions), 29 tests pass and a 10-year walk-forward over 15 US stocks is in `docs/evidence/K2-risk-engine.md` (ADR-0210); it is a library, not a lending market, and tokenized stocks' own weekend prices were not measured against it. K1 and R9: NOT BUILT. The premium monitor is not a risk engine.
