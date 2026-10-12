@@ -78,6 +78,8 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       // The program cannot read this account (written by an earlier layout): retrying cannot
       // succeed, so report it once as skipped with the reason rather than failing every pass.
       if (error.includes('AccountDidNotDeserialize')) p.skipped.push({ cross: address, reason: `the program cannot read this account (${error})` });
+      // A cross created without its order-book shards can never be settled either; report it once instead of failing every pass.
+      else if (error.includes('AccountNotInitialized')) p.skipped.push({ cross: address, reason: `an account this cross needs was never created, so it cannot be settled (${error})` });
       else result.failed.push({ action, error });
     }
   }
