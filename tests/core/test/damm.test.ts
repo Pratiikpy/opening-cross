@@ -6,11 +6,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { BorshAccountsCoder } from '@coral-xyz/anchor';
-import { AccountRole, type Instruction, address } from '@solana/kit';
+import { Keypair } from '@solana/web3.js';
+import { AccountRole, type Instruction, address, createKeyPairSignerFromBytes } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { CrossState, OrderSide, ata } from '@opening-cross/sdk';
-import { DAMM_V2_PROGRAM_ADDRESS, DammCollectFeeMode, buildLockDammPosition, buildSeedDammV2, sqrtPriceQ64 } from '@opening-cross/adapters';
+import { DAMM_V2_PROGRAM_ADDRESS, DammCollectFeeMode, buildLockDammPosition, buildSeedDammV2, buildVestDammPosition, sqrtPriceQ64, vestingTotal } from '@opening-cross/adapters';
 import { World } from '../src/world.js';
 import { DAMM_FIXTURE } from '../src/harness.js';
 
@@ -195,5 +196,90 @@ describe.skipIf(!existsSync(DAMM_FIXTURE))('Meteora DAMM v2 locked and compoundi
     expect(compounding.reserveA).toBe(5_100_000_000n);
     expect(compounding.liquidity).toBe(compounding.liquidity0);
     expect(compounding.claimableFeeB > 0n && compounding.claimableFeeB < plain.claimableFeeB).toBe(true);
+  });
+});
+
+describe.skipIf(!existsSync(DAMM_FIXTURE))('Meteora DAMM v2 vesting liquidity', () => {
+  it('releases the opening liquidity in tranches: none before the cliff, one tranche after it, never more than has vested', async () => {
+    const w = await World.create();
+    const cross = await clearedCross(w);
+    await w.h.fund(w.baseMint, w.admin, w.creator.address, 10_000_000_000n);
+    const seed = await buildSeedDammV2({ cross, creator: w.creator, baseAmount: 5_000_000_000n, quoteAmount: 6_000_000_000n, feeBps: 30 });
+    await w.h.send([cu, seed.instruction], w.creator);
+    const posAcct = w.h.svm.getAccount(seed.addresses.position);
+    if (!posAcct.exists) throw new Error('position missing');
+    const position0 = coder.decode('Position', Buffer.from(posAcct.data));
+    const total = BigInt(position0.unlocked_liquidity.toString());
+
+    const now = w.h.svm.getClock().unixTimestamp;
+    const WEEK = 7n * 24n * 3600n;
+    const per = total / 5n;
+    const schedule = { cliffPoint: now + WEEK, periodFrequency: WEEK, cliffUnlockLiquidity: total - 4n * per, liquidityPerPeriod: per, numberOfPeriod: 4 };
+    expect(vestingTotal(schedule)).toBe(total);
+    const vesting = await createKeyPairSignerFromBytes(Keypair.generate().secretKey);
+    await w.h.send([cu, await buildVestDammPosition({ cross, creator: w.creator, vesting, schedule })], w.creator);
+    const locked = coder.decode('Position', Buffer.from((w.h.svm.getAccount(seed.addresses.position) as { data: Uint8Array }).data));
+    expect(BigInt(locked.vested_liquidity.toString())).toBe(total);
+    expect(BigInt(locked.unlocked_liquidity.toString())).toBe(0n);
+
+    const removeIx = async (liquidity: bigint): Promise<Instruction> => {
+      const d = Buffer.alloc(8 + 16 + 8 + 8);
+      createHash('sha256').update('global:remove_liquidity').digest().copy(d, 0, 0, 8);
+      d.writeBigUInt64LE(liquidity & 0xffff_ffff_ffff_ffffn, 8);
+      d.writeBigUInt64LE(liquidity >> 64n, 16);
+      return {
+        programAddress: DAMM_V2_PROGRAM_ADDRESS,
+        accounts: [
+          { address: seed.addresses.poolAuthority, role: AccountRole.READONLY },
+          { address: seed.addresses.pool, role: AccountRole.WRITABLE },
+          { address: seed.addresses.position, role: AccountRole.WRITABLE },
+          { address: await ata(w.creator.address, w.baseMint, TOKEN_2022_PROGRAM_ADDRESS), role: AccountRole.WRITABLE },
+          { address: await ata(w.creator.address, w.quoteMint, TOKEN_2022_PROGRAM_ADDRESS), role: AccountRole.WRITABLE },
+          { address: seed.addresses.tokenAVault, role: AccountRole.WRITABLE },
+          { address: seed.addresses.tokenBVault, role: AccountRole.WRITABLE },
+          { address: w.baseMint, role: AccountRole.READONLY },
+          { address: w.quoteMint, role: AccountRole.READONLY },
+          { address: seed.addresses.positionNftAccount, role: AccountRole.READONLY },
+          { address: w.creator.address, role: AccountRole.READONLY_SIGNER, signer: w.creator } as never,
+          { address: TOKEN_2022_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+          { address: TOKEN_2022_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+          { address: seed.addresses.eventAuthority, role: AccountRole.READONLY },
+          { address: DAMM_V2_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+        ],
+        data: new Uint8Array(d),
+      };
+    };
+    const refresh = (): Instruction => ({
+      programAddress: DAMM_V2_PROGRAM_ADDRESS,
+      accounts: [
+        { address: seed.addresses.pool, role: AccountRole.READONLY },
+        { address: seed.addresses.position, role: AccountRole.WRITABLE },
+        { address: seed.addresses.positionNftAccount, role: AccountRole.READONLY },
+        { address: w.creator.address, role: AccountRole.READONLY },
+        { address: vesting.address, role: AccountRole.WRITABLE },
+      ],
+      data: new Uint8Array(createHash('sha256').update('global:refresh_vesting').digest().subarray(0, 8)),
+    });
+    const unlockedNow = () => BigInt(coder.decode('Position', Buffer.from((w.h.svm.getAccount(seed.addresses.position) as { data: Uint8Array }).data)).unlocked_liquidity.toString());
+
+    // Before the cliff nothing can be withdrawn, however small the amount.
+    // (the refresh runs; it is Meteora's own remove_liquidity that refuses)
+    expect(await w.h.fail([cu, refresh(), await removeIx(1n)], w.creator)).toContain('InsufficientLiquidity');
+    // After the cliff the cliff tranche has vested and exactly that much can be withdrawn.
+    w.h.setTime(now + WEEK + 1n);
+    await w.h.send([cu, refresh()], w.creator);
+    const cliffTranche = total - 4n * per;
+    expect(unlockedNow()).toBe(cliffTranche);
+    const baseBefore = await w.h.balanceOf(w.creator.address, w.baseMint);
+    await w.h.send([cu, await removeIx(cliffTranche)], w.creator);
+    expect((await w.h.balanceOf(w.creator.address, w.baseMint)) > baseBefore).toBe(true);
+    expect(unlockedNow()).toBe(0n);
+    // One more liquidity unit than has vested is refused.
+    expect(await w.h.fail([cu, await removeIx(1n)], w.creator)).toContain('InsufficientLiquidity');
+    // A period later one more tranche is available, and no more than that.
+    w.h.setTime(now + 2n * WEEK + 2n);
+    await w.h.send([cu, refresh()], w.creator);
+    expect(unlockedNow()).toBe(per);
+    console.table({ total: Number(total), cliffTranche: Number(cliffTranche), perPeriod: Number(per) });
   });
 });

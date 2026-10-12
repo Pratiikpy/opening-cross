@@ -11,7 +11,8 @@ Status: accepted (2026-10-13)
 Use Meteora's own instructions and parameters rather than re-implement them.
 
 1. **Permanent lock.** `buildLockDammPosition` builds cp-amm's `permanent_lock_position` for the cross's position. The creator owns the position NFT and signs, so the instruction goes in the same transaction as `seed_damm_v2`; from the pool's first block the opening liquidity cannot be withdrawn. No change to `cross_settle` was needed, which keeps the deployed program and its account layout untouched.
-2. **Compounding fee mode.** `DammCollectFeeMode.Compounding` (cp-amm value 2) and `compoundingFeeBps` are passed through `InitializeCustomizablePoolParameters`. With `compoundingFeeBps` = 5000, half of every fee stays inside the pool's reserves instead of being claimable by the position.
+2. **Vesting.** `buildVestDammPosition` builds cp-amm's `lock_position` for an issuer who wants the opening depth released in tranches (a cliff, then equal periods) instead of locked forever; `refresh_vesting` and `remove_liquidity` are Meteora's own.
+3. **Compounding fee mode.** `DammCollectFeeMode.Compounding` (cp-amm value 2) and `compoundingFeeBps` are passed through `InitializeCustomizablePoolParameters`. With `compoundingFeeBps` = 5000, half of every fee stays inside the pool's reserves instead of being claimable by the position.
 
 ## Consequences
 

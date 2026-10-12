@@ -130,3 +130,53 @@ export async function buildLockDammPosition(input: { cross: CrossView; creator: 
     data: new Uint8Array(data),
   };
 }
+
+export type VestingSchedule = {
+  /** Unix time (the pool's activation type is timestamp) at which the first tranche unlocks. */
+  cliffPoint: bigint;
+  /** Seconds between the later tranches. */
+  periodFrequency: bigint;
+  /** Liquidity that unlocks at the cliff. */
+  cliffUnlockLiquidity: bigint;
+  /** Liquidity that unlocks each period after the cliff. */
+  liquidityPerPeriod: bigint;
+  numberOfPeriod: number;
+};
+
+/** Total liquidity a schedule locks. */
+export const vestingTotal = (v: VestingSchedule): bigint => v.cliffUnlockLiquidity + v.liquidityPerPeriod * BigInt(v.numberOfPeriod);
+
+/**
+ * Meteora's own `lock_position`: puts `schedule`'s liquidity of the cross's DAMM v2 position under a vesting schedule, so the
+ * issuer's opening depth unlocks in tranches instead of being withdrawable at once. The creator owns the position NFT and signs.
+ */
+export async function buildVestDammPosition(input: { cross: CrossView; creator: TransactionSigner; vesting: TransactionSigner; schedule: VestingSchedule }): Promise<Instruction> {
+  const c = input.cross.data;
+  const v = input.schedule;
+  if (v.numberOfPeriod < 0 || v.numberOfPeriod > 0xffff) throw new Error('numberOfPeriod must fit in 16 bits');
+  if (vestingTotal(v) <= 0n) throw new Error('the schedule locks nothing');
+  const a = await dammAddresses(input.cross.address, c.baseMint, c.quoteMint);
+  const data = Buffer.alloc(8 + 1 + 8 + 8 + 16 + 16 + 2);
+  let o = createHash('sha256').update('global:lock_position').digest().copy(data, 0, 0, 8);
+  data.writeUInt8(1, o); o += 1; // cliff_point: Some
+  data.writeBigUInt64LE(v.cliffPoint, o); o += 8;
+  data.writeBigUInt64LE(v.periodFrequency, o); o += 8;
+  data.writeBigUInt64LE(v.cliffUnlockLiquidity & 0xffff_ffff_ffff_ffffn, o); data.writeBigUInt64LE(v.cliffUnlockLiquidity >> 64n, o + 8); o += 16;
+  data.writeBigUInt64LE(v.liquidityPerPeriod & 0xffff_ffff_ffff_ffffn, o); data.writeBigUInt64LE(v.liquidityPerPeriod >> 64n, o + 8); o += 16;
+  data.writeUInt16LE(v.numberOfPeriod, o);
+  return {
+    programAddress: DAMM_V2_PROGRAM_ADDRESS,
+    accounts: [
+      { address: a.pool, role: AccountRole.READONLY },
+      { address: a.position, role: AccountRole.WRITABLE },
+      { address: input.vesting.address, role: AccountRole.WRITABLE_SIGNER, signer: input.vesting } as never,
+      { address: a.positionNftAccount, role: AccountRole.READONLY },
+      { address: input.creator.address, role: AccountRole.READONLY_SIGNER, signer: input.creator } as never,
+      { address: input.creator.address, role: AccountRole.WRITABLE_SIGNER, signer: input.creator } as never,
+      { address: address('11111111111111111111111111111111'), role: AccountRole.READONLY },
+      { address: a.eventAuthority, role: AccountRole.READONLY },
+      { address: DAMM_V2_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
