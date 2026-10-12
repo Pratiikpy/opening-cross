@@ -52,3 +52,25 @@ export async function reconcile(db: pg.Pool, fetch: AccountFetcher, opts: { reco
   }
   return drift;
 }
+
+/**
+ * Reconciles allowing for ingestion lag. The indexer follows finalized transactions and the reconciler reads
+ * finalized accounts a moment later, so on a busy cluster a cross can already have moved on chain while its
+ * transactions are still being ingested. Disagreement that disappears once ingestion catches up is lag, not
+ * drift: `catchUp` is run (and the comparison repeated) up to `attempts` times, and only what persists is
+ * returned — and recorded, when `record` is set.
+ */
+export async function reconcileSettled(
+  db: pg.Pool,
+  fetch: AccountFetcher,
+  catchUp: () => Promise<unknown>,
+  opts: { attempts?: number; waitMs?: number; record?: boolean } = {},
+): Promise<Drift[]> {
+  let drift = await reconcile(db, fetch);
+  for (let i = 0; drift.length > 0 && i < (opts.attempts ?? 3); i++) {
+    await new Promise((r) => setTimeout(r, opts.waitMs ?? 10_000));
+    await catchUp();
+    drift = await reconcile(db, fetch);
+  }
+  return drift.length > 0 && opts.record ? reconcile(db, fetch, { record: true }) : drift;
+}

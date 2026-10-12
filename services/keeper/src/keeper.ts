@@ -23,6 +23,8 @@ export type KeeperDeps = {
   send: (ixs: Instruction[]) => Promise<string>;
   /** Pyth price update account for oracle-guarded crosses; null means the keeper cannot clear it. */
   oraclePrice?: (cross: Address) => Promise<Address | null>;
+  /** Scopes the keeper to some crosses (for example one issuer's). Omitted, it serves every cross it discovers. */
+  accept?: (cross: Cross) => boolean;
 };
 
 export type PassResult = { done: { action: Action; signature: string }[]; failed: { action: Action; error: string }[]; skipped: Skip[] };
@@ -51,6 +53,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
   const data = await d.fetch(address);
   if (!data) return { progressed: false, skipped: [] };
   const cross = getCrossDecoder().decode(data);
+  if (d.accept && !d.accept(cross)) return { progressed: false, skipped: [] };
   const open: OpenOrder[] = [];
   for (const o of await d.orders(address)) {
     const od = await d.fetch(o);

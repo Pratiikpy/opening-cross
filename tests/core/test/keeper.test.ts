@@ -109,4 +109,17 @@ describe('keeper', () => {
     expect(r.failed.map((f) => [f.action.cross, f.error])).toEqual([[guarded.address, 'oracle-guarded cross: no Pyth price update available']]);
     expect(w.view(plain.address).data.state).toBe(CrossState.Finalized);
   });
+
+  it('a keeper scoped to other creators leaves a cross alone; one scoped to its creator finishes it', async () => {
+    const w = await World.create();
+    const cross = await w.newCross();
+    const trader = await w.trader(5_000_000_000n);
+    await w.place(cross, trader, OrderSide.Buy, 1_100_000n, 1_000_000_000n);
+    w.h.setTime(T0 + 300n);
+    const other = await runOnce({ ...keeper(w, await w.h.wallet()), accept: (c) => c.creator !== cross.data.creator });
+    expect([other.done, other.failed, other.skipped]).toEqual([[], [], []]);
+    expect(w.view(cross.address).data.state).toBe(CrossState.Live);
+    await runOnce({ ...keeper(w, await w.h.wallet()), accept: (c) => c.creator === cross.data.creator });
+    expect(w.view(cross.address).data.state).toBe(CrossState.Finalized);
+  });
 });

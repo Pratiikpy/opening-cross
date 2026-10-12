@@ -19,8 +19,8 @@ export const RPC = process.env.RPC_URL ?? 'https://api.devnet.solana.com';
 const retryFetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, init);
-    if (res.status !== 429 || attempt >= 8) return res;
-    await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+    if (res.status !== 429 || attempt >= 30) return res;
+    await new Promise((r) => setTimeout(r, Math.min(15_000, 500 * 2 ** attempt)));
   }
 };
 export const connection = new Connection(RPC, { commitment: 'confirmed', fetch: retryFetch as typeof fetch });
@@ -31,8 +31,8 @@ const retryingTransport = (async (...args: Parameters<typeof baseTransport>) => 
     try {
       return await baseTransport(...args);
     } catch (e) {
-      if (attempt >= 8 || !String(e).includes('429')) throw e;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+      if (attempt >= 30 || !/429|fetch failed|ConnectTimeout|ECONNRESET|ETIMEDOUT/.test(String(e))) throw e;
+      await new Promise((r) => setTimeout(r, Math.min(15_000, 500 * 2 ** attempt)));
     }
   }
 }) as typeof baseTransport;

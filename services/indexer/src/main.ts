@@ -5,7 +5,7 @@ import pg from 'pg';
 import { createIndexerRpc } from './rpc.js';
 import { migrate } from './ingest.js';
 import { pollOnce } from './rpc-source.js';
-import { reconcile } from './reconcile.js';
+import { reconcileSettled } from './reconcile.js';
 
 const dbUrl = process.env.DATABASE_URL;
 const rpcUrl = process.env.RPC_URL;
@@ -29,7 +29,7 @@ for (let tick = 0; ; tick++) {
     const n = await pollOnce(db, rpc);
     if (n) console.log(JSON.stringify({ at: new Date().toISOString(), applied: n }));
     if (tick % reconcileEvery === 0) {
-      const drift = await reconcile(db, fetcher, { record: true });
+      const drift = await reconcileSettled(db, fetcher, () => pollOnce(db, rpc), { record: true, waitMs: pollMs, attempts: 5 });
       if (drift.length) console.error(JSON.stringify({ at: new Date().toISOString(), drift }));
     }
   } catch (e) {

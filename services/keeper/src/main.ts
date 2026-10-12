@@ -26,6 +26,8 @@ if (!RPC_URL || !WS_URL || !KEEPER_KEYPAIR) {
   process.exit(2);
 }
 const passMs = Number(process.env.PASS_MS ?? 10_000);
+// KEEPER_CREATORS (comma-separated addresses) limits this keeper to crosses made by those creators.
+const creators = process.env.KEEPER_CREATORS ? new Set(process.env.KEEPER_CREATORS.split(',').map((a) => a.trim()).filter(Boolean)) : null;
 const rpc = createIndexerRpc(RPC_URL);
 const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: createSolanaRpcSubscriptions(WS_URL) });
 const payer = await createKeyPairSignerFromBytes(Uint8Array.from(JSON.parse(readFileSync(KEEPER_KEYPAIR, 'utf8'))));
@@ -35,6 +37,7 @@ for (;;) {
   try {
     const res = await runOnce({
       payer,
+      ...(creators ? { accept: (c: { creator: string }) => creators.has(c.creator) } : {}),
       ...discovery,
       now: async () => {
         const slot = await rpc.getSlot({ commitment: 'confirmed' }).send();

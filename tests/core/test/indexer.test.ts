@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { Address } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS, Disclosure, getOrderClaimedEventEncoder } from '@opening-cross/cross-core-client';
 import { OrderSide } from '@opening-cross/sdk';
-import { UnattributableLogs, decodeLogs, ingestTransaction, reconcile } from '@opening-cross/indexer';
+import { UnattributableLogs, decodeLogs, ingestTransaction, reconcile, reconcileSettled } from '@opening-cross/indexer';
 import { freshDb } from '../src/db.js';
 import { World } from '../src/world.js';
 
@@ -101,6 +101,40 @@ describe.skipIf(!process.env.DATABASE_URL)('indexer against Postgres', () => {
     expect(drift.map((d) => d.field).sort()).toEqual(['order[0].exists', 'orders_open', 'state']);
     const { rows: alerts } = await db.query('SELECT count(*)::int AS n FROM reconciliation_alerts');
     expect(alerts[0].n).toBe(3);
+    await db.end();
+  });
+
+  it('treats ingestion lag as lag, not drift: only disagreement that survives catching up is recorded', async () => {
+    const { db } = await freshDb();
+    const w = await World.create();
+    const cross = await w.newCross();
+    const b1 = await w.trader(10_000_000_000n);
+    const s1 = await w.trader(0n, 3_000_000_000n);
+    const orders = [await w.place(cross, s1, OrderSide.Sell, 1_100_000n, 1_000_000_000n), await w.place(cross, b1, OrderSide.Buy, 1_500_000n, 1_000_000_000n)];
+    await w.settle(cross);
+    await w.claimAll(cross, orders);
+    await w.finalize(cross);
+    const fetch = async (a: Address) => { const x = w.h.svm.getAccount(a); return x.exists ? x.data : null; };
+
+    // The chain is ahead: the indexer has seen everything except the last three transactions.
+    const landed = w.h.landed;
+    for (const tx of landed.slice(0, -3)) await ingestTransaction(db, tx);
+    expect((await reconcile(db, fetch)).length).toBeGreaterThan(0);
+
+    let caughtUp = 0;
+    const catchUp = async () => {
+      caughtUp++;
+      for (const tx of landed) await ingestTransaction(db, tx);
+    };
+    expect(await reconcileSettled(db, fetch, catchUp, { waitMs: 0, record: true })).toEqual([]);
+    expect(caughtUp).toBe(1);
+    expect((await db.query('SELECT count(*)::int AS n FROM reconciliation_alerts')).rows[0].n).toBe(0);
+
+    // A lost event does not heal by catching up, so it is still reported and recorded.
+    await db.query(`UPDATE crosses SET state = 'Cleared' WHERE address = $1`, [cross.address]);
+    const lost = await reconcileSettled(db, fetch, async () => {}, { waitMs: 0, attempts: 2, record: true });
+    expect(lost.map((d) => d.field)).toContain('state');
+    expect((await db.query('SELECT count(*)::int AS n FROM reconciliation_alerts')).rows[0].n).toBeGreaterThan(0);
     await db.end();
   });
 

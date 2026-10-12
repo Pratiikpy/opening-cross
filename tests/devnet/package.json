@@ -8,20 +8,29 @@
     "dp:dbc": "tsx src/dbc-hook-proof.ts",
     "dp:acl": "tsx src/token-acl-proof.ts",
     "dp:core": "tsx src/core-e2e.ts",
+    "dp:dbc-continuation": "tsx src/dbc-continuation-e2e.ts",
     "dp:presale": "tsx src/presale-vault-proof.ts",
     "dp:latency": "tsx src/latency-proof.ts",
     "dp:oracle": "tsx src/oracle-mainnet.ts",
     "dp:oracle-pull": "tsx src/oracle-pull.ts",
-    "dp:volfee": "tsx src/volatility-fee-proof.ts"
+    "dp:volfee": "tsx src/volatility-fee-proof.ts",
+    "dp:damm": "tsx src/damm-proof.ts",
+    "dp:dlmm": "tsx src/dlmm-proof.ts",
+    "dp:raydium": "tsx src/raydium-proof.ts",
+    "dp:gate": "tsx src/gate-sas-proof.ts",
+    "dp:calendar": "tsx src/calendar-proof.ts",
+    "dp:treasury": "tsx src/treasury-proof.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@meteora-ag/presale": "^0.1.1",
     "@opening-cross/adapters": "workspace:*",
+    "@opening-cross/cross-calendar-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/treasury-client": "workspace:*",
     "@opening-cross/verifier": "workspace:*",
     "@pythnetwork/hermes-client": "^3.1.0",
     "@pythnetwork/pyth-solana-receiver": "^0.16.0",
@@ -33,7 +42,8 @@
     "@solana/token-acl-sdk": "0.4.0",
     "@solana/web3.js": "1.98.4",
     "bn.js": "5.2.2",
-    "decimal.js": "^10.6.0"
+    "decimal.js": "^10.6.0",
+    "sas-lib": "1.0.10"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",
