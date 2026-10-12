@@ -118,3 +118,86 @@ export async function buildClaimFeeShare(input: { user: TransactionSigner; base:
     data: new Uint8Array(data),
   };
 }
+
+const TOKEN_2022_PROGRAM = address('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
+const CP_AMM_PROGRAM = address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG');
+
+/**
+ * Hands a DAMM v2 position to the fee vault: the position NFT's token account changes owner from the issuer to the vault,
+ * so from then on the position's fees can only be claimed into the vault (the issuer's liquidity lock, if any, is unaffected).
+ * One-way: the issuer cannot take the position back.
+ */
+export function buildTransferDammPositionToFeeVault(input: { owner: TransactionSigner; positionNftAccount: Address; feeVault: Address }): Instruction {
+  const data = Buffer.alloc(2 + 1 + 32);
+  data.writeUInt8(6, 0); // Token-2022 SetAuthority
+  data.writeUInt8(2, 1); // AccountOwner
+  data.writeUInt8(1, 2); // new authority: Some
+  new PublicKey(input.feeVault).toBuffer().copy(data, 3);
+  return {
+    programAddress: TOKEN_2022_PROGRAM,
+    accounts: [
+      { address: input.positionNftAccount, role: AccountRole.WRITABLE },
+      { address: input.owner.address, role: AccountRole.READONLY_SIGNER, signer: input.owner } as never,
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Pulls the DAMM v2 position's accrued fees straight into the vault (Meteora's `fund_by_claiming_fee` with cp-amm's
+ * `claim_position_fee`). The vault's token must be the pool's token B (the quote), the position NFT must already belong to the
+ * vault, and `signer` must be one of the vault's recipients. Token A fees, if the pool collects any, go to `tokenAAccount`.
+ */
+export function buildFundFeeShareFromDammFees(input: {
+  signer: TransactionSigner;
+  feeVault: Address;
+  pool: Address;
+  position: Address;
+  positionNftAccount: Address;
+  tokenAAccount: Address;
+  tokenAVault: Address;
+  tokenBVault: Address;
+  tokenAMint: Address;
+  tokenBMint: Address;
+  tokenAProgram: Address;
+  tokenBProgram: Address;
+  poolAuthority: Address;
+  dammEventAuthority: Address;
+}): Instruction {
+  const a = { tokenVault: toKit(pda([Buffer.from('token_vault'), new PublicKey(input.feeVault).toBuffer()])), eventAuthority: toKit(pda([Buffer.from('__event_authority')])) };
+  const claimDisc = createHash('sha256').update('global:claim_position_fee').digest().subarray(0, 8);
+  const data = Buffer.alloc(8 + 4 + 8);
+  let o = disc('fund_by_claiming_fee').copy(data, 0);
+  data.writeUInt32LE(claimDisc.length, o); o += 4;
+  claimDisc.copy(data, o);
+  const W = AccountRole.WRITABLE;
+  const R = AccountRole.READONLY;
+  return {
+    programAddress: DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS,
+    accounts: [
+      { address: input.feeVault, role: W },
+      { address: a.tokenVault, role: W },
+      { address: input.signer.address, role: AccountRole.READONLY_SIGNER, signer: input.signer } as never,
+      { address: CP_AMM_PROGRAM, role: R },
+      { address: a.eventAuthority, role: R },
+      { address: DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS, role: R },
+      // Remaining accounts, in the order cp-amm's claim_position_fee takes them.
+      { address: input.poolAuthority, role: R },
+      { address: input.pool, role: W },
+      { address: input.position, role: W },
+      { address: input.tokenAAccount, role: W },
+      { address: a.tokenVault, role: W },
+      { address: input.tokenAVault, role: W },
+      { address: input.tokenBVault, role: W },
+      { address: input.tokenAMint, role: W },
+      { address: input.tokenBMint, role: W },
+      { address: input.positionNftAccount, role: R },
+      { address: input.feeVault, role: R },
+      { address: input.tokenAProgram, role: R },
+      { address: input.tokenBProgram, role: R },
+      { address: input.dammEventAuthority, role: R },
+      { address: CP_AMM_PROGRAM, role: R },
+    ],
+    data: new Uint8Array(data),
+  };
+}

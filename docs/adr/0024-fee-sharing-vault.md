@@ -14,5 +14,6 @@ Use Meteora's own Dynamic Fee Sharing program (`dfsdo2UqvwfN8DuUVrMRNfQe11VaiNoK
 
 - Splitting is by share weight and exact: 1,000,000,000 funded atoms split 6000/3000/1000 paid 600,000,000, 300,000,000 and 100,000,000.
 - Only the recipient at an index can claim that index.
-- Not built: the bridge that pulls a DAMM v2 position's fees straight into the vault. It needs the position NFT account owned by the vault and a vault shareholder to sign; until it is built, fees reach the vault by `fundFee` after the position owner claims them. The row stays PARTIAL.
+- The DAMM v2 bridge is built: `buildTransferDammPositionToFeeVault` hands the position NFT's token account to the vault (one-way), and `buildFundFeeShareFromDammFees` pulls the position's fees into the vault through `fund_by_claiming_fee`. A vault recipient must sign, the vault must be the PDA variant, and the vault token must be the pool's token B.
+- Not built: the DBC creator and partner trading-fee bridges. The row stays PARTIAL.
 - Proven on the real program binary in LiteSVM; not on devnet (no SOL).
