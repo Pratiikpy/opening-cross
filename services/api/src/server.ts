@@ -203,10 +203,15 @@ export async function buildServer(d: ApiDeps) {
 
   // The resting book (merged book plus unmerged shards) and the price it would clear at now.
   // Sealed crosses show nothing until bids are revealed: commitments carry no price.
+  const bookCache = new Map<string, unknown>();
   app.get('/v1/crosses/:address/book', async (req, reply) => {
     const a = address((req.params as { address: string }).address, 'address');
     const v = await crossView(a);
     const c = v.data;
+    // A finalized cross never changes, so its book is read from chain once and served from memory afterwards.
+    const frozen = c.state === CrossState.Finalized;
+    const cachedBook = frozen ? bookCache.get(a) : undefined;
+    if (cachedBook) return send(reply, cachedBook);
     const book = await loadBook(d.account, a, c);
     if (typeof book === 'string') throw new RequestError(404, book);
     const levels = [];
@@ -220,7 +225,7 @@ export async function buildServer(d: ApiDeps) {
     ]);
     const r = c.state === CrossState.Live ? referenceClear(orders, { min: c.minPrice, tick: c.tick, ticks: c.ticks }, c.referencePrice.__option === 'Some' ? c.referencePrice.value : null) : null;
     const sealed = c.disclosure === Disclosure.Sealed;
-    return send(reply, {
+    const payload = {
       disclosure: sealed ? 'sealed' : 'open',
       levels,
       indicative: r && { price: r.price, matched: r.matched },
@@ -230,7 +235,12 @@ export async function buildServer(d: ApiDeps) {
           : sealed
             ? 'Sealed bids carry no price until they are revealed; only revealed orders appear here.'
             : 'Indicative until the call closes: later orders can move it.',
-    });
+    };
+    if (frozen) {
+      if (bookCache.size >= 500) bookCache.delete(bookCache.keys().next().value as string);
+      bookCache.set(a, payload);
+    }
+    return send(reply, payload);
   });
 
   // ---- signed, graded promises (ADR-0015)
