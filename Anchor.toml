@@ -6,14 +6,14 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-treasury = "sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3"
+treasury = "HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd"
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
 cross_settle = "2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ"
 cross_calendar = "CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN"
 
 [programs.devnet]
-treasury = "sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3"
+treasury = "HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd"
 cross_gate = "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
 cross_core = "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
 cross_settle = "2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ"

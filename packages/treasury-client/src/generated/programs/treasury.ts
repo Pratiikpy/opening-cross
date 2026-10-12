@@ -12,7 +12,7 @@ import { getTreasuryCodec, type Treasury, type TreasuryArgs } from '../accounts/
 import { getCreateTreasuryInstructionAsync, getRecordAttestedInstruction, getRecordLapseInstruction, getRedeemInstructionAsync, getSpendInstructionAsync, getTriggerLiquidationInstructionAsync, parseCreateTreasuryInstruction, parseRecordAttestedInstruction, parseRecordLapseInstruction, parseRedeemInstruction, parseSpendInstruction, parseTriggerLiquidationInstruction, type CreateTreasuryAsyncInput, type ParsedCreateTreasuryInstruction, type ParsedRecordAttestedInstruction, type ParsedRecordLapseInstruction, type ParsedRedeemInstruction, type ParsedSpendInstruction, type ParsedTriggerLiquidationInstruction, type RecordAttestedInput, type RecordLapseInput, type RedeemAsyncInput, type SpendAsyncInput, type TriggerLiquidationAsyncInput } from '../instructions/index.js';
 import { findTreasuryPda, findVaultPda } from '../pdas/index.js';
 
-export const TREASURY_PROGRAM_ADDRESS = 'sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3' as Address<'sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3'>;
+export const TREASURY_PROGRAM_ADDRESS = 'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd' as Address<'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd'>;
 
 export enum TreasuryAccount { Treasury }
 
@@ -47,7 +47,7 @@ if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Arr
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, { instructionData: data, programName: "treasury" });
 }
 
-export type ParsedTreasuryInstruction<TProgram extends string = 'sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3'> =
+export type ParsedTreasuryInstruction<TProgram extends string = 'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd'> =
 | { instructionType: TreasuryInstruction.CreateTreasury } & ParsedCreateTreasuryInstruction<TProgram>
 | { instructionType: TreasuryInstruction.RecordAttested } & ParsedRecordAttestedInstruction<TProgram>
 | { instructionType: TreasuryInstruction.RecordLapse } & ParsedRecordLapseInstruction<TProgram>

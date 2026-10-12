@@ -18,7 +18,7 @@ use anchor_spl::token_interface::{
     self, Burn, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
-declare_id!("sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3");
+declare_id!("HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd");
 
 pub const TREASURY_SEED: &[u8] = b"treasury";
 pub const VAULT_SEED: &[u8] = b"vault";

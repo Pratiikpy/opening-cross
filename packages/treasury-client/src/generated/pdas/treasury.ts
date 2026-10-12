@@ -13,6 +13,6 @@ coinMint: Address;
 };
 
 export async function findTreasuryPda(seeds: TreasurySeeds, config: { programAddress?: Address | undefined } = {}): Promise<ProgramDerivedAddress> {
-  const { programAddress = 'sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3' as Address<'sPL9nYpGixxpetWC8eoihZL3ibfm4mDXBf7CFZdFJA3'> } = config;
+  const { programAddress = 'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd' as Address<'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd'> } = config;
   return await getProgramDerivedAddress({ programAddress, seeds: [getBytesEncoder().encode(new Uint8Array([116, 114, 101, 97, 115, 117, 114, 121])), getAddressEncoder().encode(seeds.coinMint)]});
 }
