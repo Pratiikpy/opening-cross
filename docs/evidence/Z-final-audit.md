@@ -116,5 +116,34 @@ Not covered by this audit:
 
 ## 4. Browser runs on the final build
 
-Filled in below from the runs made after the last code change.
+Run 2026-10-13 on `main` after the last code change to the web app, local validator with the freshly built programs, Postgres 17, the production build of the web app, Chromium via Playwright (`tests/e2e/run-all.sh`, modes flow, issuer and trust, one at a time):
+
+| Run | Result |
+|---|---|
+| Investor flow (two isolated users, real Wallet Standard wallets, outcomes read from chain) | ALL PASSED, zero console and page errors for both buyers |
+| Issuer flow | ALL PASSED |
+| Trust flow, open phase and settled phase | 22 of 22 and 26 of 26 checks passed |
+| Core suite (LiteSVM, indexer, API, keeper, adapters on Meteora's real binaries) | 28 files, 135 tests passed |
+| Typecheck of every package, unit suites of every package | pass |
+| Live smoke of the deployed site (`apps/web/e2e/live-smoke.mjs`): 11 pages x light and dark x 1440 and 390 px = 44 views | zero console errors, page errors or failed requests, no horizontal overflow, no `undefined` or `NaN` text |
+
+Harness bug found and fixed in this pass: `tests/e2e/run-all.sh` and `run-stack.sh` trapped EXIT with `kill 0`, which re-triggered the trap forever and left every browser run hanging after it finished; both now clear the trap first. Earlier failed runs (killed by WSL restarts) were not counted.
+
+## 5. Final pass, 2026-10-13: defects found on the live deployment
+
+Found by looking at the deployed site and its API as a stranger, then fixed and redeployed (backend on AWS, web on Vercel):
+
+| # | Defect | Fix |
+|---|---|---|
+| 37 | The premium page showed nonsense: the deployed monitor measures 38 stocks and quotes through empty pools came back at up to 9,573 times the reference, so the "Market closed" medians read +205% | A quote more than 25% from the reference counts as "no market at this size" and stays out of the medians (`packages/premium/src/stats.ts`, `apps/web/src/lib/premium.ts`, tests in both). Live medians after the fix: +0.33% (buy) and -0.30% (sell) in regular hours |
+| 38 | A cross page sometimes sat on "Loading the book" because every request re-read the chain through the throttled public RPC | A finalized cross's book is cached in the API (`services/api/src/server.ts`); first read about 4 s, later reads under 1 s |
+| 39 | A cross whose order-book account was never created (a stranded cross) made `/book` answer 404, which the page logged as a console error | The API returns an empty book with a note (`services/api/src/server.ts`); the live smoke now passes with zero console errors |
+| 40 | The keeper logged a failure for the same stranded cross every 30 seconds | Reported once per pass as skipped (`services/keeper/src/keeper.ts`) |
+| 41 | `/v1/stats` counted only state `NoPrint` as "did not print", so the landing tile read 0 while 10 finalized crosses had no price | Counts finalized crosses with no clearing price too (`services/api/src/server.ts`); live value now 10, equal to an independent count |
+
+### Not covered in this pass
+
+- Devnet: the faucet and every public alternative are exhausted and the operator wallet holds under 0.01 SOL, so the Meteora features added on 2026-10-13 (DAMM v2 lock, vesting and compounding; DLMM conviction ladder; fee-sharing vault) were proven on Meteora's real binaries in LiteSVM only, and the live site was not driven with a real wallet placing an order.
+- The premium monitor's Jupiter quotes are rate limited from the server (the latest rounds often price few tickers); the page says how many quotes failed.
+- Programs were not changed or rebuilt; the five deployed programs still equal the repository builds.
 
