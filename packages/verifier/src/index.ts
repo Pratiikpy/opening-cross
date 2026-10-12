@@ -156,3 +156,4 @@ export async function verifyCross(fetch: AccountFetcher, cross: Address): Promis
     };
   }
 }
+export * from './rpc.js';

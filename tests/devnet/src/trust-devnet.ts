@@ -78,7 +78,7 @@ async function main() {
   const cleared = await readCross();
   const price = cleared.clearing.__option === 'Some' ? cleared.clearing.value.price : null;
   const clearedTick = price === null ? null : Number((price - cleared.minPrice) / cleared.tick);
-  ev.check('graded', 'the promiser graded the band against the cleared cross account', graded.grade.status === 'SCORED' && graded.grade.clearedTick === clearedTick, `${JSON.stringify(graded.grade)} · chain: P* ${price}, tick ${clearedTick}`);
+  ev.check('graded', 'the promiser graded the band against the cleared cross account', graded.grade.status === 'SCORED' && graded.grade.outcomeTick === clearedTick && graded.grade.errorTicks === Math.abs((clearedTick ?? 0) - promise.claim.pointTick), `${JSON.stringify(graded.grade)} · chain: P* ${price}, tick ${clearedTick}`);
 
   const v2 = await cli([`${API}/v1/promises/${id}`, '--signer', signer, '--inputs', `${API}/v1/promises/${id}/inputs`, '--rpc', RPC]);
   ev.check('stranger-grade', 'the same published command with --rpc reads the outcome from the cross account on chain and reports the grade', v2.code === 0 && /GRADE SCORED/.test(v2.out), v2.out.split('\n').filter((l) => /GRADE|error|cleared/i.test(l)).join(' / ').slice(0, 300));

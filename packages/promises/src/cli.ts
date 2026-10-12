@@ -8,7 +8,8 @@
 //   4. with --rpc, the outcome is read from the cross account on chain and the promise is graded.
 // Exits 0 only when every check that was asked for passes.
 import { readFileSync } from 'node:fs';
-import { type Address, address, createSolanaRpc, fetchEncodedAccount } from '@solana/kit';
+import { type Address, address, fetchEncodedAccount } from '@solana/kit';
+import { createRetryingRpc } from '@opening-cross/verifier';
 import { CrossState, getCrossDecoder } from '@opening-cross/cross-core-client';
 import { type BookSnapshot, type Outcome, gradeClearBand, indicativeTick } from './clear-band.js';
 import { type Json, hashJcs } from './jcs.js';
@@ -58,7 +59,7 @@ if (inputsPath) {
 
 const rpcUrl = flag('--rpc');
 if (rpcUrl) {
-  const rpc = createSolanaRpc(rpcUrl);
+  const rpc = createRetryingRpc(rpcUrl);
   const acct = await fetchEncodedAccount(rpc, address(p.subject.cross) as Address, { commitment: 'finalized' });
   if (!acct.exists) {
     line(false, `cross ${p.subject.cross} not found on this cluster`);

@@ -44,7 +44,7 @@ async function main() {
   ev.check('sas-present', 'the Solana Attestation Service program is deployed and executable on devnet at its published address', Boolean(sasInfo.value?.executable), `owner ${sasInfo.value?.owner}`);
   if (!sasInfo.value?.executable) throw new Error('SAS is not deployed on this cluster');
 
-  const { funder: issuer, promiser } = await freshFunder(240_000_000n);
+  const { funder: issuer, promiser } = await freshFunder(190_000_000n);
   cleanup = async () => {
     const back = await sweepBack(issuer, promiser);
     ev.check('cleanup', 'unused devnet SOL returned to the promiser key', true, `${back} lamports returned`);

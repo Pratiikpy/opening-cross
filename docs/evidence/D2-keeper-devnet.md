@@ -1,6 +1,6 @@
 # D2 — Keepers racing on devnet (chaos)
 
-Run: 2026-10-12T02:03:14.996Z · RPC https://api.devnet.solana.com
+Run: 2026-10-12T02:07:06.284Z · RPC https://api.devnet.solana.com
 Script `tests/devnet/src/keeper-chaos.ts`; stack from `tests/devnet/run-stack.sh`; keepers are the real `services/keeper` process
 Program: cross_core `F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ`
 
@@ -8,7 +8,7 @@ Overall: **FAIL**
 
 | Step | Claim | Result | Transaction | Detail |
 |---|---|---|---|---|
-| fund | creator, two keepers and nine traders funded with devnet SOL (total under 0.5 SOL) | PASS | — | 28568640 lamports moved from the throwaway funder; creator 2gmbSymfkSvBotpwGNWKgs1MWtLARhisRQTAxZW3h9bb, keeper A 2GvdosBdfGRJHBErQEw1j9GQa6AkKfKL3SysvCZUVg6E, keeper B 5X3FNvUN66GeF5M6AfKQoBgWiBzvNh8topsNAswNeTzn |
+| fund | creator, two keepers and nine traders funded with devnet SOL (total under 0.5 SOL) | PASS | — | 387453120 lamports moved from the throwaway funder; creator 2gmbSymfkSvBotpwGNWKgs1MWtLARhisRQTAxZW3h9bb, keeper A 2GvdosBdfGRJHBErQEw1j9GQa6AkKfKL3SysvCZUVg6E, keeper B 5X3FNvUN66GeF5M6AfKQoBgWiBzvNh8topsNAswNeTzn |
 
 ## Error
 

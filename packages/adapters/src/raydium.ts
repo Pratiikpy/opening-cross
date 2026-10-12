@@ -9,17 +9,36 @@ export const RAYDIUM_CPMM_PROGRAM_ADDRESS = address('CPMMoo8L3F4NbTegBCKVNunggL7
 export const RAYDIUM_CREATE_POOL_FEE = address('DNXgeM9EiiaAbaWvwjHj9fQQLAX5ZsfHyvmYUNRAdNC8');
 import { TOKEN_PROGRAM_ADDRESS as SPL_TOKEN } from '@solana-program/token';
 
+/**
+ * Where the adapter runs. Raydium's devnet build is a different program with a different pool-fee receiver, so the
+ * PDAs, the fee account and the cross_settle binary all follow the deployment. `crossSettleProgram` is omitted for
+ * mainnet (the default program id of the generated client).
+ */
+export type RaydiumDeployment = { cpmmProgram: Address; createPoolFee: Address; crossSettleProgram?: Address };
+export const RAYDIUM_MAINNET: RaydiumDeployment = { cpmmProgram: RAYDIUM_CPMM_PROGRAM_ADDRESS, createPoolFee: RAYDIUM_CREATE_POOL_FEE };
+/** Raydium's devnet CPMM program and fee receiver (`devnet` feature of raydium-io/raydium-cp-swap, programs/cp-swap/src/lib.rs). */
+export const RAYDIUM_CPMM_DEVNET_PROGRAM_ADDRESS = address('DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb');
+export const RAYDIUM_DEVNET_CREATE_POOL_FEE = address('3oE58BKVt8KuYkGxx8zBojugnymWmBiyafWgMrnb6eYy');
+/** cross_settle built with `--features devnet-raydium` and deployed under its own id (ADR-0021). */
+export const CROSS_SETTLE_DEVNET_RAYDIUM_PROGRAM_ADDRESS = address('4nH5srCTtRFtJuHNmH2Q3x1TSMZ8w3VWBfX7PwwNMpJ5');
+export const RAYDIUM_DEVNET: RaydiumDeployment = {
+  cpmmProgram: RAYDIUM_CPMM_DEVNET_PROGRAM_ADDRESS,
+  createPoolFee: RAYDIUM_DEVNET_CREATE_POOL_FEE,
+  crossSettleProgram: CROSS_SETTLE_DEVNET_RAYDIUM_PROGRAM_ADDRESS,
+};
+
 const enc = getAddressEncoder();
 const text = (s: string) => new TextEncoder().encode(s);
-const pda = async (seeds: Uint8Array[]) => (await getProgramDerivedAddress({ programAddress: RAYDIUM_CPMM_PROGRAM_ADDRESS, seeds }))[0];
+const pdaOf = (d: RaydiumDeployment) => async (seeds: Uint8Array[]) => (await getProgramDerivedAddress({ programAddress: d.cpmmProgram, seeds }))[0];
 
 /** Raydium's AMM config PDA for a fee tier index (`["amm_config", index as u16 BE]`). */
-export async function raydiumAmmConfig(index: number): Promise<Address> {
-  return pda([text('amm_config'), new Uint8Array([(index >> 8) & 0xff, index & 0xff])]);
+export async function raydiumAmmConfig(index: number, deployment: RaydiumDeployment = RAYDIUM_MAINNET): Promise<Address> {
+  return pdaOf(deployment)([text('amm_config'), new Uint8Array([(index >> 8) & 0xff, index & 0xff])]);
 }
 
 /** PDAs from raydium-cp-swap `instructions/initialize.rs` and `states/pool.rs`. */
-export async function raydiumAddresses(ammConfig: Address, baseMint: Address, quoteMint: Address) {
+export async function raydiumAddresses(ammConfig: Address, baseMint: Address, quoteMint: Address, deployment: RaydiumDeployment = RAYDIUM_MAINNET) {
+  const pda = pdaOf(deployment);
   const baseFirst = Buffer.compare(Buffer.from(enc.encode(baseMint)), Buffer.from(enc.encode(quoteMint))) < 0;
   const [token0, token1] = baseFirst ? [baseMint, quoteMint] : [quoteMint, baseMint];
   const pool = await pda([text('pool'), enc.encode(ammConfig) as Uint8Array, enc.encode(token0) as Uint8Array, enc.encode(token1) as Uint8Array]);
@@ -49,37 +68,44 @@ export type SeedRaydiumInput = {
   ammConfigIndex?: number;
   /** Unix time trading opens; Raydium moves anything not in the future to now + 1. */
   openTime?: bigint;
+  /** Mainnet unless set. */
+  deployment?: RaydiumDeployment;
 };
 
 export async function buildSeedRaydiumCpmm(input: SeedRaydiumInput): Promise<{ instruction: Instruction; quoteAmount: bigint; addresses: Awaited<ReturnType<typeof raydiumAddresses>> }> {
   const c = input.cross.data;
   if (c.clearing.__option !== 'Some') throw new Error('cross has not cleared');
   if (!c.baseBound) throw new Error('cross has no base mint yet');
-  const ammConfig = await raydiumAmmConfig(input.ammConfigIndex ?? 0);
-  const a = await raydiumAddresses(ammConfig, c.baseMint, c.quoteMint);
+  const deployment = input.deployment ?? RAYDIUM_MAINNET;
+  const ammConfig = await raydiumAmmConfig(input.ammConfigIndex ?? 0, deployment);
+  const a = await raydiumAddresses(ammConfig, c.baseMint, c.quoteMint, deployment);
   const quoteAmount = quoteForBase(input.baseAmount, c.clearing.value.price, c.priceScale);
   const [program0, program1] = a.baseIsToken0 ? [c.baseTokenProgram, c.quoteTokenProgram] : [c.quoteTokenProgram, c.baseTokenProgram];
-  const instruction = getSeedRaydiumCpmmInstruction({
-    creator: input.creator,
-    cross: input.cross.address,
-    ammConfig,
-    raydiumAuthority: a.authority,
-    poolState: a.pool,
-    token0Mint: a.token0,
-    token1Mint: a.token1,
-    lpMint: a.lpMint,
-    creatorToken0: await ata(input.creator.address, a.token0, program0),
-    creatorToken1: await ata(input.creator.address, a.token1, program1),
-    creatorLpToken: await ata(input.creator.address, a.lpMint, SPL_TOKEN),
-    token0Vault: a.vault0,
-    token1Vault: a.vault1,
-    createPoolFee: RAYDIUM_CREATE_POOL_FEE,
-    observationState: a.observation,
-    token0Program: program0,
-    token1Program: program1,
-    baseAmount: input.baseAmount,
-    quoteAmount,
-    openTime: input.openTime ?? 0n,
-  });
+  const instruction = getSeedRaydiumCpmmInstruction(
+    {
+      creator: input.creator,
+      cross: input.cross.address,
+      ammConfig,
+      raydiumAuthority: a.authority,
+      poolState: a.pool,
+      token0Mint: a.token0,
+      token1Mint: a.token1,
+      lpMint: a.lpMint,
+      creatorToken0: await ata(input.creator.address, a.token0, program0),
+      creatorToken1: await ata(input.creator.address, a.token1, program1),
+      creatorLpToken: await ata(input.creator.address, a.lpMint, SPL_TOKEN),
+      token0Vault: a.vault0,
+      token1Vault: a.vault1,
+      createPoolFee: deployment.createPoolFee,
+      raydiumProgram: deployment.cpmmProgram,
+      observationState: a.observation,
+      token0Program: program0,
+      token1Program: program1,
+      baseAmount: input.baseAmount,
+      quoteAmount,
+      openTime: input.openTime ?? 0n,
+    },
+    deployment.crossSettleProgram ? { programAddress: deployment.crossSettleProgram } : undefined,
+  );
   return { instruction, quoteAmount, addresses: a };
 }

@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 import type { Address } from '@solana/kit';
 import { CrossState, Disclosure, OrderSide, SupplyMode } from '@opening-cross/sdk';
 import { decodeLogs } from '@opening-cross/indexer';
-import { type KeeperDeps, plan, runOnce } from '@opening-cross/keeper';
+import { type KeeperDeps, plan, pollingSender, runOnce } from '@opening-cross/keeper';
+import type { IndexerRpc } from '@opening-cross/indexer';
 import { NoPrintReason } from '@opening-cross/cross-core-client';
 import { World } from '../src/world.js';
 import { T0 } from '../src/harness.js';
@@ -24,6 +25,49 @@ function keeper(w: World, payer: KeeperDeps['payer']): KeeperDeps {
     send: async (ixs) => { await w.h.send(ixs, payer); return w.h.landed.at(-1)!.signature; },
   };
 }
+
+/** A minimal RPC double for the HTTP-only sender: every method returns `{ send }` like the real client. */
+function fakeRpc(o: { sendFails?: unknown[]; confirmAfter?: number[]; heightAfter?: number[]; sendError?: unknown }) {
+  const calls = { blockhash: 0, send: 0, status: 0 };
+  const sendFails = [...(o.sendFails ?? [])];
+  let blockhashes = 0;
+  let polls = 0;
+  const rpc = {
+    getLatestBlockhash: () => ({ send: async () => { calls.blockhash++; blockhashes++; polls = 0; return { value: { blockhash: '11111111111111111111111111111111', lastValidBlockHeight: 100n } }; } }),
+    sendTransaction: () => ({ send: async () => { calls.send++; if (o.sendError) throw o.sendError; const f = sendFails.shift(); if (f) throw f; return 'sig'; } }),
+    getSignatureStatuses: () => ({ send: async () => { calls.status++; polls++; const after = o.confirmAfter?.[blockhashes - 1]; return { value: [after !== undefined && polls >= after ? { err: null, confirmationStatus: 'confirmed' } : null] }; } }),
+    getBlockHeight: () => ({ send: async () => (o.heightAfter?.[blockhashes - 1] !== undefined && polls >= o.heightAfter[blockhashes - 1]! ? 101n : 50n) }),
+  };
+  return { rpc: rpc as unknown as IndexerRpc, calls };
+}
+
+describe('http-only sender', () => {
+  const opts = { resendMs: 0, pollMs: 0, sleep: async () => {} };
+  it('rides out a node that has not seen the blockhash yet, then confirms by polling', async () => {
+    const w = await World.create();
+    const { rpc, calls } = fakeRpc({ sendFails: [new Error('Transaction simulation failed: Blockhash not found')], confirmAfter: [3] });
+    const sig = await pollingSender(rpc, await w.h.wallet(), opts)([]);
+    expect(typeof sig).toBe('string');
+    expect(calls.blockhash).toBe(1);
+    expect(calls.send).toBeGreaterThanOrEqual(2); // the refused attempt, then the broadcast (re-sent while unconfirmed)
+  });
+
+  it('rebuilds on a fresh blockhash when the first one expires unconfirmed', async () => {
+    const w = await World.create();
+    const { rpc, calls } = fakeRpc({ confirmAfter: [undefined as unknown as number, 2], heightAfter: [2] });
+    await pollingSender(rpc, await w.h.wallet(), opts)([]);
+    expect(calls.blockhash).toBe(2);
+  });
+
+  it('reports a transaction that landed with an error, and rethrows a refusal from the preflight', async () => {
+    const w = await World.create();
+    const failing = { ...fakeRpc({}).rpc, getSignatureStatuses: () => ({ send: async () => ({ value: [{ err: { InstructionError: [0, 'Custom'] }, confirmationStatus: 'confirmed' }] }) }) } as unknown as IndexerRpc;
+    await expect(pollingSender(failing, await w.h.wallet(), opts)([])).rejects.toThrow(/failed/);
+    const refused = new Error('AnchorError: WrongState');
+    const { rpc } = fakeRpc({ sendError: refused });
+    await expect(pollingSender(rpc, await w.h.wallet(), opts)([])).rejects.toBe(refused);
+  });
+});
 
 describe('keeper', () => {
   it('two racing keepers take every kind of cross to Finalized, paying each owner exactly once', async () => {

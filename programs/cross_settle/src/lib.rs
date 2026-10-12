@@ -26,7 +26,21 @@ declare_program!(raydium_cp_swap);
 
 use cross_core::accounts::Cross;
 
+#[cfg(not(feature = "devnet-raydium"))]
 declare_id!("2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ");
+/// The devnet-Raydium build is a separate deployment under its own program id (ADR-0021): Raydium's
+/// mainnet CPMM id is not deployed on devnet, so the binary that CPIs into Raydium's devnet program
+/// cannot reuse the id of the mainnet-bound binary.
+#[cfg(feature = "devnet-raydium")]
+declare_id!("4nH5srCTtRFtJuHNmH2Q3x1TSMZ8w3VWBfX7PwwNMpJ5");
+
+/// The Raydium CPMM program `seed_raydium_cpmm` may CPI into. The default build accepts only the
+/// mainnet deployment; `devnet-raydium` accepts only Raydium's devnet deployment
+/// (`devnet` feature of raydium-io/raydium-cp-swap, `programs/cp-swap/src/lib.rs`).
+#[cfg(not(feature = "devnet-raydium"))]
+pub const RAYDIUM_CPMM_PROGRAM: Pubkey = raydium_cp_swap::ID;
+#[cfg(feature = "devnet-raydium")]
+pub const RAYDIUM_CPMM_PROGRAM: Pubkey = pubkey!("DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb");
 
 pub const SETTLER_SEED: &[u8] = b"settler";
 pub const DBC_CONFIG_SEED: &[u8] = b"dbc_config";
@@ -724,7 +738,7 @@ pub struct SeedRaydiumCpmm<'info> {
     #[account(mut)]
     pub observation_state: UncheckedAccount<'info>,
     /// CHECK: the Raydium CPMM program.
-    #[account(address = raydium_cp_swap::ID)]
+    #[account(address = RAYDIUM_CPMM_PROGRAM)]
     pub raydium_program: UncheckedAccount<'info>,
     /// CHECK: SPL Token (LP mint program).
     #[account(address = anchor_spl::token::ID)]

@@ -32,6 +32,8 @@ import {
 } from '@solana-program/token-2022';
 import { ROOT, rpc } from './lib.js';
 
+/** JSON.stringify that tolerates the bigints in kit error contexts. */
+export const show = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? x.toString() : x));
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** sas-lib targets an older kit; its instructions are plain data and sign and serialise unchanged. */
 export const asIx = (x: unknown) => x as Instruction;
@@ -76,7 +78,7 @@ export async function send(ixs: Instruction[], payer: KeyPairSigner): Promise<st
     for (let i = 0; ; i++) {
       const { value } = await rpc.getSignatureStatuses([signature]).send();
       const st = value[0];
-      if (st?.err) throw new Error(`transaction ${signature} failed: ${JSON.stringify(st.err)}`);
+      if (st?.err) throw new Error(`transaction ${signature} failed: ${show(st.err)}`);
       if (st && (st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized')) return signature;
       await sleep(1_000);
       if (i % 5 === 4) {
@@ -105,7 +107,7 @@ export async function mustFail(ixs: Instruction[], payer: KeyPairSigner, mustCon
   const logs = value.logs ?? [];
   if (!value.err) throw new Error(`expected "${mustContain}" but the simulation succeeded`);
   const hit = logs.find((l) => l.includes(mustContain));
-  if (!hit) throw new Error(`failed for the wrong reason (wanted "${mustContain}"): ${JSON.stringify(value.err)}\n${logs.join('\n')}`);
+  if (!hit) throw new Error(`failed for the wrong reason (wanted "${mustContain}"): ${show(value.err)}\n${logs.join('\n')}`);
   return hit.trim();
 }
 
@@ -196,6 +198,6 @@ export async function mustSucceed(ixs: Instruction[], payer: KeyPairSigner): Pro
   const { value } = await rpc
     .simulateTransaction(getBase64EncodedWireTransaction(tx), { encoding: 'base64', commitment: 'confirmed', replaceRecentBlockhash: true, sigVerify: false })
     .send();
-  if (value.err) throw new Error(`expected the simulation to succeed: ${JSON.stringify(value.err)}\n${(value.logs ?? []).join('\n')}`);
+  if (value.err) throw new Error(`expected the simulation to succeed: ${show(value.err)}\n${(value.logs ?? []).join('\n')}`);
   return `simulation succeeded (${value.unitsConsumed} compute units)`;
 }

@@ -64,7 +64,6 @@ import {
 import { referenceClear, referenceFills, type RefOrder } from '@opening-cross/verifier';
 import { Evidence, ROOT, RPC, rpc } from './lib.js';
 
-const WS = RPC.replace(/^http/, 'ws');
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error('DATABASE_URL (the indexer database) is required');
 const EVIDENCE = 'D2-keeper-devnet.md';
@@ -98,7 +97,14 @@ async function send(ixs: Instruction[], payer: KeyPairSigner): Promise<string> {
     let lastSent = 0;
     for (let first = true; ; first = false) {
       if (Date.now() - lastSent > 4_000) {
-        await rpc.sendTransaction(wire, { encoding: 'base64', skipPreflight: !first || attempt > 0, preflightCommitment: 'confirmed' }).send();
+        try {
+          await rpc.sendTransaction(wire, { encoding: 'base64', skipPreflight: !first || attempt > 0, preflightCommitment: 'confirmed' }).send();
+        } catch (e) {
+          // A load-balanced public node can lag behind the one that issued the blockhash: send again shortly.
+          if (!String(e).includes('Blockhash not found') && !String((e as { cause?: unknown }).cause).includes('Blockhash not found')) throw e;
+          await sleep(1_500);
+          continue;
+        }
         lastSent = Date.now();
       }
       const st = (await rpc.getSignatureStatuses([signature]).send()).value[0];
@@ -167,7 +173,6 @@ function startKeeper(name: 'A' | 'B'): void {
     env: {
       ...process.env,
       RPC_URL: RPC,
-      WS_URL: WS,
       KEEPER_KEYPAIR: `${KEYS}/keeper${name}.json`,
       PASS_MS: '10000',
       KEEPER_CREATORS: creatorScope,
@@ -189,7 +194,7 @@ const doneCount = (name: string) => readLog(name).reduce((n, e) => n + (e.done?.
 async function main() {
   for (const f of Object.values(keeperLogs)) writeFileSync(f, '');
   const funder = await createKeyPairSignerFromBytes(Uint8Array.from(JSON.parse(readFileSync(`${ROOT}.keys/devnet-promiser.json`, 'utf8'))));
-  const creator = await loadSigner('creator');
+  const creator = await loadSigner(`creator-${process.env.RUN ?? new Date().toISOString().slice(0, 16).replace(/[^0-9]/g, '')}`); // a fresh creator per run: no leftovers from earlier attempts
   const keeperA = await loadSigner('keeperA');
   const keeperB = await loadSigner('keeperB');
   const traders = await Promise.all(Array.from({ length: 9 }, (_, i) => loadSigner(`t${i}`)));
