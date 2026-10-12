@@ -28,11 +28,17 @@ export const connection = new Connection(RPC, { commitment: 'confirmed', fetch: 
 const baseTransport = createDefaultRpcTransport({ url: RPC });
 const retryingTransport = (async (...args: Parameters<typeof baseTransport>) => {
   for (let attempt = 0; ; attempt++) {
+    // A request that gets no answer at all (a dropped socket on the public endpoint) would otherwise hang the run.
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), 60_000);
     try {
-      return await baseTransport(...args);
+      return await baseTransport({ ...args[0], signal: args[0].signal ?? timeout.signal });
     } catch (e) {
-      if (attempt >= 30 || !/429|fetch failed|ConnectTimeout|ECONNRESET|ETIMEDOUT/.test(String(e))) throw e;
+      const timedOut = timeout.signal.aborted;
+      if (attempt >= 30 || !(timedOut || /429|fetch failed|ConnectTimeout|ECONNRESET|ETIMEDOUT/.test(String(e)))) throw e;
       await new Promise((r) => setTimeout(r, Math.min(15_000, 500 * 2 ** attempt)));
+    } finally {
+      clearTimeout(timer);
     }
   }
 }) as typeof baseTransport;

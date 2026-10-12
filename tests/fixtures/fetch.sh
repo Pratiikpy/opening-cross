@@ -14,3 +14,8 @@ solana program dump -u "${RPC_URL:-mainnet-beta}" 22zoJMtdu4tQc2PzL74ZUT7FrwgB1U
 # Squads v4 (immutable on mainnet) and its program config, for the upgrade-governance rehearsal.
 solana program dump -u "${RPC_URL:-mainnet-beta}" SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf "$dir/squads_v4.so"
 solana account -u "${RPC_URL:-mainnet-beta}" BSTq9w3kZwNwpBXJEvTZz2G9ZTNyKBvoSeXMvwb4cNZr --output json -o "$dir/squads_program_config.json"
+# Raydium's devnet deployment, for the devnet-raydium build of cross_settle (ADR-0021): program, AMM config index 0 and
+# the pool-fee receiver of its `devnet` build.
+solana program dump -u "${DEVNET_RPC_URL:-devnet}" DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb "$dir/raydium_cp_swap_devnet.so"
+solana account -u "${DEVNET_RPC_URL:-devnet}" 5MxLgy9oPdTC3YgkiePHqr3EoCRD9uLVYRQS2ANAs7wy --output json -o "$dir/raydium_devnet_amm_config_0.json"
+solana account -u "${DEVNET_RPC_URL:-devnet}" 3oE58BKVt8KuYkGxx8zBojugnymWmBiyafWgMrnb6eYy --output json -o "$dir/raydium_devnet_create_pool_fee.json"

@@ -14,7 +14,7 @@ import { TOKEN_PROGRAM_ADDRESS as SPL_TOKEN } from '@solana-program/token';
  * PDAs, the fee account and the cross_settle binary all follow the deployment. `crossSettleProgram` is omitted for
  * mainnet (the default program id of the generated client).
  */
-export type RaydiumDeployment = { cpmmProgram: Address; createPoolFee: Address; crossSettleProgram?: Address };
+export type RaydiumDeployment = { cpmmProgram: Address; createPoolFee: Address; crossSettleProgram?: Address | undefined };
 export const RAYDIUM_MAINNET: RaydiumDeployment = { cpmmProgram: RAYDIUM_CPMM_PROGRAM_ADDRESS, createPoolFee: RAYDIUM_CREATE_POOL_FEE };
 /** Raydium's devnet CPMM program and fee receiver (`devnet` feature of raydium-io/raydium-cp-swap, programs/cp-swap/src/lib.rs). */
 export const RAYDIUM_CPMM_DEVNET_PROGRAM_ADDRESS = address('DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb');
