@@ -96,7 +96,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | W9 order entry paths | PARTIAL | Direct `place_order` (program, API, web, mobile, SDK); CPI venue example | No pool resting liquidity, aggregator intents or signed market-maker quotes |
-| X6, Y7, P6 | NOT BUILT | Jupiter quote only | No Blinks, x402, market-maker bot or revenue meter |
+| X6, Y7, P6 | PARTIAL | Jupiter quote; `@opening-cross/x402`: pay-per-call for HTTP and MCP (x402 exact scheme and the MPP charge intent, a self-hosted facilitator, a paying client, a Postgres payment ledger), 51 unit tests pass | The 54 integration tests that need Postgres and a validator were skipped here and have not been run; not wired into the API or MCP server; no Blinks or market-maker bot |
 
 ## 10. Integrity, data and AI
 
@@ -153,7 +153,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 |---|---|---|---|
 | W13, V1 verifier and conformance | BUILT | `packages/verifier`, 525 vectors checked in CI, `D5-conformance.md` | Not on a registry (H12); the proof schema is a TypeScript type and a string |
 | W13, V1 OCIP spec and sRFC | NOT BUILT | none | Needs an authored specification |
-| W14, L3 SDK and UI kit | PARTIAL | `@opening-cross/sdk`, `opening-cross-cpi`, `examples/ts-quickstart` (run in CI), `D4-sdk-and-cpi.md` | No `@opening-cross/react`; no CLI beyond the verifier |
+| W14, L3 SDK and UI kit | PARTIAL | `@opening-cross/sdk`, `opening-cross-cpi`, `examples/ts-quickstart` (run in CI), `D4-sdk-and-cpi.md`; `@opening-cross/client` (typed API client, exact unit maths, order validation, signing pipeline; 17 tests), `@opening-cross/react` (hooks and components; 34 tests) and `@opening-cross/cli` (read, place, cancel, reveal, claim, settle, verify; 20 tests) | None of the three has been run against a live cluster or published to a registry (H12); the cross-language parity test against a Rust SDK was dropped because that crate is not in the repository |
 | W15 reference integrations | PARTIAL | Design (d), router comparison, `examples/venue` | No reopen, halt, tender or block-sale adapters; the Genesis composition is not run on devnet |
 | L4, X16 data and agents | PARTIAL | `/v1/stream`, `services/mcp` (12 reads, 5 drafts, 9 tests; ADR-0019) | No gRPC stream, backtester or agent skill file |
 | L7, J4 docs for humans and AI | PARTIAL | MCP server; `/developers`; `docs/CONFIGURATION.md` | No llms.txt or docs MCP |
@@ -163,7 +163,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 
 | ID | Status | What exists | Gap |
 |---|---|---|---|
-| W4, W6 fees | PARTIAL | Fees live in `cross_core` (ADR-0010): the protocol fee is the smaller of the schedule and a quarter of the integrator fee, snapshotted per cross, charged to the sell side, never on bids, cancels or refunds; schedule 30, 5, 15 and 30 bps | There is no separate `cross_fees` program. The 10% referrer share is not built. The figures are proposed and have not been modelled |
+| W4, W6 fees | PARTIAL | Fees live in `cross_core` (ADR-0010): the protocol fee is the smaller of the schedule and a quarter of the integrator fee, snapshotted per cross, charged to the sell side, never on bids, cancels or refunds; schedule 30, 5, 15 and 30 bps | There is no separate `cross_fees` program. The figures are proposed; `docs/economics/FEE_MODEL.md` and `packages/fees` (fee schedule, fee model, revenue ledger, scorecard, referral shares, rate cards and signed statements; 57 tests) model them in exact arithmetic off chain. The 10% referrer share exists in that accounting only, not in the program |
 | Z4, Y7 external-flow scorecard | PARTIAL | `/v1/stats` | Counts all wallets; no exclusion of team or market-maker flow |
 | Y8, X11, P1, P2, P3 to P5 | NOT BUILT | none | |
 

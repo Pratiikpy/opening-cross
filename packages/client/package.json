@@ -1,0 +1,60 @@
+{
+  "name": "@opening-cross/client",
+  "version": "0.1.0",
+  "description": "Framework-free client for Opening Cross: a typed API client, exact unit maths, order validation, local and API transaction builders, a signing and sending pipeline, and the sealed-bid vault. The React kit and the CLI are built on it.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/client"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./node": {
+        "types": "./dist/node.d.ts",
+        "import": "./dist/node.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "vectors": "tsx tools/gen-rust-vectors.ts"
+  },
+  "dependencies": {
+    "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/verifier": "workspace:*",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@opening-cross/cross-gate-client": "workspace:*",
+    "@solana-program/token": "0.16.0",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

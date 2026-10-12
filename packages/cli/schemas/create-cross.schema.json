@@ -1,0 +1,401 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Pratiikpy/opening-cross/blob/main/packages/cli/schemas/create-cross.schema.json",
+  "title": "Opening Cross: create a cross",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "quoteMint",
+    "supplyMode",
+    "disclosure",
+    "grid",
+    "window",
+    "shards",
+    "maxOrders"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "units": {
+      "enum": [
+        "tokens",
+        "atoms"
+      ],
+      "default": "tokens",
+      "description": "How prices and amounts are written. In \"tokens\", price fields are quote tokens per base token and amounts are base tokens; in \"atoms\" they are on-chain integers (prices per priceScale base atoms)."
+    },
+    "creator": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "Optional. When present it must be the signing wallet."
+    },
+    "baseMint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+          "description": "A base58 Solana address."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The token being sold. Omit or null for a deferred-mint cross, whose settlement adapter creates it."
+    },
+    "quoteMint": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "A base58 Solana address."
+    },
+    "baseTokenProgram": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "Default: the owner of baseMint."
+    },
+    "quoteTokenProgram": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "Default: the owner of quoteMint."
+    },
+    "crossId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]{1,20}$"
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "description": "Default: a random 48-bit number, printed when the cross is created."
+    },
+    "kind": {
+      "enum": [
+        "launch",
+        "reopen",
+        "tender",
+        "recurring"
+      ],
+      "default": "launch"
+    },
+    "supplyMode": {
+      "enum": [
+        "escrow",
+        "mint",
+        "deferred-mint"
+      ]
+    },
+    "disclosure": {
+      "enum": [
+        "sealed",
+        "open"
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "tick",
+        "ticks"
+      ],
+      "description": "The price grid: min, min + tick, ... up to ticks entries. Orders must sit on it.",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "description": "A non-negative decimal number, as a string. Quote tokens per base token for prices, base tokens for amounts (atoms when units is \"atoms\")."
+        },
+        "tick": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "description": "A non-negative decimal number, as a string. Quote tokens per base token for prices, base tokens for amounts (atoms when units is \"atoms\")."
+        },
+        "ticks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "priceScale": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{1,20}$"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "description": "Base atoms a price is quoted per. Default: 10^decimals of the base token, so prices are quote atoms per whole base token."
+        },
+        "baseDecimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18,
+          "description": "Only for a deferred-mint cross, which has no base mint to read decimals from."
+        }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "close"
+      ],
+      "properties": {
+        "open": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^([0-9]+|now|\\+[0-9]+[smhd]|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2}))$"
+            }
+          ],
+          "description": "Default: now."
+        },
+        "close": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^([0-9]+|now|\\+[0-9]+[smhd]|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2}))$"
+            }
+          ],
+          "description": "Unix seconds, an ISO 8601 timestamp with a zone, \"now\", or a delay such as \"+10m\" (s, m, h or d) from the cluster’s clock."
+        },
+        "revealEnd": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^([0-9]+|now|\\+[0-9]+[smhd]|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2}))$"
+            }
+          ],
+          "description": "Sealed crosses: when the reveal window ends. Open crosses: ignored."
+        }
+      }
+    },
+    "referencePrice": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "description": "A non-negative decimal number, as a string. Quote tokens per base token for prices, base tokens for amounts (atoms when units is \"atoms\")."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A reference price (the clearing guard anchors to it). Same units as grid.min."
+    },
+    "minMatched": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "description": "The least volume that must trade for the cross to print. Default 0."
+    },
+    "maxImbalanceBps": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "integratorFeeBps": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300,
+      "default": 0
+    },
+    "integrator": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "Default: the creator."
+    },
+    "gateMint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+          "description": "A base58 Solana address."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Only holders of a cross_gate pass for this mint may place orders."
+    },
+    "shards": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "maxOrders": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "proceedsTo": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+      "description": "Default: the creator."
+    },
+    "schedule": {
+      "type": "array",
+      "description": "Mint modes: the issuer’s supply as sell levels.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "price",
+          "quantity"
+        ],
+        "properties": {
+          "price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]+)?$"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ],
+            "description": "A non-negative decimal number, as a string. Quote tokens per base token for prices, base tokens for amounts (atoms when units is \"atoms\")."
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]+)?$"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ],
+            "description": "A non-negative decimal number, as a string. Quote tokens per base token for prices, base tokens for amounts (atoms when units is \"atoms\")."
+          }
+        }
+      }
+    },
+    "oracle": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "feedId",
+            "maxDivergenceBps",
+            "maxStalenessSecs"
+          ],
+          "properties": {
+            "feedId": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            },
+            "maxDivergenceBps": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "maxStalenessSecs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 86400
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "calendar": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+          "description": "A base58 Solana address."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "settler": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+          "description": "A base58 Solana address."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "settleDeadline": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^([0-9]+|now|\\+[0-9]+[smhd]|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2}))$"
+        }
+      ],
+      "description": "Deferred-mint crosses: after this time an unbound cross can be abandoned and refunded."
+    }
+  }
+}

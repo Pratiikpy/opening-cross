@@ -1,0 +1,62 @@
+{
+  "name": "@opening-cross/cli",
+  "version": "0.1.0",
+  "description": "Command line for Opening Cross: read crosses and books, place, cancel, reveal and claim orders, settle, finalize and create crosses, verify fairness proofs, quote routes and watch a cross. Builds on your machine, signs with your keypair file, never generates or stores keys.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "tsx src/bin.ts",
+    "schema": "tsx scripts/write-schema.ts"
+  },
+  "dependencies": {
+    "@opening-cross/client": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/verifier": "workspace:*",
+    "@solana-program/token": "0.16.0",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.4.0",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@solana-program/system": "0.14.0",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  },
+  "bin": {
+    "opening-cross": "src/bin.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "schemas"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+      "opening-cross": "dist/bin.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  }
+}
