@@ -65,3 +65,14 @@ describe('units at the edges', () => {
     expect(parsePrice('999999.999999', N)).toBe(999_999_999_999n);
   });
 });
+
+describe('premium no-market rule', () => {
+  it('shows a quote within 25% of the reference as a premium and anything farther as no market', async () => {
+    const { isNoMarket } = await import('../src/lib/premium');
+    expect(isNoMarket({ status: 'ok', premiumBpsX100: '250000' })).toBe(false);
+    expect(isNoMarket({ status: 'ok', premiumBpsX100: '-250000' })).toBe(false);
+    expect(isNoMarket({ status: 'ok', premiumBpsX100: '250001' })).toBe(true);
+    expect(isNoMarket({ status: 'ok', premiumBpsX100: '-9573000000' })).toBe(true);
+    expect(isNoMarket({ status: 'no_route', premiumBpsX100: null })).toBe(false);
+  });
+});

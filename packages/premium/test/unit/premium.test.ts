@@ -10,6 +10,7 @@ import {
   NoRouteError,
   atomsForNotional,
   collectRound,
+  NO_MARKET_BPS_X100,
   groupObservations,
   impactBpsX100,
   multiplierE12,
@@ -200,6 +201,19 @@ describe('collectRound', () => {
     const g = groups.find((x) => x.leg === 'buy' && x.sizeUsd === 1000)!;
     expect(g.summary.n).toBe(1);
     expect(g.excluded).toEqual({ no_reference: 1 });
+  });
+
+  it('counts a quote more than 25% from the reference as no market instead of a premium', async () => {
+    const [good] = await collectRound([asset], base);
+    const mk = (premiumBpsX100: bigint) => ({ ...good!, premiumBpsX100 });
+    const sane = [mk(2_000n), mk(-3_000n), mk(250_000n), mk(-250_000n)]; // up to exactly 25%: still a premium
+    const junk = [mk(250_001n), mk(-250_001n), mk(9_573_000_000n)]; // 9,573% above the reference: an empty pool
+    const g = groupObservations([...sane, ...junk]).find((x) => x.leg === good!.leg && x.sizeUsd === good!.sizeUsd)!;
+    expect(g.summary.n).toBe(4);
+    expect(g.summary.maxBpsX100).toBe(250_000n);
+    expect(g.summary.minBpsX100).toBe(-250_000n);
+    expect(g.excluded).toEqual({ no_market: 3 });
+    expect(NO_MARKET_BPS_X100).toBe(250_000n);
   });
 });
 

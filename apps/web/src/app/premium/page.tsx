@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { get } from '@/lib/api';
-import { EXCLUSION_LABEL, type PremiumGroup, type PremiumObservation, type PremiumSummary, SESSION_LABEL, SESSION_ORDER, percentOf, usdOf } from '@/lib/premium';
+import { EXCLUSION_LABEL, isNoMarket, type PremiumGroup, type PremiumObservation, type PremiumSummary, SESSION_LABEL, SESSION_ORDER, percentOf, usdOf } from '@/lib/premium';
 
 export const metadata: Metadata = {
   title: 'Premium monitor',
@@ -103,7 +103,7 @@ export default async function Premium() {
                     {[...tokens.entries()].map(([symbol, list]) => {
                       const buy = list.find((o) => o.sizeUsd === 1000 && o.leg === 'buy');
                       const sell = list.find((o) => o.sizeUsd === 1000 && o.leg === 'sell');
-                      const show = (o?: PremiumObservation) => (o ? (o.status === 'ok' ? percentOf(o.premiumBpsX100) : (EXCLUSION_LABEL[o.status] ?? o.status)) : '—');
+                      const show = (o?: PremiumObservation) => (o ? (isNoMarket(o) ? EXCLUSION_LABEL.no_market! : o.status === 'ok' ? percentOf(o.premiumBpsX100) : (EXCLUSION_LABEL[o.status] ?? o.status)) : '—');
                       return (
                         <tr key={symbol}>
                           <th scope="row" className="py-2 pr-4 font-normal">{symbol}</th>

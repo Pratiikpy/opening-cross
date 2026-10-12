@@ -34,6 +34,14 @@ export type PremiumObservation = {
 };
 
 /** "0.44%" for 4386; keeps the sign, drops a negative zero. */
+/** Mirrors `NO_MARKET_BPS_X100` in @opening-cross/premium: a quote this far from the reference (25%) means no market at that size. */
+export const NO_MARKET_BPS_X100 = 250_000n;
+export function isNoMarket(o: { status: string; premiumBpsX100: string | null }): boolean {
+  if (o.status !== 'ok' || o.premiumBpsX100 === null) return false;
+  const v = BigInt(o.premiumBpsX100);
+  return (v < 0n ? -v : v) > NO_MARKET_BPS_X100;
+}
+
 export function percentOf(bpsX100: string | null): string {
   if (bpsX100 === null) return '—';
   const v = BigInt(bpsX100);
@@ -69,4 +77,5 @@ export const EXCLUSION_LABEL: Record<string, string> = {
   no_multiplier: 'multiplier unreadable',
   zero_shares: 'no shares moved',
   issuer_halted: 'issuer halted',
+  no_market: 'no market at this size',
 };

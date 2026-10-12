@@ -44,7 +44,14 @@ export interface Group {
   readonly excluded: Readonly<Record<string, number>>;
 }
 
-/** Groups by session x size x leg; only status `ok` observations enter the summary, the rest are counted by reason. */
+/**
+ * An executable price this far from the reference (25%, in basis points x 100) is not a premium: the pool is empty or stale
+ * at that size. Such a quote is counted as `no_market` next to the numbers instead of dragging the medians to nonsense.
+ */
+export const NO_MARKET_BPS_X100 = 250_000n;
+const isNoMarket = (o: Observation): boolean => o.status === 'ok' && o.premiumBpsX100 !== null && (o.premiumBpsX100 < 0n ? -o.premiumBpsX100 : o.premiumBpsX100) > NO_MARKET_BPS_X100;
+
+/** Groups by session x size x leg; only status `ok` observations within the market range enter the summary, the rest are counted by reason. */
 export function groupObservations(obs: readonly Observation[]): Group[] {
   const by = new Map<string, Observation[]>();
   for (const o of obs) {
@@ -55,12 +62,15 @@ export function groupObservations(obs: readonly Observation[]): Group[] {
     .map((list) => {
       const first = list[0] as Observation;
       const excluded: Record<string, number> = {};
-      for (const o of list) if (o.status !== 'ok') excluded[o.status] = (excluded[o.status] ?? 0) + 1;
+      for (const o of list) {
+        const reason = isNoMarket(o) ? 'no_market' : o.status;
+        if (reason !== 'ok') excluded[reason] = (excluded[reason] ?? 0) + 1;
+      }
       return {
         session: first.session,
         sizeUsd: first.sizeUsd,
         leg: first.leg,
-        summary: summarise(list.filter((o) => o.status === 'ok' && o.premiumBpsX100 !== null).map((o) => o.premiumBpsX100 as bigint)),
+        summary: summarise(list.filter((o) => o.status === 'ok' && o.premiumBpsX100 !== null && !isNoMarket(o)).map((o) => o.premiumBpsX100 as bigint)),
         excluded,
       };
     })
