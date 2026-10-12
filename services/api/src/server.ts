@@ -213,7 +213,8 @@ export async function buildServer(d: ApiDeps) {
     const cachedBook = frozen ? bookCache.get(a) : undefined;
     if (cachedBook) return send(reply, cachedBook);
     const book = await loadBook(d.account, a, c);
-    if (typeof book === 'string') throw new RequestError(404, book);
+    // A cross whose order-book account was never created has no orders; say so instead of failing the page that asks.
+    if (typeof book === 'string') return send(reply, { disclosure: c.disclosure === Disclosure.Sealed ? 'sealed' : 'open', levels: [], indicative: null, note: `This cross has no order book on chain, so it holds no orders (${book}).` });
     const levels = [];
     for (let i = 0; i < c.ticks; i++) {
       if (book.buy[i] === 0n && book.sell[i] === 0n) continue;
