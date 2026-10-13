@@ -346,21 +346,20 @@ export async function buildServer(d: ApiDeps) {
   // Sealed crosses show nothing until bids are revealed: commitments carry no price.
   const bookCache = new Map<string, unknown>();
   const recentBooks = new Map<string, { at: number; payload: unknown }>();
-  app.get('/v1/crosses/:address/book', async (req, reply) => {
-    const a = address((req.params as { address: string }).address, 'address');
+  const computeBook = async (a: Address): Promise<unknown> => {
     // Pages poll this every few seconds and several people watch one cross: share one answer for two seconds instead of
     // reading the cross and its book from the rate-limited public RPC for each of them.
     const recent = recentBooks.get(a);
-    if (recent && Date.now() - recent.at < 2_000) return send(reply, recent.payload);
+    if (recent && Date.now() - recent.at < 2_000) return recent.payload;
     const v = await crossView(a);
     const c = v.data;
     // A finalized cross never changes, so its book is read from chain once and served from memory afterwards.
     const frozen = c.state === CrossState.Finalized;
     const cachedBook = frozen ? bookCache.get(a) : undefined;
-    if (cachedBook) return send(reply, cachedBook);
+    if (cachedBook) return cachedBook;
     const book = await loadBook(d.account, a, c);
     // A cross whose order-book account was never created has no orders; say so instead of failing the page that asks.
-    if (typeof book === 'string') return send(reply, { disclosure: c.disclosure === Disclosure.Sealed ? 'sealed' : 'open', levels: [], indicative: null, note: `This cross has no order book on chain, so it holds no orders (${book}).` });
+    if (typeof book === 'string') return { disclosure: c.disclosure === Disclosure.Sealed ? 'sealed' : 'open', levels: [], indicative: null, note: `This cross has no order book on chain, so it holds no orders (${book}).` };
     const levels = [];
     for (let i = 0; i < c.ticks; i++) {
       if (book.buy[i] === 0n && book.sell[i] === 0n) continue;
@@ -389,7 +388,26 @@ export async function buildServer(d: ApiDeps) {
     }
     if (recentBooks.size >= 500) recentBooks.delete(recentBooks.keys().next().value as string);
     recentBooks.set(a, { at: Date.now(), payload });
-    return send(reply, payload);
+    return payload;
+  };
+  // When the public endpoint is rate-limiting and a fresh read has not answered within four seconds, the book read within the last
+  // minute is served instead of a 503; the read carries on and replaces it.
+  app.get('/v1/crosses/:address/book', async (req, reply) => {
+    const a = address((req.params as { address: string }).address, 'address');
+    const last = recentBooks.get(a);
+    const fresh = computeBook(a);
+    if (!last || Date.now() - last.at >= 60_000) return send(reply, await fresh);
+    fresh.catch(() => undefined);
+    return send(
+      reply,
+      await Promise.race([
+        fresh.catch((e) => {
+          if (isTransient(e)) return last.payload;
+          throw e;
+        }),
+        new Promise<unknown>((r) => setTimeout(() => r(last.payload), 4_000).unref()),
+      ]),
+    );
   });
 
   // ---- signed, graded promises (ADR-0015)
