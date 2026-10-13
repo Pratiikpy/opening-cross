@@ -1,8 +1,9 @@
 // Which price level each of the connected wallet's own orders sits at, for marking the book chart.
 //
-// The API serves an open order's side and escrow but never its price (the price lives in the merged book,
-// which is not attributed to an owner). So a mark can come from two places only, and a sealed bid that is still sealed never gets one:
-//   - the price the indexer recorded when a sealed bid was revealed (public once revealed),
+// The chain read of an open order gives its side and escrow but not its price (the price lives in the merged book, which is not
+// attributed to an owner). The indexer records an open order's limit from its commit and a sealed bid's once it is revealed, so a mark
+// can come from two places only, and a sealed bid that is still sealed never gets one:
+//   - the price the indexer recorded (an open order's commit, or a sealed bid's reveal: public from then on),
 //   - the price this browser saved when it placed an open order,
 //   - for a sealed bid that is still sealed: nothing. It is never drawn, so the chart cannot reveal it.
 // An order whose price is not known is counted, not guessed at.
@@ -21,6 +22,11 @@ export type OwnOrderInput = {
   quantity: string | null;
   status?: OwnerOrder['status'];
 };
+
+/** The limit terms the indexer holds, by order address (GET /v1/owners/:owner/orders). Null where it holds none: a sealed order that is not yet revealed, or one it has not seen yet. */
+export function indexedTerms(rows: readonly { address: string; price: string | null; quantity: string | null }[]): Map<string, { price: string | null; quantity: string | null }> {
+  return new Map(rows.map((r) => [r.address, { price: r.price, quantity: r.quantity }]));
+}
 
 export type Terms = { side: 'buy' | 'sell'; price: string; quantity: string };
 

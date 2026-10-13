@@ -22,7 +22,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => setState('idle'), 2000);
         }}
-        className="shrink-0 rounded-md border border-border px-2 py-0.5 text-xs text-muted transition-colors hover:border-border-strong hover:text-ink"
+        className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-border-strong hover:text-ink"
       >
         {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}
       </button>

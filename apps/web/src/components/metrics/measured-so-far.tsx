@@ -83,6 +83,10 @@ export async function MeasuredSoFar() {
         <Link href="/accuracy#execution" className="underline decoration-accent underline-offset-4 hover:text-ink">
           Full method, refunds, timing and per-cross fairness
         </Link>
+        {' · '}
+        <Link href="/export" className="underline decoration-accent underline-offset-4 hover:text-ink">
+          Download these figures (CSV, JSON)
+        </Link>
       </p>
     </>
   );

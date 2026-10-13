@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { StateBadge } from '@/components/state-badge';
 import type { CrossSummary } from '@/lib/api';
 import {
+  type CrossTraits,
   DISCLOSURE_LABEL,
   type Filters,
   NO_FILTERS,
@@ -29,7 +30,7 @@ const fmtClose = (ts: string) => `${new Date(Number(ts) * 1000).toLocaleString('
 
 const field = 'h-10 rounded-lg border border-border-strong bg-bg px-3 text-sm text-ink';
 
-export function CrossesBrowser({ crosses, initial, nowSec }: { crosses: CrossSummary[]; initial: Filters; nowSec: number }) {
+export function CrossesBrowser({ crosses, initial, nowSec, knownTraits }: { crosses: CrossSummary[]; initial: Filters; nowSec: number; /** Disclosure and supply mode already served with the list (GET /v1/crosses/summary); absent when the API cannot serve them, and then they are read per cross. */ knownTraits?: Readonly<Record<string, CrossTraits>> }) {
   const [f, setF] = useState<Filters>(initial);
   const [now, setNow] = useState(BigInt(nowSec));
   const ids = { q: useId(), disclosure: useId(), supply: useId(), sort: useId() };
@@ -56,7 +57,7 @@ export function CrossesBrowser({ crosses, initial, nowSec }: { crosses: CrossSum
 
   const detail = needsDetail(f);
   const addresses = useMemo(() => crosses.map((c) => c.address), [crosses]);
-  const { traits, version, pending, failed } = useTraits(addresses, detail);
+  const { traits, version, pending, failed } = useTraits(addresses, detail, knownTraits);
   // `traits` is a shared cache that fills in place, so the results are recomputed when its version moves.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const shown = useMemo(() => applyFilters(crosses, f, traits), [crosses, f, traits, version]);

@@ -1,6 +1,7 @@
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatDuration, formatPrice } from '@/lib/units';
 import type { OrderRecord } from './order-record';
+import { finalWindow } from './final-window';
 import type { Phase } from './timeline';
 
 function Stat({ label, children, sub, testId }: { label: string; children: React.ReactNode; sub?: string; testId?: string }) {
@@ -30,7 +31,14 @@ export function Hero({ cross, book, orders, phase, now, market: m }: { cross: Cr
   const nextTs = phase === 'upcoming' ? cross.window.openTs : phase === 'open' ? cross.window.closeTs : phase === 'reveal' ? cross.window.revealEndTs : null;
   const timeLabel = phase === 'upcoming' ? 'Opens in' : phase === 'open' ? 'Closes in' : phase === 'reveal' ? 'Reveal ends in' : 'Call status';
   const hasBook = book !== null && book.levels.length > 0;
+  const fin = phase === 'open' ? finalWindow(cross.window.openTs, cross.window.closeTs, now) : null;
   return (
+    <>
+    {fin?.active ? (
+      <p className="mb-4 rounded-[var(--radius-card)] border border-accent px-4 py-3 text-sm" data-testid="final-window">
+        <span className="font-medium">Final minutes.</span> {formatDuration(fin.remaining)} left to place or cancel an order. Orders and cancellations still change the indicative price until the countdown ends. This is a notice only: the program has no hidden or coarse final window, so every order is treated alike.
+      </p>
+    ) : null}
     <dl className="grid gap-4 sm:grid-cols-3" aria-label="Key numbers">
       <Stat
         label={phase === 'awaiting-settlement' ? 'Price once it settles' : 'Indicative price'}
@@ -56,6 +64,7 @@ export function Hero({ cross, book, orders, phase, now, market: m }: { cross: Cr
         {nextTs ? <span data-testid="countdown" className="font-mono text-[28px] sm:text-[34px]">{formatDuration(BigInt(nextTs) - now)}</span> : 'Closed'}
       </Stat>
     </dl>
+    </>
   );
 }
 

@@ -32,8 +32,10 @@ async function load(address: string): Promise<void> {
 
 export type TraitsState = { traits: ReadonlyMap<string, CrossTraits>; /** Changes whenever `traits` gains an entry, so memoised results can depend on it. */ version: number; pending: number; failed: number };
 
-/** Loads disclosure and supply mode for `addresses` while `enabled`, and reports progress as it goes. */
-export function useTraits(addresses: readonly string[], enabled: boolean): TraitsState {
+/** Loads disclosure and supply mode for `addresses` while `enabled`, and reports progress as it goes. Any already in `provided` are not read again. */
+export function useTraits(addresses: readonly string[], enabled: boolean, provided?: Readonly<Record<string, CrossTraits>>): TraitsState {
+  // Traits served with the list are kept as they come: idempotent, so safe during render, and the first paint already has them.
+  if (provided) for (const [a, t] of Object.entries(provided)) cache.set(a, t);
   const [version, bump] = useState(0);
   const key = addresses.join(',');
   useEffect(() => {
@@ -41,7 +43,7 @@ export function useTraits(addresses: readonly string[], enabled: boolean): Trait
     let cancelled = false;
     const queue = addresses.filter((a) => !cache.has(a));
     failed.clear();
-        const worker = async () => {
+    const worker = async () => {
       for (let a = queue.shift(); a !== undefined && !cancelled; a = queue.shift()) {
         await load(a);
         if (!cancelled) bump((n) => n + 1);

@@ -8,7 +8,7 @@ import type { CrossDetail, OwnerOrder } from '@/lib/types';
 import { type Market, formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 import { ActionButton } from './action-button';
 import type { Phase } from './cross-view';
-import { type OwnMarks, deriveMarks, loadTerms } from './own-orders';
+import { type OwnMarks, deriveMarks, indexedTerms, loadTerms } from './own-orders';
 
 /** One order as the chain sees it now (open) or as the indexer recorded it (closed). */
 type OrderView = {
@@ -36,11 +36,15 @@ async function loadOrders(cross: string, owner: string): Promise<OrderView[]> {
   const res = await fetch(`${API_URL}/v1/orders?addresses=${[...addresses].join(',')}`, { cache: 'no-store' }).catch(() => null);
   if (!res?.ok) return [];
   const { orders } = (await res.json()) as { orders: (Record<string, unknown> & { address: string; found: boolean })[] };
+  // The chain says an open order is open but not at what price (the price sits in the merged book, unattributed). The index records the
+  // limit of an open (unsealed) order from its commit, and of a sealed one once revealed, so those are used when it has them; for any other
+  // order they stay null and the page falls back to what this browser saved when it placed it.
+  const terms = indexedTerms(indexed.orders);
   const views = orders.map((o) =>
     !o.found
       ? null
       : o.open
-        ? ({ address: o.address, open: true, side: o.side, nonce: String(o.nonce), revealed: Boolean(o.revealed), escrow: String(o.escrow), price: null, quantity: null } as OrderView)
+        ? ({ address: o.address, open: true, side: o.side, nonce: String(o.nonce), revealed: Boolean(o.revealed), escrow: String(o.escrow), price: terms.get(o.address)?.price ?? null, quantity: terms.get(o.address)?.quantity ?? null } as OrderView)
         : ({ ...(o as unknown as OwnerOrder), address: o.address, open: false, nonce: null, revealed: o.status !== 'committed' } as OrderView),
   );
   return views.filter((v): v is OrderView => v !== null);
@@ -90,6 +94,11 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
           </button>
         ) : null}
       </div>
+      {orders !== null && orders.length > 0 && cross.state !== 'Live' ? (
+        <a className="mt-2 flex min-h-6 items-center text-xs text-accent-text underline" href={`/receipt/${cross.address}/${owner}`}>
+          Share a receipt of your orders here
+        </a>
+      ) : null}
       {orders === null ? (
         <p className="mt-3 text-sm text-muted">Loading…</p>
       ) : orders.length === 0 ? (

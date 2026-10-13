@@ -16,6 +16,7 @@ import type { OrderRecord } from './order-record';
 import { OrdersTab } from './orders-tab';
 import type { OwnMarks } from './own-orders';
 import { type Proof, ProofLink, ProofTab } from './proof-tab';
+import { ReplayTab } from './replay-tab';
 import { SettlePanel } from './settle-panel';
 import { SignedBand } from './signed-band';
 import { Tabs } from './tabs';
@@ -171,6 +172,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
               { id: 'book', label: 'Book', content: bookTab },
               { id: 'orders', label: 'Orders', content: <OrdersTab cross={cross} orders={orders} loaded={ordersLoaded} phase={phase} market={m} owner={account?.address ?? null} /> },
               { id: 'proof', label: 'Proof', content: <ProofTab cross={cross} proof={proof} loaded={proofLoaded} market={m} /> },
+              { id: 'replay', label: 'Replay', content: <ReplayTab cross={cross} version={version} market={m} /> },
             ]}
           />
         </div>

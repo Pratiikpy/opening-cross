@@ -39,8 +39,11 @@ export function ProofLink({ address, proof }: { address: string; proof: Proof | 
           {n}
         </p>
       ))}
-      <a className="mt-3 inline-block text-accent-text underline" href={`${API_URL}/v1/crosses/${address}/proof`}>
+      <a className="mt-3 inline-flex min-h-6 items-center text-accent-text underline" href={`${API_URL}/v1/crosses/${address}/proof`}>
         Download the fairness proof
+      </a>
+      <a className="mt-1 flex min-h-6 items-center text-accent-text underline" href={`/receipt/${address}`}>
+        Open the shareable receipt
       </a>
     </div>
   );

@@ -13,4 +13,9 @@ export const MORE_NAV = [
   { href: '/premium', label: 'Premium monitor' },
   { href: '/status', label: 'Status' },
   { href: '/calendar', label: 'Calendar' },
+  { href: '/live', label: 'Live' },
+  { href: '/replay', label: 'Replay' },
+  { href: '/gates', label: 'Gates' },
+  { href: '/treasury', label: 'Treasuries' },
+  { href: '/export', label: 'Export' },
 ];

@@ -6,6 +6,7 @@ import { ActionError, type Signer } from '@/lib/tx';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, buyerPays, formatAtoms, formatPrice, parseAtoms, parsePrice } from '@/lib/units';
 import { downloadBackup, loadBids, randomNonce, randomSalt, rememberOrder, saveBid } from '@/lib/sealed';
+import { Eligibility } from '@/components/gate/eligibility';
 import { RiskAck, useRiskAck } from '@/components/portfolio/risk-ack';
 import { ActionButton } from './action-button';
 import { rememberTerms } from './own-orders';
@@ -123,6 +124,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
           This wallet holds {formatAtoms(held, lockDecimals)} of the {side === 'buy' ? 'quote token' : 'token'} and the order locks up to {formatAtoms(escrow, lockDecimals)}. It needs {formatAtoms(missing, lockDecimals)} more.
         </p>
       ) : null}
+      {cross.gateMint ? <Eligibility cross={cross.address} gateMint={cross.gateMint} owner={owner} sign={sign} /> : null}
       <RiskAck {...risk} />
       <div className="mt-4">
         {(() => {

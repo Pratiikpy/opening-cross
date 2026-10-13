@@ -2,13 +2,25 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CrossesBrowser } from '@/components/crosses-list/crosses-browser';
 import { type CrossSummary, get } from '@/lib/api';
-import { parseFilters } from '@/lib/cross-list';
+import { type CrossTraits, parseFilters } from '@/lib/cross-list';
+import { type SummaryResponse, fromSummary, isSummaryResponse } from '@/lib/cross-summary';
 
 export const metadata: Metadata = { title: 'Crosses', description: 'Every Opening Cross the indexer has seen, filterable by state, bid disclosure and supply mode.' };
 
 export default async function Crosses({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const initial = parseFilters(await searchParams);
-  const res = await get<{ crosses: CrossSummary[] }>('/v1/crosses?limit=200', 10);
+  // The summary carries each cross's bid disclosure and supply mode, so the filters need no per-cross reads. An API that does not
+  // serve it yet (or serves a shape this page cannot trust) falls back to the plain list, whose traits are read lazily in the browser.
+  const summary = await get<SummaryResponse>('/v1/crosses/summary', 10);
+  let known: Record<string, CrossTraits> = {};
+  let res: Awaited<ReturnType<typeof get<{ crosses: CrossSummary[] }>>>;
+  if (summary.ok && isSummaryResponse(summary.data)) {
+    const mapped = fromSummary(summary.data.crosses);
+    known = mapped.traits;
+    res = { ok: true, data: { crosses: mapped.crosses } };
+  } else {
+    res = await get<{ crosses: CrossSummary[] }>('/v1/crosses?limit=200', 10);
+  }
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
       <h1 className="text-[34px] font-semibold tracking-tight sm:text-[44px]">Crosses</h1>
@@ -23,7 +35,7 @@ export default async function Crosses({ searchParams }: { searchParams: Promise<
       ) : res.data.crosses.length === 0 ? (
         <p className="mt-10 text-sm text-muted">No crosses yet.</p>
       ) : (
-        <CrossesBrowser crosses={res.data.crosses} initial={initial} nowSec={Math.floor(Date.now() / 1000)} />
+        <CrossesBrowser crosses={res.data.crosses} knownTraits={known} initial={initial} nowSec={Math.floor(Date.now() / 1000)} />
       )}
     </div>
   );

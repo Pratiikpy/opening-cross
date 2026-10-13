@@ -4,6 +4,8 @@ import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { ActionButton } from '@/components/cross/action-button';
+import { GateField } from '@/components/gate/gate-field';
+import { EMPTY_GATE, type GateFieldValue, type GateSummary } from '@/lib/gate-field';
 import { useSigner } from '@/components/cross/use-signer';
 import { API_URL } from '@/lib/api';
 import { type IssuerForm, checkIssuerForm } from '@/lib/issuer';
@@ -77,6 +79,8 @@ function Form({ account }: { account: UiWalletAccount }) {
     schedule: [{ price: '1.20', quantity: '' }],
   });
   const [mints, setMints] = useState<{ base?: MintInfo | string; quote?: MintInfo | string }>({});
+  const [gate, setGate] = useState<GateFieldValue>(EMPTY_GATE);
+  const [gateSummary, setGateSummary] = useState<GateSummary | null>(null);
   const [identity, setIdentity] = useState<{ base?: Identity | null; quote?: Identity | null }>({});
   const [created, setCreated] = useState<string | null>(null);
   // A create is several transactions; if the later ones fail, the cross exists on chain without all its shards and must be finished.
@@ -141,7 +145,8 @@ function Form({ account }: { account: UiWalletAccount }) {
     facts,
     nowMs,
   );
-  const canCreate = Boolean(checked?.ok) && allReady(checks);
+  const gateReady = !gateSummary || gateSummary.complete;
+  const canCreate = Boolean(checked?.ok) && allReady(checks) && gateReady;
   const cost = facts?.rent ? creationCost(facts.rent, f.shards, facts.quoteAccount?.exists ?? false) : null;
   const bond = checked?.ok ? dustBond(checked.body) : null;
   const choosePreset = (id: string) => {
@@ -261,6 +266,7 @@ function Form({ account }: { account: UiWalletAccount }) {
           clearing price. Your wallet must hold that authority now.
         </p>
       ) : null}
+      <GateField value={gate} onChange={setGate} onSummary={setGateSummary} />
       <Readiness checks={checks} reading={reading} canRead={mintsReady} onRefresh={() => void refresh()} />
       <p className="text-sm text-muted" data-testid="create-cost">
         {cost && facts?.rent ? (
@@ -278,7 +284,7 @@ function Form({ account }: { account: UiWalletAccount }) {
         label="Create the cross"
         path="/v1/tx/create-cross"
         disabled={!canCreate}
-        body={() => (checked?.ok ? checked.body : {})}
+        body={() => (checked?.ok ? { ...checked.body, ...(gateSummary?.gateMint ? { gateMint: gateSummary.gateMint } : {}) } : {})}
         sign={sign}
         onDone={(_s, extra) => setCreated(String(extra.cross))}
         onPartial={(extra, landed, total) => setUnfinished({ cross: String(extra.cross), landed, total })}
