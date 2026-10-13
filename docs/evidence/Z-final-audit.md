@@ -157,10 +157,12 @@ Found by looking at the deployed site and its API as a stranger, then fixed and 
 - Programs were not changed or rebuilt; the five deployed programs still equal the repository builds.
 - The second wave's claim center was not exercised with a real signed Claim all (API rate limits during the attempt); the issuer console at 390 px was not covered; the router quotes crosses only on devnet (Jupiter is mainnet-only); DP13 misses its 5 s target and DP15 fails for NVDA on a Pyth entitlement, both external and recorded in their evidence files.
 
-### Found while writing the OCIP specification, not fixed (read from the code, not run)
+### Found while writing the OCIP specification, then reproduced, fixed and deployed (2026-10-13)
 
-- `finalize` on an escrow-mode cross does not fail when `base_vault`, `base_mint` and `proceeds_base` are omitted: it finalizes and leaves the base dust in the vault.
-- `bind_base_mint` does not check `settle_deadline_ts`; after the deadline, whichever of bind and `abandon_settlement` lands first decides the outcome.
-- `AdminChanged` has the same discriminator in `cross_core` and `cross_calendar`, so an indexer must attribute events by program.
-Each needs a program change and a redeploy, so none was made before the submission deadline.
+Each was read from the code first, then reproduced on LiteSVM, fixed without changing any account layout or instruction encoding, tested, and deployed to devnet (upgrade, then `scripts/onchain-hash.sh` MATCH for both programs):
 
+- `finalize` on an escrow-mode cross finalized without `base_vault`, `base_mint` and `proceeds_base` and left base dust in the vault. It now fails with `BaseDustAccountsMissing` when the cross holds dust (ADR-0025, `tests/core/test/finalize-dust.test.ts`).
+- `bind_base_mint` ignored `settle_deadline_ts`: a bind at the deadline succeeded. It now requires the time to be before the deadline and fails with `SettlementDeadlinePassed` (ADR-0026, `tests/core/test/deferred.test.ts`).
+- `AdminChanged` had one discriminator in `cross_core` and `cross_calendar`. The calendar's event is now `CalendarAdminChanged` (ADR-0027, `tests/core/test/calendar.test.ts`).
+
+Deployed: `cross_core` sha256 `232c84f84208ebd0977296bb263a55f30b2359faf10c5c846e0229bc00da2564` (574,952 bytes in a 700,000-byte allocation) and `cross_calendar` sha256 `19ddbe850a760779082311b43a907e59ba4b40f8aa773244d8065b56f9737db4` (172,504 bytes, no spare). Built in `solanafoundation/solana-verifiable-build:4.0.2` from a tree whose `programs/`, `crates/`, `Cargo.toml`, `Cargo.lock` and `rust-toolchain.toml` are byte-identical to the committed ones (equal git tree ids). tests/core: 181 of 182 pass (the one failure is a live Jupiter 429); the devnet DAMM proof (`A2`) passes on the upgraded `cross_core`. Not run: the other devnet proofs against the new bytes, and `solana-verify` itself (it does not build here, so its docker steps were run by hand).

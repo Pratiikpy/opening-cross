@@ -50,6 +50,17 @@ Re-run 2026-10-12 against commit `1249986` (all five programs deployed on devnet
 
 The Docker run below predates the treasury's new program id (commit `ab80051`), so its treasury row is the hash of the old binary: **the treasury was not re-built in Docker at the current commit (NOT VERIFIED).** The other four rows are unaffected, since their sources did not change. So the tested binaries are the ones a stranger rebuilds from the commit, and devnet `cross_core` (section 3) is that same binary. Two things this does not show: a second machine reproducing the hash, and the repository's pinned host Rust 1.96.1 (the image builds with its own 1.93.1, and the SBF output was the same either way). Two defects found and fixed while getting here: `solana-verify build .` fails with a mangled manifest path, so the script passes the absolute mount path; and the container writes root-owned files, so the script removes its work directory from inside the container when a plain `rm` is refused.
 
+## 4b. Upgrade of cross_core and cross_calendar, 2026-10-13 (ADR-0025 to 0027)
+
+Rebuilt in the same docker image from a tree whose `programs/`, `crates/`, `Cargo.toml`, `Cargo.lock` and `rust-toolchain.toml` are identical (equal git tree ids) to commit `HEAD` at the time, then upgraded on devnet with `solana program deploy ... --upgrade-authority` and compared with `scripts/onchain-hash.sh`:
+
+| Program | Local sha256 | On chain (first N bytes) | Result |
+|---|---|---|---|
+| cross_core | `232c84f84208ebd0977296bb263a55f30b2359faf10c5c846e0229bc00da2564` | same, 574,952 of 700,000 bytes | MATCH |
+| cross_calendar | `19ddbe850a760779082311b43a907e59ba4b40f8aa773244d8065b56f9737db4` | same, 172,504 of 172,504 bytes | MATCH |
+
+`cross_gate`, `cross_settle` and `treasury` were not changed and keep the hashes in section 3. `solana-verify` is not installed (it does not build on Windows); its docker steps were run by hand and the executable hash method was checked against the recorded `cross_gate` hash.
+
 ## 5. Mainnet runbook, with caps
 
 **Decision needed first (H18 item 3): the programs have no on-chain deposit cap.** `cross_core` limits orders per cross (`max_orders`) and the guardian can pause new crosses and orders (never claims or refunds), but anyone can create a cross, and no program limits the value escrowed in one. So a "cap" at launch can only be operational, and the safe operational form is:
