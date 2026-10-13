@@ -14,7 +14,7 @@ export async function execute(ctx: Context, built: BuiltAction): Promise<Execute
   if (built.transactions.length === 0) throw new ActionError('Nothing to send: the builder returned no transactions.', 'API_REFUSED');
   if (ctx.dryRun) {
     const simulations = await dryRun(built.transactions, ctx.rpc);
-    return { mode: 'dry-run', simulations, ok: simulations.every((s) => s.simulation.err === null) };
+    return { mode: 'dry-run', simulations, ok: simulations.every((s) => s.simulation.err === null || s.inconclusive) };
   }
   const { sign } = await ctx.signer();
   const onStatus = progress(ctx);
@@ -25,7 +25,12 @@ export async function execute(ctx: Context, built: BuiltAction): Promise<Execute
 export function dryRunLines(r: Extract<Executed, { mode: 'dry-run' }>): string[] {
   const lines = [`Dry run: ${r.simulations.length} transaction${r.simulations.length === 1 ? '' : 's'} simulated against the cluster. Nothing was signed, sent or saved.`];
   for (const s of r.simulations) {
-    const status = s.simulation.err === null ? 'would succeed' : `would fail: ${s.simulation.explanation ?? JSON.stringify(s.simulation.err)}`;
+    const status =
+      s.simulation.err === null
+        ? 'would succeed'
+        : s.inconclusive
+          ? `cannot be checked yet: it needs an account the earlier transaction creates (${s.simulation.explanation ?? JSON.stringify(s.simulation.err)})`
+          : `would fail: ${s.simulation.explanation ?? JSON.stringify(s.simulation.err)}`;
     lines.push(`  transaction ${s.index + 1}: ${status}${s.simulation.unitsConsumed !== null ? ` (${s.simulation.unitsConsumed} compute units)` : ''}`);
     if (s.note) lines.push(`    ${s.note}`);
   }

@@ -112,9 +112,18 @@ const VOLATILE = /^(state|orders\.|clearing|noPrintReason)/;
 
 export type CrossComparison = { matches: boolean; differences: { path: string; api: unknown; chain: unknown; volatile: boolean }[] };
 
+/**
+ * Fields the API adds on top of the cross account: figures computed from the index (`fairness`) or from the base mint's
+ * account (`safety`). The cross account does not hold them, so a chain read can never supply them and they are not compared.
+ */
+const API_ONLY = new Set(['fairness', 'safety']);
+
 /** Compares the API's presentation of a cross with the one read from chain, field by field. */
 export function compareCross(api: CrossDetail, chain: CrossDetail): CrossComparison {
   const differences: CrossComparison['differences'] = [];
+  const keep = (o: object) => Object.fromEntries(Object.entries(o).filter(([k]) => !API_ONLY.has(k)));
+  api = keep(api) as CrossDetail;
+  chain = keep(chain) as CrossDetail;
   const walk = (a: unknown, b: unknown, path: string) => {
     if (a !== null && b !== null && typeof a === 'object' && typeof b === 'object') {
       for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) walk((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], path ? `${path}.${k}` : k);

@@ -104,6 +104,35 @@ export const TOOLS: readonly ToolDef[] = [
     untrusted: VERDICT_TEXT.map((p) => `/verdict${p}`),
   },
   {
+    name: 'oc_check_token_safety',
+    title: 'What can the issuer do to this token?',
+    description:
+      'Reads a token mint on chain and reports the powers its issuer holds over escrowed balances (pause, freeze, permanent delegate, transfer hook, transfer fee, mint authority) with a verdict: blocked (no cross can be created on it), halted (no cross can print while it holds), disclosures (issuer powers, the cross proceeds) or clear. Works on any cluster the API follows.',
+    kind: 'read',
+    inputSchema: obj({ mint: ADDRESS }, ['mint']),
+    request: (a) => ({ method: 'GET', path: `/v1/tokens/${enc(str(a.mint))}/safety` }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_quote_route',
+    title: 'Where would this order get the best price?',
+    description:
+      'Ranks the venues that can fill one order right now: the live crosses of the pair (indicative price on the current book, net of fees) and a Jupiter route (mainnet only). Every venue left out comes with its reason; Meteora pools are not priced here. A quote only: nothing is signed or sent. `amount` is in base-token atoms; prices are quote atoms per one whole base token.',
+    kind: 'read',
+    inputSchema: obj({ base: ADDRESS, quote: ADDRESS, side: { type: 'string', enum: ['buy', 'sell'] }, amount: U64 }, ['base', 'quote', 'side', 'amount']),
+    request: (a) => ({ method: 'GET', path: `/v1/router/quote?base=${enc(str(a.base))}&quote=${enc(str(a.quote))}&side=${enc(str(a.side))}&amount=${enc(str(a.amount))}` }),
+    untrusted: ['/venues/*/route/*', '/excluded/*/reason'],
+  },
+  {
+    name: 'oc_get_replay',
+    title: 'Replay of a cross',
+    description: 'Every on-chain event of one cross in order (created, orders placed, reveals, cancels, cleared, claims, finalized) with slot, time and transaction signature, from the indexed log. With no `cross`, lists the crosses that opened in the last `days` days (default 30) with their outcome and timings.',
+    kind: 'read',
+    inputSchema: obj({ cross: ADDRESS, days: { type: 'integer', minimum: 1, maximum: 365 } }, []),
+    request: (a) => ({ method: 'GET', path: a.cross ? `/v1/replay/${enc(str(a.cross))}` : `/v1/replay?days=${a.days ?? 30}` }),
+    untrusted: [],
+  },
+  {
     name: 'oc_check_cross_tokens',
     title: 'Are a cross\'s tokens real?',
     description: 'The identity check for both tokens of a cross (the token being sold and the quote token).',

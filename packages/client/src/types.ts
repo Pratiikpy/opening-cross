@@ -46,6 +46,10 @@ export type CrossDetail = {
   gateMint: string | null;
   oracleGuard: boolean;
   settlement: { settleDeadlineTs: string; baseBound: boolean };
+  /** Added by the API, not held by the cross account: fairness figures once the cross printed and finalized (else null). */
+  fairness?: unknown;
+  /** Added by the API: the base mint's safety verdict (`GET /v1/tokens/:mint/safety`), null while the base mint is not bound or unreadable. */
+  safety?: unknown;
 };
 
 export type BookLevel = { price: string; buy: string; sell: string; buyOrders: number; sellOrders: number };

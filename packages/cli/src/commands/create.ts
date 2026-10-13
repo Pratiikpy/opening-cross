@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { ActionError } from '@opening-cross/client';
 import { type CommandDef, noExtra } from '../command.js';
 import { type CreateFile, toCreateRequest, validateCreateFile } from '../create-file.js';
 import { EXIT, UsageError } from '../exit.js';
@@ -38,7 +39,17 @@ const create: CommandDef = {
     const request = await toCreateRequest(doc as CreateFile, { creator, rpc: ctx.rpc, now });
     const built = await ctx.builder().createCross(request);
     const cross = String(built.extra.cross);
-    const r = await execute(ctx, built);
+    let r: Awaited<ReturnType<typeof execute>>;
+    try {
+      r = await execute(ctx, built);
+    } catch (e) {
+      // The create transaction is first. Once it has landed the cross exists, and what is missing is only some of its shards:
+      // say which cross it is and how to finish it, since the address was never printed.
+      if (e instanceof ActionError && e.completed > 0) {
+        e.message = `${e.message} The cross ${cross} exists but is not complete; finish it with: opening-cross init-shards ${cross} (same --keypair, --cluster and --rpc).`;
+      }
+      throw e;
+    }
     const summary = { cross, crossId: request.crossId.toString(), creator, shards: request.shards };
     if (r.mode === 'dry-run') {
       emit(ctx, { ...summary, dryRun: true, simulations: r.simulations }, [`Cross ${cross} would be created with ${request.shards} shards.`, ...dryRunLines(r)]);

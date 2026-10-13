@@ -46,9 +46,9 @@ export function compile(feePayer: Address, ixs: Instruction[], lifetime: Lifetim
   return { transaction: getBase64EncodedWireTransaction(tx), signers: Object.keys(tx.signatures) as Address[] };
 }
 
-/** Thrown for a request that cannot produce a valid transaction; becomes HTTP 400/409. */
+/** Thrown for a request that cannot produce a valid transaction; becomes HTTP 400/404/409/422. `detail` is merged into the JSON body (typed reasons). */
 export class RequestError extends Error {
-  constructor(readonly status: 400 | 404 | 409, message: string) {
+  constructor(readonly status: 400 | 404 | 409 | 422, message: string, readonly detail?: Record<string, unknown>) {
     super(message);
   }
 }

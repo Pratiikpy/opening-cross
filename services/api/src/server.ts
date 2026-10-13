@@ -11,7 +11,7 @@ import type pg from 'pg';
 import { type Address, isAddress } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
 import { referenceClear, verifyCross } from '@opening-cross/verifier';
-import { loadBook } from '@opening-cross/router';
+import { type DexQuote, type Intent, bestExecution, loadBook, quoteCross, quoteJupiter } from '@opening-cross/router';
 import { anchorFor, getInputs, getPromise, latestForCross, records, samples } from '@opening-cross/promiser';
 import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promises';
 import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
@@ -19,6 +19,9 @@ import { groupObservations } from '@opening-cross/premium';
 import { coverage as premiumCoverage, latestPerTicker, observationsSince } from '@opening-cross/premium-service';
 import { createFactsLoader, executionQuality, externalFlow, fairness as fairnessReport, crossFairness } from './metrics.js';
 import { type RateLimit, createLimiter } from './rate-limit.js';
+import { createSafety, gate } from './safety.js';
+import { rankVenues } from './venues.js';
+import { recentReplays, replayRow } from './replay.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -47,6 +50,12 @@ export type ApiDeps = {
   trustProxy?: boolean;
   /** A dedicated connection for LISTEN; the API owns it once passed. */
   listen?: () => Promise<pg.Client>;
+  /** Live DEX quote for /v1/router/quote; defaults to the router package's Jupiter adapter. Tests inject one. */
+  dexQuote?: (p: { baseMint: Address; quoteMint: Address; intent: Intent }) => Promise<DexQuote>;
+  /** Unix seconds; defaults to the wall clock. Tests inject one. */
+  clock?: () => number;
+  /** Cache lifetime for mint safety verdicts in ms (default 30 000) and read attempts before a 429 is surfaced (default 4). */
+  safety?: { ttlMs?: number; attempts?: number; sleep?: (ms: number) => Promise<void> };
 };
 
 const json = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? x.toString() : x instanceof Uint8Array ? Buffer.from(x).toString('hex') : x));
@@ -104,7 +113,7 @@ export async function buildServer(d: ApiDeps) {
   await app.register(fastifyWebsocket);
 
   app.setErrorHandler((err, req, reply) => {
-    if (err instanceof RequestError) return send(reply, { error: err.message }, err.status);
+    if (err instanceof RequestError) return send(reply, { error: err.message, ...err.detail }, err.status);
     const e = err as { statusCode?: number; message?: string };
     if (e.statusCode && e.statusCode < 500) return send(reply, { error: e.message ?? 'bad request' }, e.statusCode);
     // The caller only sees a generic message; the operator needs the cause (an RPC that kept answering 429, a database error).
@@ -124,6 +133,10 @@ export async function buildServer(d: ApiDeps) {
     const acct = await d.account(a);
     return acct && acct.owner === CROSS_CORE_PROGRAM_ADDRESS ? acct.data : null;
   };
+
+  // Mint safety (packages/token-safety): cached, retried on 429, shared by the token route, the cross route,
+  // create-cross and the router.
+  const safety = createSafety({ account: d.account, ...(d.clock && { now: () => d.clock!() * 1000 }), ...d.safety });
 
   async function crossView(a: Address) {
     const acct = await d.account(a);
@@ -265,7 +278,17 @@ export async function buildServer(d: ApiDeps) {
         console.error(JSON.stringify({ at: new Date().toISOString(), route: '/v1/crosses/:address', fairness: 'unavailable', error: String(e) }));
       }
     }
-    return send(reply, { ...present(a, v.data), fairness });
+    // Additive: the base mint's current safety verdict (issuer powers, pause state). Null for a cross whose base mint is not
+    // bound yet, and null if the mint cannot be read; the cross itself never fails on it.
+    let mintSafety: Awaited<ReturnType<typeof safety.get>> | null = null;
+    if (v.data.baseBound) {
+      try {
+        mintSafety = await safety.get(v.data.baseMint);
+      } catch (e) {
+        console.error(JSON.stringify({ at: new Date().toISOString(), route: '/v1/crosses/:address', safety: 'unavailable', error: String(e) }));
+      }
+    }
+    return send(reply, { ...present(a, v.data), fairness, safety: mintSafety });
   });
 
   app.get('/v1/crosses/:address/orders', async (req, reply) => {
@@ -339,6 +362,16 @@ export async function buildServer(d: ApiDeps) {
   };
   const registryInfo = { network: 'mainnet-beta', snapshotHash: authenticityBook.data.snapshotHash, generatedAt: authenticityBook.data.generatedAt, sources: authenticityBook.data.sources.map((s) => ({ id: s.id, url: s.url, fetchedAt: s.fetchedAt, count: s.count })) };
   const NOT_COMPARABLE = `The authenticity registry lists mainnet mints; this API follows ${cluster}, where the same issuers have no listed mints, so no verdict is given.`;
+
+  // GET /v1/tokens/:mint/safety
+  //   What the issuer of this mint can do to escrowed balances, read from the mint account on chain (packages/token-safety):
+  //   pause state, pause / permanent-delegate / freeze / mint / close authorities, transfer hook, transfer fee, default account
+  //   state, non-transferable, display multiplier (and a scheduled change), interest, confidential transfers, unknown extensions.
+  //   verdict: blocked (a cross cannot be created), halted (no cross can print while it holds), disclosures (issuer powers, cross
+  //   proceeds), clear. Verdicts are cached 30 s and the read is retried when the RPC answers 429.
+  //   200 { mint, tokenProgram, decimals, supply, uiMultiplier, verdict, crossable, summary, risks: [{ code, severity, level, message, holder? }], asOf, checkedAt, clock }
+  //   404 the mint does not exist; 422 the account is not a token mint; 503 the RPC stayed busy
+  app.get('/v1/tokens/:mint/safety', async (req, reply) => send(reply, await safety.get(address((req.params as { mint: string }).mint, 'mint'))));
 
   app.get('/v1/tokens/:mint/authenticity', async (req, reply) => {
     const mint = address((req.params as { mint: string }).mint, 'mint');
@@ -454,6 +487,122 @@ export async function buildServer(d: ApiDeps) {
     return send(reply, { orders: rows.map((r) => ({ ...r, side: r.side === 0 ? 'buy' : 'sell' })) });
   });
 
+  // GET /v1/router/quote?base=<mint>&quote=<mint>&side=buy|sell&amount=<base atoms>
+  //   Where would this order get the best price right now? Compares the venues the router package really prices:
+  //     * every live cross of the pair (open books: the clearing rule re-run on the live book with this order added, net of
+  //       the cross's fees; sealed books: no indicative price, so excluded with that reason);
+  //     * Jupiter, a live route for the same size (mainnet only: on any other network it is excluded with that reason).
+  //   Meteora pools are NOT priced by the router; they are listed under `excluded` with that statement (Jupiter's route names
+  //   any Meteora pool it uses). Nothing is signed or sent. Prices are quote atoms per one whole base token, so venues compare.
+  //   Ranked: venues filling the whole amount first, then by better price for the side; partial fills after, by size.
+  //   200 { schema, network, at, intent, base: { decimals }, priceUnit, venues: [{ rank, venue, quoteAtoms, baseAtoms, pricePerBase, fill, ... }],
+  //         excluded: [{ venue, cross?, reason }], best, caveats }
+  //   400 bad query; 404 base or quote mint absent on chain; 422 not a token mint; 503 RPC busy
+  app.get('/v1/router/quote', async (req, reply) => {
+    const q = req.query as Record<string, string | undefined>;
+    const baseMint = address(q.base, 'base');
+    const quoteMint = address(q.quote, 'quote');
+    if (baseMint === quoteMint) throw new RequestError(400, 'base and quote must be different mints');
+    const sideName = q.side;
+    if (sideName !== 'buy' && sideName !== 'sell') throw new RequestError(400, 'side must be "buy" or "sell"');
+    const amount = u64(q.amount, 'amount');
+    if (amount === 0n) throw new RequestError(400, 'amount must be at least 1 base atom');
+    const intent: Intent = { side: sideName, quantity: amount };
+    const baseDecimals = (await safety.get(baseMint)).decimals;
+    await safety.get(quoteMint);
+    const nowSeconds = d.clock ? d.clock() : Math.floor(Date.now() / 1000);
+    const { rows } = await d.db.query(
+      `SELECT address FROM crosses WHERE state = 'Live' AND base_mint = $1 AND quote_mint = $2 AND close_ts > $3 ORDER BY close_ts LIMIT 5`,
+      [baseMint, quoteMint, nowSeconds],
+    );
+    const crosses = [];
+    for (const r of rows) crosses.push(await quoteCross(d.account, r.address as Address, intent, BigInt(nowSeconds)));
+    const jupiter = d.dexQuote ?? ((p: { baseMint: Address; quoteMint: Address; intent: Intent }) => quoteJupiter({ ...p, fetchImpl: (u, i) => fetch(u, { ...i, signal: AbortSignal.timeout(8000) }) }));
+    const dex =
+      cluster !== 'mainnet-beta' && !d.dexQuote
+        ? { skipped: `Jupiter routes mainnet liquidity only; this API follows ${cluster}, so no DEX route exists for these mints.` }
+        : await jupiter({ baseMint, quoteMint, intent }).catch((e: unknown): DexQuote => ({ venue: 'jupiter', available: false, reason: `Jupiter could not be reached: ${String(e)}` }));
+    const ranking = rankVenues({ side: sideName, amount, baseDecimals, crosses, dex });
+    return send(reply, {
+      schema: 'opening-cross/router-quote/v1',
+      network: cluster,
+      at: new Date(nowSeconds * 1000).toISOString(),
+      intent: { base: baseMint, quote: quoteMint, side: sideName, amount },
+      base: { decimals: baseDecimals },
+      priceUnit: 'quote atoms per one whole base token',
+      ...ranking,
+    });
+  });
+
+  // POST /v1/route/quote  { cross, side: "buy"|"sell", quantity: <base atoms>, limitPrice?: <cross price units> }
+  //   Best execution for one order on one cross (what @opening-cross/client `routeQuote`, the CLI `quote` command and the React
+  //   `useBestExecution` hook call): the router package's `opening-cross/best-execution/v1` report comparing joining this cross with
+  //   a live Jupiter route for the same size, prices in the cross's units, the difference in basis points, a recommendation and
+  //   every caveat. Jupiter prices mainnet liquidity only: on another network the report says the DEX route is unavailable.
+  //   200 the report   400 bad body   404 no such cross   409 the cross is not accepting orders
+  app.post('/v1/route/quote', async (req, reply) => {
+    const b = body(req.body);
+    const cross = await crossView(address(b.cross, 'cross'));
+    if (cross.data.state !== CrossState.Live) throw new RequestError(409, 'cross is not accepting orders');
+    const quantity = u64(b.quantity, 'quantity');
+    if (quantity === 0n) throw new RequestError(400, 'quantity must be at least 1 base atom');
+    const limitPrice = opt(b.limitPrice, (x) => u64(x, 'limitPrice'));
+    const intent: Intent = { side: side(b.side) === OrderSide.Buy ? 'buy' : 'sell', quantity, ...(limitPrice !== null && { limitPrice }) };
+    const nowSeconds = d.clock ? d.clock() : Math.floor(Date.now() / 1000);
+    const crossQuote = await quoteCross(d.account, cross.address, intent, BigInt(nowSeconds));
+    const dexQuote: DexQuote =
+      cluster !== 'mainnet-beta' && !d.dexQuote
+        ? { venue: 'jupiter', available: false, reason: `Jupiter routes mainnet liquidity only; this API follows ${cluster}` }
+        : await (d.dexQuote ?? ((p) => quoteJupiter({ ...p, fetchImpl: (u, i) => fetch(u, { ...i, signal: AbortSignal.timeout(8000) }) })))({ baseMint: cross.data.baseMint, quoteMint: cross.data.quoteMint, intent }).catch((e: unknown): DexQuote => ({ venue: 'jupiter', available: false, reason: `Jupiter could not be reached: ${String(e)}` }));
+    return send(reply, bestExecution(intent, crossQuote, dexQuote, cross.data.priceScale, new Date(nowSeconds * 1000)));
+  });
+
+  // GET /v1/replay/:address
+  //   Launch replay: every on-chain event of one cross in order (created, orders placed, reveals, cancels, cleared, claims,
+  //   finalized) with slot, block time and transaction signature, from the indexed event log. An open order's limit price and
+  //   quantity are included; a sealed order shows no price until its reveal event. `complete` is true once the cross is finalized.
+  //   200 { cross, complete, state, summary, events: [{ n, kind, event, slot, time, signature, details }] }   404 not indexed
+  app.get('/v1/replay/:address', async (req, reply) => {
+    const a = address((req.params as { address: string }).address, 'address');
+    const r = await replayRow(d.db, a);
+    if (!r) throw new RequestError(404, `cross ${a} is not in the index`);
+    const kinds = new Set(r.events.map((e) => e.kind));
+    return send(reply, {
+      cross: a,
+      complete: r.cross.state === 'Finalized',
+      state: r.cross.state,
+      source: 'indexer event log (cross_core logs)',
+      summary: {
+        events: r.events.length,
+        ordersPlaced: r.events.filter((e) => e.kind === 'order_placed').length,
+        revealed: r.events.filter((e) => e.kind === 'order_revealed').length,
+        cancelled: r.events.filter((e) => e.kind === 'order_cancelled').length,
+        claimed: r.events.filter((e) => e.kind === 'order_claimed').length,
+        cleared: kinds.has('cleared'),
+        finalized: kinds.has('finalized'),
+        clearingPrice: r.cross.clearing_price,
+        matched: r.cross.matched,
+        firstEventAt: r.events[0]?.time ?? null,
+        lastEventAt: r.events.at(-1)?.time ?? null,
+      },
+      events: r.events,
+    });
+  });
+
+  // GET /v1/replay?days=30&limit=50
+  //   Crosses whose call opened in the last `days` days (1-365, default 30), newest first, each with its outcome, order and
+  //   wallet counts and the times of its first order, clearing and finalization, from the index.
+  //   200 { network, days, count, crosses: [...] }
+  app.get('/v1/replay', async (req, reply) => {
+    const q = req.query as Record<string, string | undefined>;
+    const days = q.days === undefined ? 30 : Number(q.days);
+    if (!Number.isInteger(days) || days < 1 || days > 365) throw new RequestError(400, 'days must be a whole number from 1 to 365');
+    const limit = q.limit === undefined ? 50 : Number(q.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new RequestError(400, 'limit must be an integer in [1, 200]');
+    const crosses = await recentReplays(d.db, days, limit, d.clock ? d.clock() : Math.floor(Date.now() / 1000));
+    return send(reply, { network: cluster, days, count: crosses.length, crosses });
+  });
+
   // ---------------------------------------------------------------- unsigned transactions
   app.post('/v1/tx/place-order', async (req, reply) => {
     const b = body(req.body);
@@ -521,7 +670,7 @@ export async function buildServer(d: ApiDeps) {
       return { feedId: hex32(r.feedId, 'oracle.feedId'), maxDivergenceBps: int(r.maxDivergenceBps, 'oracle.maxDivergenceBps', 10_000), maxStalenessSecs: int(r.maxStalenessSecs, 'oracle.maxStalenessSecs', 86_400) };
     });
     const baseMint = opt(b.baseMint, (x) => address(x, 'baseMint'));
-    const out = await createCrossTxs(
+    const params = (
       {
         creator: address(b.creator, 'creator'),
         ...(baseMint && { baseMint }),
@@ -553,10 +702,31 @@ export async function buildServer(d: ApiDeps) {
         calendar: opt(b.calendar, (x) => address(x, 'calendar')),
         settler: opt(b.settler, (x) => address(x, 'settler')),
         settleDeadlineTs: u64(b.settleDeadlineTs ?? '0', 'settleDeadlineTs'),
-      } as Parameters<typeof createCrossTxs>[0],
-      await d.lifetime(),
+      } as Parameters<typeof createCrossTxs>[0]
     );
-    return send(reply, out);
+    // Issuer-power gate (packages/token-safety policy). Every field above is already validated, so this only reads chain.
+    // A mint with a blocking property (active transfer hook, transfer fee, non-transferable, unknown extension) is refused with a
+    // typed reason before any transaction is built; halts and disclosures come back as warnings with the transactions.
+    const warnings: Awaited<ReturnType<typeof safety.get>>['risks'] = [];
+    for (const [role, mint] of [['base', params.baseMint], ['quote', params.quoteMint]] as const) {
+      if (!mint) continue; // a deferred-mint cross has no base mint yet
+      let v;
+      try {
+        v = await safety.get(mint);
+      } catch (e) {
+        if (e instanceof RequestError && (e.status === 404 || e.status === 422)) {
+          throw new RequestError(422, `${role} mint ${mint}: ${e.message}`, { reason: e.status === 404 ? 'MINT_NOT_FOUND' : 'NOT_A_TOKEN_MINT', role, mint });
+        }
+        throw e;
+      }
+      const { blockers, warnings: soft } = gate(v);
+      if (blockers.length > 0) {
+        throw new RequestError(422, `${role} mint ${mint} cannot be used in a cross: ${blockers.map((r) => r.message).join(' ')}`, { reason: 'MINT_NOT_CROSSABLE', code: blockers[0]!.code, role, mint, blockers });
+      }
+      warnings.push(...soft.map((r) => ({ ...r, message: `${role} mint: ${r.message}` })));
+    }
+    const out = await createCrossTxs(params, await d.lifetime());
+    return send(reply, { ...out, warnings });
   });
 
   // ---------------------------------------------------------------- stream

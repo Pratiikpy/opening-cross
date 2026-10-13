@@ -101,7 +101,26 @@ export async function signSendConfirm(txs: readonly UnsignedTransaction[], o: Pi
   return sigs;
 }
 
-export type DryRunResult = { index: number; simulation: Simulation; note: string | null };
+export type DryRunResult = {
+  index: number;
+  simulation: Simulation;
+  note: string | null;
+  /**
+   * True when a later transaction failed only because an account the earlier transactions create does not exist yet (for
+   * example the shards of a new cross). The simulation cannot chain, so this says nothing about whether it would succeed.
+   */
+  inconclusive: boolean;
+};
+
+const ANCHOR_ACCOUNT_NOT_INITIALIZED = 3012;
+
+/** A failure that means "an account is missing" rather than "this transaction is wrong". */
+function needsEarlierStep(err: unknown): boolean {
+  if (err === 'AccountNotFound') return true;
+  const ie = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError;
+  const code = (ie?.[1] as { Custom?: number } | undefined)?.Custom;
+  return code === ANCHOR_ACCOUNT_NOT_INITIALIZED;
+}
 
 /**
  * Simulates the transactions against the cluster's current state without signing or sending anything. A transaction after
@@ -111,10 +130,12 @@ export type DryRunResult = { index: number; simulation: Simulation; note: string
 export async function dryRun(txs: readonly UnsignedTransaction[], rpc: RpcClient): Promise<DryRunResult[]> {
   const out: DryRunResult[] = [];
   for (const [index, t] of txs.entries()) {
+    const simulation = await rpc.simulate(b64ToBytes(t.transaction));
     out.push({
       index,
-      simulation: await rpc.simulate(b64ToBytes(t.transaction)),
+      simulation,
       note: index === 0 ? null : 'Simulated against the current state, without the earlier transactions of this action.',
+      inconclusive: index > 0 && simulation.err !== null && needsEarlierStep(simulation.err),
     });
   }
   return out;

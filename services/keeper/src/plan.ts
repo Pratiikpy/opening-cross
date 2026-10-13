@@ -12,7 +12,8 @@ export type Action =
   | { kind: 'claim'; cross: Address; order: OpenOrder } // pays the fill or refunds; funds go to the owner
   | { kind: 'finalize'; cross: Address };
 
-export type Skip = { cross: Address; reason: string };
+/** `code` is a stable machine-readable cause when the keeper knows one (for example a token-safety risk code such as MINT_PAUSED). */
+export type Skip = { cross: Address; reason: string; code?: string };
 
 export function plan(address: Address, c: Cross, openOrders: OpenOrder[], now: bigint): { actions: Action[]; skipped: Skip[] } {
   const actions: Action[] = [];

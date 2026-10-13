@@ -25,7 +25,27 @@ export type KeeperDeps = {
   oraclePrice?: (cross: Address) => Promise<Address | null>;
   /** Scopes the keeper to some crosses (for example one issuer's). Omitted, it serves every cross it discovers. */
   accept?: (cross: Cross) => boolean;
+  /**
+   * Whether a mint is, right now, in a state that stops transfers or settlement (paused, an active transfer hook, a
+   * pending multiplier change inside the halt window). Null when it is fine. Omitted, the keeper does not look.
+   * See `mintHaltCheck` in halt.ts for the token-safety implementation.
+   */
+  mintHalt?: (mint: Address) => Promise<MintHalt | null>;
+  /**
+   * What the keeper has already found impossible, kept by the caller across passes so a halted cross is not
+   * re-sent every pass. Omitted, nothing is remembered and a halted mint is re-attempted each pass.
+   */
+  memory?: Map<string, Deferred>;
 };
+
+export type MintHalt = { code: string; message: string };
+/** A step that cannot succeed until `sig` changes (the set of halts in force), or, for a frozen account, until a delay passes. */
+export type Deferred = { sig: string; at: bigint };
+
+/** Seconds before a step refused for a frozen token account is tried again; the issuer can thaw it at any time. */
+const FROZEN_RETRY_SECONDS = 600n;
+const FROZEN = 'ACCOUNT_FROZEN';
+type Halt = MintHalt & { role: 'base' | 'quote'; mint: Address };
 
 export type PassResult = { done: { action: Action; signature: string }[]; failed: { action: Action; error: string }[]; skipped: Skip[] };
 
@@ -62,8 +82,39 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
     if (order.cross === address) open.push({ address: o, owner: order.owner, nonce: order.nonce });
   }
   const p = plan(address, cross, open, now);
+  const halts: Halt[] = [];
+  if (d.mintHalt) {
+    for (const [role, mint] of [['base', cross.baseBound ? cross.baseMint : null], ['quote', cross.quoteMint]] as const) {
+      // A mint that cannot be read (closed, RPC down) must not stop the pass for every other cross: act as the keeper did
+      // before the check existed. The on-chain program still refuses whatever cannot move.
+      const h = mint ? await d.mintHalt(mint).catch(() => null) : null;
+      if (mint && h) halts.push({ ...h, role, mint });
+    }
+  }
+  const sig = halts.map((h) => `${h.code}:${h.mint}`).join(',');
+  const memory = d.memory;
+  const mark = `${address}|`;
+  if (memory && halts.length === 0) {
+    // Whatever was holding this cross back is gone; forget it so the steps are tried again (a frozen-account entry keeps its own delay).
+    for (const [k, v] of memory) if (k.startsWith(mark) && v.sig !== FROZEN) memory.delete(k);
+  }
+  const why = (h: Halt) => `the ${h.role} mint ${h.mint} cannot move right now: ${h.message}`;
   let progressed = false;
+  let held = 0;
+  let frozen = 0;
   for (const action of p.actions) {
+    // A halted mint stops a print outright: a price nobody can be paid at is not worth fixing on chain.
+    if (action.kind === 'settle' && halts.length > 0) {
+      p.skipped.push({ cross: address, code: halts[0]!.code, reason: `settlement is withheld while ${why(halts[0]!)}` });
+      continue;
+    }
+    const key = `${mark}${action.kind}|${action.kind === 'claim' ? action.order.address : ''}`;
+    const known = memory?.get(key);
+    if (known && ((known.sig === FROZEN && now - known.at < FROZEN_RETRY_SECONDS) || (known.sig !== FROZEN && halts.length > 0 && known.sig === sig))) {
+      if (known.sig === FROZEN) frozen++;
+      else held++;
+      continue;
+    }
     try {
       // Re-read before each step: a previous step changes the cross.
       const fresh = await d.fetch(address);
@@ -72,6 +123,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       let last = '';
       for (const ixs of await instructionsFor(action, view, d)) last = await d.send(ixs);
       result.done.push({ action, signature: last });
+      memory?.delete(key);
       progressed = true;
     } catch (e) {
       const error = describe(e);
@@ -80,9 +132,21 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       if (error.includes('AccountDidNotDeserialize')) p.skipped.push({ cross: address, reason: `the program cannot read this account (${error})` });
       // A cross created without its order-book shards can never be settled either; report it once instead of failing every pass.
       else if (error.includes('AccountNotInitialized')) p.skipped.push({ cross: address, reason: `an account this cross needs was never created, so it cannot be settled (${error})` });
-      else result.failed.push({ action, error });
+      // The step was refused while a mint is halted on chain: that is the cause, not a fault to retry every pass. Remember it
+      // and try again only when the set of halts changes.
+      else if (halts.length > 0) {
+        memory?.set(key, { sig, at: now });
+        held++;
+      }
+      // A token account holding or receiving this cross's tokens is frozen by the issuer; only the issuer can fix it.
+      else if (/Account is frozen|custom program error: 0x11\b/.test(error)) {
+        memory?.set(key, { sig: FROZEN, at: now });
+        frozen++;
+      } else result.failed.push({ action, error });
     }
   }
+  if (held > 0) p.skipped.push({ cross: address, code: halts[0]?.code ?? 'MINT_HALTED', reason: `${held} step(s) held back, not retried until the halt changes: ${halts.map(why).join('; ')}` });
+  if (frozen > 0) p.skipped.push({ cross: address, code: FROZEN, reason: `${frozen} step(s) refused because a token account is frozen by the issuer; retried after ${FROZEN_RETRY_SECONDS / 60n} minutes` });
   return { progressed, skipped: p.skipped };
 }
 

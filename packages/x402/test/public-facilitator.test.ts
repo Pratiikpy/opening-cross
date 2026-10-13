@@ -1,7 +1,7 @@
 // The facilitator client against a public facilitator that exists today (x402.org/facilitator, run by the x402 project):
 // its /supported answer must parse and name a Solana devnet fee payer, and a malformed /verify must come back as a refusal in
 // the shape this repository parses. Skips when the network is unreachable. No payment is made: the public facilitator
-// settles on devnet and the faucet is not available to this suite; see docs/evidence/D-x402.md for what that leaves unproven.
+// settles on devnet and the faucet is not available to this suite; see docs/evidence/X6-integration-tests.md for what that leaves unproven.
 import { describe, expect, it } from 'vitest';
 import { HttpFacilitator } from '../src/facilitator-http.js';
 import { WELL_KNOWN_NETWORKS } from '../src/network.js';

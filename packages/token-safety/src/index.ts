@@ -214,3 +214,56 @@ export async function fetchMintSafety(
   const decoded = decodeMint(account);
   return assessMint(mint, account.programAddress, decoded.data, asOf);
 }
+
+/**
+ * Assesses a mint from raw account bytes plus the owning program, which is what an API that reads
+ * accounts through its own cache holds. Same checks as `fetchMintSafety`; throws on a foreign owner.
+ */
+export function assessMintAccount(
+  mint: Address,
+  account: { data: Uint8Array; owner: Address },
+  asOf: bigint,
+): MintSafetyReport {
+  if (account.owner !== TOKEN_2022_PROGRAM_ADDRESS && account.owner !== SPL_TOKEN_PROGRAM_ADDRESS) {
+    throw new Error(`Account ${mint} is owned by ${account.owner}, not a token program`);
+  }
+  const decoded = decodeMint({
+    address: mint,
+    data: account.data,
+    executable: false,
+    lamports: 0n as never,
+    programAddress: account.owner,
+    space: BigInt(account.data.length),
+  });
+  return assessMint(mint, account.owner, decoded.data, asOf);
+}
+
+/**
+ * How a risk reads to a person and what the cross does about it:
+ *  blocker    — a cross cannot be created on this mint (severity `block`)
+ *  halt       — no cross can print while it holds (severity `halt`)
+ *  disclosure — issuer power every bidder is shown; the cross proceeds (severity `disclose`)
+ */
+export type Level = 'blocker' | 'halt' | 'disclosure';
+export const LEVEL_OF: Record<Severity, Level> = { block: 'blocker', halt: 'halt', disclose: 'disclosure' };
+
+/** `blocked` > `halted` > `disclosures` > `clear`: the worst severity present decides. */
+export type Verdict = 'blocked' | 'halted' | 'disclosures' | 'clear';
+
+export function verdictOf(risks: readonly Risk[]): Verdict {
+  if (risks.some((r) => r.severity === 'block')) return 'blocked';
+  if (risks.some((r) => r.severity === 'halt')) return 'halted';
+  return risks.length > 0 ? 'disclosures' : 'clear';
+}
+
+const SUMMARY: Record<Verdict, string> = {
+  blocked: 'A cross cannot be created on this token: it has a property that makes escrow and settlement unsafe.',
+  halted: 'A cross can be created, but none can print while the condition below holds.',
+  disclosures: 'No blocking property. The issuer holds the powers listed below; every bidder is shown them.',
+  clear: 'No issuer powers or blocking properties found on this mint.',
+};
+export const summaryOf = (v: Verdict): string => SUMMARY[v];
+
+const RANK: Record<Severity, number> = { block: 0, halt: 1, disclose: 2 };
+/** Worst first, so the first line a reader sees is the one that decides the verdict. */
+export const bySeverity = (risks: readonly Risk[]): Risk[] => [...risks].sort((a, b) => RANK[a.severity] - RANK[b.severity]);
