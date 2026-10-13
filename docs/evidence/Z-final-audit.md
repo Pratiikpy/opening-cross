@@ -146,6 +146,7 @@ Found by looking at the deployed site and its API as a stranger, then fixed and 
 | # | Defect | Fix |
 |---|---|---|
 | 42 | A buyer whose wallet held less quote token than the order locks saw only "Transaction simulation failed: custom program error: 0x1" | The order ticket reads the wallet's balance of the token the order locks and, when short, disables Place order and says how much it holds and how much more it needs (`apps/web/src/lib/balance.ts`; checked live with a wallet holding none: `e2e/shortfall-check.mjs`) |
+| 44 | Under load the API answered 503 for a cross, its book or an order page while the shared public devnet RPC rate limited it, and the first read of a mint made the cross detail take 8.6 s | A bounded wait on the safety read, a metrics warm-up that retries until every cross has been read once, chain reads that retry and share simultaneous requests, settled orders answered from the index, and one book answer shared for two seconds; the real-wallet lifecycle on the live site then passed in full (`W2-live-deployment.md`) |
 | 43 | The live-run harness counted a click before hydration and request cancellations on reload as failures | `e2e/live-devnet.mjs` clicks again until the wallet list opens and ignores `net::ERR_ABORTED` |
 
 ### Not covered in this pass
