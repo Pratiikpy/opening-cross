@@ -283,7 +283,11 @@ export async function buildServer(d: ApiDeps) {
     let mintSafety: Awaited<ReturnType<typeof safety.get>> | null = null;
     if (v.data.baseBound) {
       try {
-        mintSafety = await safety.get(v.data.baseMint);
+        // The first read of a mint goes to a rate-limited public RPC and can take many seconds: wait a moment for it, then answer
+        // without it (null). The read carries on in the cache, so the next request has the verdict.
+        const read = safety.get(v.data.baseMint);
+        read.catch(() => undefined);
+        mintSafety = await Promise.race([read, new Promise<null>((r) => setTimeout(() => r(null), 1_500))]);
       } catch (e) {
         console.error(JSON.stringify({ at: new Date().toISOString(), route: '/v1/crosses/:address', safety: 'unavailable', error: String(e) }));
       }
