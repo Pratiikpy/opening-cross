@@ -3,12 +3,70 @@
 // Discovery is only a hint (the indexer's table or a getProgramAccounts scan); every decision is
 // made from account data fetched in this pass, never from the index. Sends are independent: one
 // failure (often a competing keeper that got there first) never stops the rest of the pass.
+//
+// The duties beyond a cross's lifecycle (ADR-0703) are named in `KeeperDeps.duties` and are off unless named: batched refunds, closing unanswered insider
+// challenges, releasing vested lockups, spawning recurring series and keeping halt states current. `dryRun` plans every action and sends none.
 import type { Address, Instruction, TransactionSigner } from '@solana/kit';
-import { type Cross, OrderSide, getAbandonSettlementInstruction, getCrossDecoder, getOrderDecoder, readCrossExt, readOrderExt } from '@opening-cross/cross-core-client';
-import { buildClaim, buildDrawBegin, buildDrawFinish, buildFinalizeWithAccounts, buildSettleBook } from '@opening-cross/sdk';
+import {
+  CHALLENGE_DISCRIMINATOR,
+  type Cross,
+  type CrossExt,
+  CrossState,
+  OrderSide,
+  OrderState,
+  type Series,
+  getAbandonSettlementInstruction,
+  getChallengeDecoder,
+  getCrossDecoder,
+  getHaltStateDecoder,
+  getLockupDecoder,
+  getOrderDecoder,
+  getSeriesDecoder,
+  readCrossExt,
+  readOrderExt,
+  challengeAddress,
+} from '@opening-cross/cross-core-client';
+import {
+  buildClaim,
+  buildDrawBegin,
+  buildDrawFinish,
+  buildExpireChallenge,
+  buildFinalizeWithAccounts,
+  buildMissingRuledAccounts,
+  buildMissingShards,
+  buildObservePrice,
+  buildPushRefunds,
+  buildReleaseLocked,
+  buildSettleBook,
+  buildSpawnNext,
+  buildSyncPause,
+  crossAddress,
+} from '@opening-cross/sdk';
+import { calendarSessions } from '@opening-cross/indexer';
 import { type Action, type OpenOrder, type Skip, plan } from './plan.js';
+import { type ChallengeFacts, type HaltFacts, type LockFacts, type SeriesFacts, planExpiries, planHalt, planRelease, planSpawn } from './duties.js';
 
 export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
+
+/** The optional work beyond the lifecycle of a cross. A duty not named is not done. */
+export type Duty = 'refunds' | 'challenges' | 'locks' | 'series' | 'halts';
+export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 'series', 'halts'];
+/** What a keeper does when nobody says otherwise: the duties that cost it nothing beyond transaction fees. `locks` pays for the owner's token account on a first release and `series` for the rent of every cross it spawns, so both are asked for by name. */
+export const DEFAULT_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'halts'];
+
+/** `all`, `none`, `default`, or a comma-separated list of duty names; an unknown name is an error, never silently ignored. */
+export function parseDuties(text: string | undefined): Set<Duty> {
+  const t = (text ?? 'default').trim();
+  if (t === 'default') return new Set(DEFAULT_DUTIES);
+  if (t === 'all') return new Set(ALL_DUTIES);
+  if (t === 'none' || t === '') return new Set();
+  const out = new Set<Duty>();
+  for (const name of t.split(',').map((x) => x.trim()).filter(Boolean)) {
+    if (!(ALL_DUTIES as readonly string[]).includes(name)) throw new Error(`unknown keeper duty "${name}"; the duties are ${ALL_DUTIES.join(', ')}, or all, none, default`);
+    out.add(name as Duty);
+  }
+  return out;
+}
 
 export type KeeperDeps = {
   payer: TransactionSigner;
@@ -38,6 +96,22 @@ export type KeeperDeps = {
    * re-sent every pass. Omitted, nothing is remembered and a halted mint is re-attempted each pass.
    */
   memory?: Map<string, Deferred>;
+  /** Which optional duties to do (default none, so a keeper built before the duties existed behaves as it did). */
+  duties?: ReadonlySet<Duty>;
+  /** Plan everything, send nothing: the actions that would have been sent are in `PassResult.planned`. */
+  dryRun?: boolean;
+  /** Lockup accounts that may have something to release (duty `locks`). Each is re-read before use. */
+  lockups?: () => Promise<Address[]>;
+  /** Releases smaller than this many base atoms wait for more to vest (the last release is always sent). Default 1. */
+  minRelease?: bigint;
+  /** Series accounts (duty `series`). Each is re-read before use. */
+  series?: () => Promise<Address[]>;
+  /** Halt-state accounts (duty `halts`). Each is re-read before use. */
+  halts?: () => Promise<Address[]>;
+  /** Whether a mint's pausable extension is paused now; null when it cannot be told (duty `halts`). */
+  mintPaused?: (mint: Address) => Promise<boolean | null>;
+  /** A recent verified Pyth update for a breaker's feed (hex feed id), when the keeper can supply one (duty `halts`). */
+  priceUpdate?: (feedId: string) => Promise<{ account: Address; publishTime: bigint } | null>;
 };
 
 export type MintHalt = { code: string; message: string };
@@ -49,44 +123,75 @@ const LAYOUT = 'LAYOUT';
 const LAYOUT_RETRY_SECONDS = 3600n;
 const FROZEN_RETRY_SECONDS = 600n;
 const FROZEN = 'ACCOUNT_FROZEN';
+/** A cross whose refund batch was refused is claimed order by order for this long. */
+const PUSH_REFUSED = 'PUSH_REFUSED';
+const PUSH_RETRY_SECONDS = 3600n;
+/** Challenges examined per cross per pass: a cross with more is read in full over several passes only if the oldest are closed first. */
+const MAX_CHALLENGES_READ = 256;
 type Halt = MintHalt & { role: 'base' | 'quote'; mint: Address };
 
-export type PassResult = { done: { action: Action; signature: string }[]; failed: { action: Action; error: string }[]; skipped: Skip[] };
+export type PassResult = {
+  done: { action: Action; signature: string }[];
+  failed: { action: Action; error: string }[];
+  skipped: Skip[];
+  /** Only in a dry run: the actions that would have been sent, in the order they would have been. */
+  planned: Action[];
+};
 
 /** Lifecycle stages a cross can move through in one pass: settle/abandon → claims → finalize. */
 const MAX_ROUNDS = 4;
 
 export async function runOnce(d: KeeperDeps): Promise<PassResult> {
-  const result: PassResult = { done: [], failed: [], skipped: [] };
+  const result: PassResult = { done: [], failed: [], skipped: [], planned: [] };
   const now = await d.now();
+  const duties = d.duties ?? new Set<Duty>();
+  // Crosses whose refund batch was refused in this pass when the caller keeps no memory across passes.
+  const pushOff = new Set<Address>();
+  // Halt states first: a pause the mint carries is in the halt state before the crosses that name it are cleared.
+  if (duties.has('halts') && d.halts) await haltsPass(d, now, result);
   for (const address of await d.crosses()) {
     // Re-plan after every round that changed state, so one pass carries a cross as far as the
     // clock allows. Skips are reported from the final round only.
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const r = await advance(address, d, now, result);
+      const r = await advance(address, d, now, result, pushOff);
       if (!r.progressed) {
         result.skipped.push(...r.skipped);
         break;
       }
     }
   }
+  if (duties.has('series') && d.series) await seriesPass(d, now, result);
+  if (duties.has('locks') && d.lockups) await locksPass(d, now, result);
   return result;
 }
 
-async function advance(address: Address, d: KeeperDeps, now: bigint, result: PassResult): Promise<{ progressed: boolean; skipped: Skip[] }> {
+async function advance(address: Address, d: KeeperDeps, now: bigint, result: PassResult, pushOff: Set<Address>): Promise<{ progressed: boolean; skipped: Skip[] }> {
   const data = await d.fetch(address);
   if (!data) return { progressed: false, skipped: [] };
   const cross = getCrossDecoder().decode(data);
   if (d.accept && !d.accept(cross)) return { progressed: false, skipped: [] };
+  const duties = d.duties ?? new Set<Duty>();
   const open: OpenOrder[] = [];
   for (const o of await d.orders(address)) {
     const od = await d.fetch(o);
     if (!od) continue; // claimed or cancelled since discovery
     const order = getOrderDecoder().decode(od);
-    if (order.cross === address) open.push({ address: o, owner: order.owner, nonce: order.nonce });
+    if (order.cross === address) open.push({ address: o, owner: order.owner, nonce: order.nonce, side: order.side === OrderSide.Buy ? 'buy' : 'sell', price: order.price, revealed: order.state === OrderState.Revealed });
   }
   const slot = d.slot ? await d.slot().catch(() => null) : null;
-  const p = plan(address, cross, open, now, { ext: readCrossExt(data), slot });
+  const ext = readCrossExt(data);
+  const memory = d.memory;
+  const mark = `${address}|`;
+  const pushKnown = memory?.get(`${mark}${PUSH_REFUSED}`);
+  // push_refunds exists only in the extended program, and only a cross it created carries the rules tail: a cross of the earlier layout is claimed order by order, as before.
+  const pushAllowed = duties.has('refunds') && ext !== null && !pushOff.has(address) && !(pushKnown && now - pushKnown.at < PUSH_RETRY_SECONDS);
+  const p = plan(address, cross, open, now, { ext, slot }, { pushRefunds: pushAllowed });
+  // Insider challenges the arbiter left unanswered are closed first: `finalize` waits for them.
+  if (duties.has('challenges') && ext && ext.neutralState.openChallenges > 0 && (cross.state === CrossState.Cleared || cross.state === CrossState.NoPrint)) {
+    const e = planExpiries(address, await readChallenges(address, ext, d), now);
+    p.actions.unshift(...e.actions);
+    p.skipped.push(...e.skipped);
+  }
   const halts: Halt[] = [];
   if (d.mintHalt) {
     for (const [role, mint] of [['base', cross.baseBound ? cross.baseMint : null], ['quote', cross.quoteMint]] as const) {
@@ -97,11 +202,9 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
     }
   }
   const sig = halts.map((h) => `${h.code}:${h.mint}`).join(',');
-  const memory = d.memory;
-  const mark = `${address}|`;
   if (memory && halts.length === 0) {
     // Whatever was holding this cross back is gone; forget it so the steps are tried again (a frozen-account entry keeps its own delay).
-    for (const [k, v] of memory) if (k.startsWith(mark) && v.sig !== FROZEN && v.sig !== LAYOUT) memory.delete(k);
+    for (const [k, v] of memory) if (k.startsWith(mark) && v.sig !== FROZEN && v.sig !== LAYOUT && v.sig !== PUSH_REFUSED) memory.delete(k);
   }
   const why = (h: Halt) => `the ${h.role} mint ${h.mint} cannot move right now: ${h.message}`;
   let progressed = false;
@@ -113,7 +216,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       p.skipped.push({ cross: address, code: halts[0]!.code, reason: `settlement is withheld while ${why(halts[0]!)}` });
       continue;
     }
-    const key = `${mark}${action.kind}|${action.kind === 'claim' ? action.order.address : ''}`;
+    const key = `${mark}${action.kind}|${action.kind === 'claim' ? action.order.address : action.kind === 'expire-challenge' ? action.id : action.kind === 'push-refunds' ? action.orders[0]!.address : ''}`;
     const known = memory?.get(key);
     if (known?.sig === LAYOUT && now - known.at < LAYOUT_RETRY_SECONDS) {
       p.skipped.push({ cross: address, code: LAYOUT, reason: 'an account of this cross belongs to a different program than this one expects (an earlier layout), so it cannot be settled; checked again hourly' });
@@ -122,6 +225,10 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
     if (known && ((known.sig === FROZEN && now - known.at < FROZEN_RETRY_SECONDS) || (known.sig !== FROZEN && halts.length > 0 && known.sig === sig))) {
       if (known.sig === FROZEN) frozen++;
       else held++;
+      continue;
+    }
+    if (d.dryRun) {
+      result.planned.push(action);
       continue;
     }
     try {
@@ -145,6 +252,14 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
         memory?.set(key, { sig: LAYOUT, at: now });
         p.skipped.push({ cross: address, code: LAYOUT, reason: `an account of this cross belongs to a different program than this one expects, so it cannot be settled (${error})` });
       } else if (error.includes('AccountNotInitialized')) p.skipped.push({ cross: address, reason: `an account this cross needs was never created, so it cannot be settled (${error})` });
+      // A refund batch the program refused (an order it counts as filled, or a destination account that does not exist): the orders are claimed one by one
+      // from the next round on, and the batch is not tried again for an hour. Nothing is lost: the batch moved nothing.
+      else if (action.kind === 'push-refunds') {
+        result.failed.push({ action, error });
+        memory?.set(`${mark}${PUSH_REFUSED}`, { sig: PUSH_REFUSED, at: now });
+        progressed = true;
+        pushOff.add(address);
+      }
       // The step was refused while a mint is halted on chain: that is the cause, not a fault to retry every pass. Remember it
       // and try again only when the set of halts changes.
       else if (halts.length > 0) {
@@ -161,6 +276,140 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
   if (held > 0) p.skipped.push({ cross: address, code: halts[0]?.code ?? 'MINT_HALTED', reason: `${held} step(s) held back, not retried until the halt changes: ${halts.map(why).join('; ')}` });
   if (frozen > 0) p.skipped.push({ cross: address, code: FROZEN, reason: `${frozen} step(s) refused because a token account is frozen by the issuer; retried after ${FROZEN_RETRY_SECONDS / 60n} minutes` });
   return { progressed, skipped: p.skipped };
+}
+
+/** The challenges filed against a cross, read from chain. A challenge account is closed when it is ruled on or expires, so a missing one is not open. */
+async function readChallenges(cross: Address, ext: CrossExt, d: KeeperDeps): Promise<ChallengeFacts[]> {
+  const out: ChallengeFacts[] = [];
+  const total = Math.min(ext.neutralState.challenges, MAX_CHALLENGES_READ);
+  for (let id = 0; id < total; id++) {
+    const address = await challengeAddress(cross, id);
+    const data = await d.fetch(address);
+    if (!data || !(CHALLENGE_DISCRIMINATOR as Uint8Array).every((b, i) => data[i] === b)) continue;
+    const c = getChallengeDecoder().decode(data);
+    out.push({ id, address, challenger: c.challenger, filedTs: c.filedTs, open: c.status === 0 });
+  }
+  return out;
+}
+
+/** Runs one action that is not part of a cross's lifecycle loop. Returns whether anything was sent. */
+async function perform(d: KeeperDeps, result: PassResult, action: Action, build: () => Promise<Instruction[][]>): Promise<boolean> {
+  if (d.dryRun) {
+    result.planned.push(action);
+    return false;
+  }
+  try {
+    let last = '';
+    for (const ixs of await build()) last = await d.send(ixs);
+    result.done.push({ action, signature: last });
+    return true;
+  } catch (e) {
+    result.failed.push({ action, error: describe(e) });
+    return false;
+  }
+}
+
+async function haltsPass(d: KeeperDeps, now: bigint, result: PassResult): Promise<void> {
+  for (const address of await d.halts!()) {
+    const data = await d.fetch(address);
+    if (!data) continue;
+    let halt;
+    try {
+      halt = getHaltStateDecoder().decode(data);
+    } catch {
+      continue; // not a halt state of this layout
+    }
+    const mintPaused = d.mintPaused ? await d.mintPaused(halt.baseMint).catch(() => null) : null;
+    const breaker = halt.breaker.__option === 'Some' ? halt.breaker.value : null;
+    const update = breaker && d.priceUpdate ? await d.priceUpdate(Buffer.from(breaker.feedId).toString('hex')).catch(() => null) : null;
+    const facts: HaltFacts = { address, halt, mintPaused, update };
+    const p = planHalt(facts, now);
+    result.skipped.push(...p.skipped);
+    for (const action of p.actions) {
+      await perform(d, result, action, async () => {
+        if (action.kind === 'sync-pause') return [[await buildSyncPause(action.baseMint)]];
+        if (action.kind === 'observe-price') return [[await buildObservePrice(action.baseMint, action.priceUpdate)]];
+        throw new Error(`unexpected halt action ${action.kind}`);
+      });
+    }
+  }
+}
+
+async function seriesPass(d: KeeperDeps, now: bigint, result: PassResult): Promise<void> {
+  for (const address of await d.series!()) {
+    const data = await d.fetch(address);
+    if (!data) continue;
+    let series: Series;
+    try {
+      series = getSeriesDecoder().decode(data);
+    } catch {
+      continue;
+    }
+    let previous: SeriesFacts['previous'] = null;
+    if (series.lastCross.__option === 'Some') {
+      const prev = await d.fetch(series.lastCross.value);
+      if (prev) {
+        try {
+          previous = { address: series.lastCross.value, state: getCrossDecoder().decode(prev).state };
+        } catch {
+          previous = null;
+        }
+      }
+    }
+    let sessionStarts: bigint[] | null = null;
+    if (series.config.calendar.__option === 'Some') {
+      const cal = await d.fetch(series.config.calendar.value);
+      sessionStarts = cal ? (calendarSessions(cal)?.map((s) => s.startTs) ?? null) : null;
+    }
+    const p = planSpawn({ address, series, previous, sessionStarts }, now);
+    result.skipped.push(...p.skipped);
+    for (const action of p.actions) {
+      if (action.kind !== 'spawn-next') continue;
+      const sent = await perform(d, result, action, async () => [[(await buildSpawnNext({ address, data: series }, d.payer, { feed: action.feed })).instruction]]);
+      // The spawned cross has no shards yet: nobody can trade, and nothing can be cleared, until they exist. They follow the spawn, from the cross as it is on chain.
+      if (sent) await initShards(d, result, await crossAddress(address, series.nextIndex), action);
+    }
+  }
+}
+
+/** Creates the shards, class book and lock vault a freshly spawned cross lacks, one transaction each (shards are large). */
+async function initShards(d: KeeperDeps, result: PassResult, cross: Address, parent: Action): Promise<void> {
+  try {
+    const data = await d.fetch(cross);
+    if (!data) throw new Error('the spawned cross is not on chain');
+    const view = { address: cross, data: getCrossDecoder().decode(data), ext: readCrossExt(data) };
+    const exists = async (a: Address) => (await d.fetch(a)) !== null;
+    const ixs = [...(await buildMissingShards(view, d.payer, exists)), ...(await buildMissingRuledAccounts(view, d.payer, exists))];
+    for (const ix of ixs) await d.send([ix]);
+  } catch (e) {
+    result.failed.push({ action: parent, error: `the series spawned ${cross} but creating its shards failed: ${describe(e)}` });
+  }
+}
+
+async function locksPass(d: KeeperDeps, now: bigint, result: PassResult): Promise<void> {
+  for (const address of await d.lockups!()) {
+    const data = await d.fetch(address);
+    if (!data) continue; // released in full and closed
+    let l;
+    try {
+      l = getLockupDecoder().decode(data);
+    } catch {
+      continue;
+    }
+    const facts: LockFacts = { address, cross: l.cross, owner: l.owner, nonce: l.nonce, amount: l.amount, released: l.released, startTs: l.startTs, cliffSecs: l.cliffSecs, vestSecs: l.vestSecs };
+    const action = planRelease(facts, now, d.minRelease ?? 1n);
+    if (!action || action.kind !== 'release-locked') continue;
+    if (d.accept) {
+      const c = await d.fetch(l.cross);
+      if (!c || !d.accept(getCrossDecoder().decode(c))) continue;
+    }
+    await perform(d, result, action, async () => {
+      const raw = await d.fetch(action.cross);
+      if (!raw) throw new Error('cross disappeared');
+      const view = { address: action.cross, data: getCrossDecoder().decode(raw), ext: readCrossExt(raw) };
+      return [await buildReleaseLocked(view, d.payer, action.owner, action.nonce)];
+    });
+  }
 }
 
 /** Each inner array is one transaction. */
@@ -191,8 +440,14 @@ async function instructionsFor(a: Action, view: { address: Address; data: Cross;
       const facts = { ext: readOrderExt(raw), isBuy: getOrderDecoder().decode(raw).side === OrderSide.Buy };
       return [await buildClaim(view, d.payer, a.order.owner, a.order.nonce, facts)];
     }
+    case 'push-refunds':
+      return [[await buildPushRefunds(view, a.orders.map((o) => ({ owner: o.owner, nonce: o.nonce, side: o.side === 'sell' ? OrderSide.Sell : OrderSide.Buy })))]];
+    case 'expire-challenge':
+      return [[await buildExpireChallenge({ cross: a.cross, id: a.id, challenger: a.challenger })]];
     case 'finalize':
       return [await buildFinalizeWithAccounts(view, d.payer)];
+    default:
+      throw new Error(`${a.kind} is not a step of a cross's lifecycle`);
   }
 }
 

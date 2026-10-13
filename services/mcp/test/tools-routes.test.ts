@@ -44,6 +44,13 @@ const NEW_TOOLS: Record<string, { args: Record<string, unknown>; path: string }>
   oc_get_series: { args: { series: MINT }, path: `/v1/series/${MINT}` },
   oc_get_settlement: { args: { cross: MINT }, path: `/v1/crosses/${MINT}/settlement` },
   oc_get_proof_with_draws: { args: { cross: MINT }, path: `/v1/crosses/${MINT}/proof/draws` },
+  oc_get_cross_venues: { args: { cross: MINT }, path: `/v1/crosses/${MINT}/venues` },
+  oc_get_program_release: { args: {}, path: '/v1/programs' },
+  oc_get_alpha_vault: { args: { cross: MINT }, path: `/v1/crosses/${MINT}/alpha-vault` },
+  oc_get_metlock_escrow: { args: { escrow: MINT }, path: `/v1/metlock/escrows/${MINT}` },
+  oc_get_fee_share_vault: { args: { base: MINT, mint: MINT }, path: `/v1/fee-share/${MINT}/${MINT}` },
+  oc_get_arbiter: { args: {}, path: '/v1/arbiter' },
+  oc_get_challenge_state: { args: { cross: MINT }, path: `/v1/crosses/${MINT}/challenge-state` },
   oc_get_treasury_terms: { args: { treasury: MINT }, path: `/v1/treasuries/${MINT}/ext` },
   oc_list_treasury_proposals: { args: { treasury: MINT }, path: `/v1/treasuries/${MINT}/proposals` },
   oc_get_treasury_position: { args: { treasury: MINT, owner: MINT }, path: `/v1/treasuries/${MINT}/positions/${MINT}` },
@@ -61,6 +68,10 @@ describe('rules, treasury and settlement tools', () => {
       expect(t.inputSchema).toMatchObject({ additionalProperties: false, required: Object.keys(c.args).filter((k) => !(name === 'oc_get_lockups' && k === 'cross')) });
     });
   }
+
+  it('oc_get_alpha_vault adds the owner only when given one, so the answer says whether that wallet has an escrow', () => {
+    expect(tool('oc_get_alpha_vault').request({ cross: MINT, owner: MINT }).path).toBe(`/v1/crosses/${MINT}/alpha-vault?owner=${MINT}`);
+  });
 
   it('oc_get_lockups adds the cross filter only when given one', () => {
     expect(tool('oc_get_lockups').request({ owner: MINT, cross: MINT }).path).toBe(`/v1/owners/${MINT}/lockups?cross=${MINT}`);

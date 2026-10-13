@@ -2,7 +2,7 @@
 // the lender feed and series. The refusals come before a transaction exists; the transactions are decoded back to instructions. The program is not run.
 import Fastify from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { type Address, type Instruction, decompileTransactionMessage, generateKeyPairSigner, getCompiledTransactionMessageDecoder, getTransactionDecoder, none } from '@solana/kit';
+import { type Address, type Instruction, decompileTransactionMessage, generateKeyPairSigner, getCompiledTransactionMessageDecoder, getTransactionDecoder, none, some } from '@solana/kit';
 import { TOKEN_2022_PROGRAM_ADDRESS, getMintEncoder } from '@solana-program/token-2022';
 import {
   CHALLENGE_DEPOSIT_LAMPORTS,
@@ -13,9 +13,11 @@ import {
   CrossState,
   Disclosure,
   SupplyMode,
+  arbiterRegistryAddress,
   challengeAddress,
   completeRules,
   crossAddress,
+  getArbiterRegistryEncoder,
   getChallengeEncoder,
   getCrossEncoder,
   getCrossExtEncoder,
@@ -42,7 +44,7 @@ describe('rules instructions after the clear', () => {
   const accounts = new Map<string, Account>();
   let app: ReturnType<typeof Fastify>;
   let creator: Address, base: Address, quote: Address, alice: Address, bob: Address, arbiter: Address, outsider: Address;
-  let cleared: Address, live: Address, bonded: Address;
+  let cleared: Address, live: Address, bonded: Address, stale: Address;
 
   const post = async (url: string, payload: unknown) => {
     const r = await app.inject({ method: 'POST', url, payload: payload as never });
@@ -67,13 +69,13 @@ describe('rules instructions after the clear', () => {
     accounts.set(address, { owner: CROSS_CORE_PROGRAM_ADDRESS, data });
     return address;
   }
-  const ext = (over: { insiders?: Address[]; bond?: bigint; challenges?: number } = {}) => {
+  const ext = (over: { insiders?: Address[]; bond?: bigint; challenges?: number; clearedTs?: bigint } = {}) => {
     const r = completeRules({});
     return {
       version: 1, rulesSet: true, createdSlot: 1n, flags: 0, guards: { ...r.guards, haltSource: null }, ending: r.ending,
       draw: { epoch: 0, pendingSlot: 0n, pendingPurpose: 0, seed: new Uint8Array(32), seedEpoch: 0, seedReady: true, endBucket: 255, extPending: false, extensionUsed: false, auxMerged: 0n }, identity: r.identity, alloc: { ...r.alloc, priorityGate: null },
       neutrality: { insiders: [...(over.insiders ?? []), ...Array.from({ length: 8 - (over.insiders?.length ?? 0) }, () => ZERO)], insiderCount: over.insiders?.length ?? 0, insiderCliffSecs: 0, insiderVestSecs: 0, bondQuote: over.bond ?? 0n, challengeSecs: over.bond ? 3_600 : 0 },
-      neutralState: { bondHeld: over.bond ?? 0n, slashed: 0n, openChallenges: 0, challenges: over.challenges ?? 0 }, clearing: { classQty: [0n, 0n, 0n], tickets: 0, rho: 0, clearedTs: 0n, insiderUb: 0n }, referral: r.referral,
+      neutralState: { bondHeld: over.bond ?? 0n, slashed: 0n, openChallenges: 0, challenges: over.challenges ?? 0 }, clearing: { classQty: [0n, 0n, 0n], tickets: 0, rho: 0, clearedTs: over.clearedTs ?? 0n, insiderUb: 0n }, referral: r.referral,
       oracleSet: { extraFeeds: [new Uint8Array(32), new Uint8Array(32)] as never, extraCount: 0, quorum: 0, maxSpreadBps: 0, offHoursWidenBps: 0 },
     } as never;
   };
@@ -85,7 +87,8 @@ describe('rules instructions after the clear', () => {
     accounts.set(quote, { owner: TOKEN_2022_PROGRAM_ADDRESS, data: mint });
     cleared = await putCross(1n, { state: CrossState.Cleared, ext: ext() });
     live = await putCross(2n, { state: CrossState.Live, ext: ext() });
-    bonded = await putCross(3n, { state: CrossState.Cleared, ext: ext({ insiders: [outsider], bond: 1_000_000n, challenges: 2 }) });
+    bonded = await putCross(3n, { state: CrossState.Cleared, ext: ext({ insiders: [outsider], bond: 1_000_000n, challenges: 2, clearedTs: BigInt(NOW - 60) }) });
+    stale = await putCross(4n, { state: CrossState.Cleared, ext: ext({ insiders: [outsider], bond: 1_000_000n, challenges: 0, clearedTs: BigInt(NOW - 7_200) }) });
     app = Fastify({ logger: false });
     app.setErrorHandler((err, _req, reply) => {
       if (err instanceof RequestError) return reply.code(err.status).type('application/json').send(JSON.stringify({ error: err.message, ...err.detail }, (_k, x) => (typeof x === 'bigint' ? x.toString() : x)));
@@ -136,15 +139,32 @@ describe('rules instructions after the clear', () => {
     expect(filed.status).toBe(200);
     expect(filed.body).toMatchObject({ id: 2, challenge: await challengeAddress(bonded, 2), depositLamports: String(CHALLENGE_DEPOSIT_LAMPORTS) });
     expect((await post('/v1/tx/challenge-insider', { cross: bonded, challenger: bob, subject: alice, evidence: 'zz' })).status).toBe(400);
+    // the window is an hour after the clear; a declared insider is not the subject of a challenge
+    const late = await post('/v1/tx/challenge-insider', { cross: stale, challenger: bob, subject: alice, evidence });
+    expect(late.body.reason).toBe('WINDOW_CLOSED');
+    expect(late.body.closesAt).toBe(String(NOW - 7_200 + 3_600));
+    expect((await post('/v1/tx/challenge-insider', { cross: bonded, challenger: bob, subject: outsider, evidence })).body.reason).toBe('ALREADY_DECLARED');
     const open = await challengeAddress(bonded, 1);
     const put = (addr: Address, id: number, status: 0 | 1) => accounts.set(addr, { owner: CROSS_CORE_PROGRAM_ADDRESS, data: new Uint8Array(getChallengeEncoder().encode({ cross: bonded, id, challenger: bob, subject: alice, evidence: new Uint8Array(32), deposit: 10_000_000n, filedTs: 1n, status, slashed: 0n, bump: 255 } as never)) });
     put(open, 1, 0);
+    // nobody can rule until the protocol admin has named the arbiter
+    expect((await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter, id: 1, upheld: true, slash: '400000' })).body.reason).toBe('NO_ARBITER');
+    accounts.set(await arbiterRegistryAddress(), { owner: CROSS_CORE_PROGRAM_ADDRESS, data: new Uint8Array(getArbiterRegistryEncoder().encode({ arbiter, bump: 255 })) });
+    const impostor = await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter: outsider, id: 1, upheld: true, slash: '400000' });
+    expect(impostor.status).toBe(422);
+    expect(impostor.body).toMatchObject({ reason: 'NOT_THE_ARBITER', arbiter });
     expect((await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter, id: 1, upheld: true, slash: '2000000' })).body.reason).toBe('SLASH_OVER_BOND');
     expect((await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter, id: 1, upheld: false, slash: '5' })).body.reason).toBe('SLASH_ON_REJECT');
     const ruled = await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter, id: 1, upheld: true, slash: '400000' });
     expect(ruled.status).toBe(200);
     expect(ruled.body.signers).toEqual([arbiter]);
     expect((await post('/v1/tx/expire-challenge', { cross: bonded, id: 1, payer: outsider })).status).toBe(200);
+    // a challenge filed a day ago cannot be closed yet: the arbiter has fourteen days
+    accounts.set(open, { owner: CROSS_CORE_PROGRAM_ADDRESS, data: new Uint8Array(getChallengeEncoder().encode({ cross: bonded, id: 1, challenger: bob, subject: alice, evidence: new Uint8Array(32), deposit: 10_000_000n, filedTs: BigInt(NOW - 86_400), status: 0, slashed: 0n, bump: 255 } as never)) });
+    const early = await post('/v1/tx/expire-challenge', { cross: bonded, id: 1, payer: outsider });
+    expect(early.status).toBe(409);
+    expect(early.body).toMatchObject({ reason: 'DEADLINE_NOT_REACHED', expirableAt: String(NOW - 86_400 + 14 * 86_400) });
+    put(open, 1, 0);
     expect((await post('/v1/tx/resolve-challenge', { cross: bonded, arbiter, id: 7, upheld: true })).body.reason).toBe('NO_CHALLENGE');
     put(open, 1, 1);
     expect((await post('/v1/tx/expire-challenge', { cross: bonded, id: 1, payer: outsider })).body.reason).toBe('ALREADY_RESOLVED');
@@ -182,19 +202,36 @@ describe('rules instructions after the clear', () => {
     expect(instructionsOf(made.body.transaction)).toHaveLength(3);
     expect((await post('/v1/tx/create-series', { authority: creator, seriesId: '5', baseMint: base, quoteMint: quote, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, config: { ...config, kind: 'forward' } })).status).toBe(400);
     const series = await seriesAddress(creator, 5n);
-    const putSeries = (active: boolean, nextIndex: bigint) =>
+    let startTs = BigInt(NOW + 3_000);
+    const putSeries = (active: boolean, nextIndex: bigint, lastCross: Address | null = null) =>
       accounts.set(series, {
         owner: CROSS_CORE_PROGRAM_ADDRESS,
         data: new Uint8Array(getSeriesEncoder().encode({
           authority: creator, seriesId: 5n, baseMint: base, quoteMint: quote, baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS, quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
-          config: { kind: CrossKind.Reopen, disclosure: Disclosure.Open, priceScale: 1_000_000n, grid: { relative: true, minPrice: 0n, tick: 0n, ticks: 20, tickBps: 50, center: 0n }, startTs: 1n, intervalSecs: 604_800n, calendar: none(), callSecs: 600n, revealSecs: 60n, minMatched: 0n, maxImbalanceBps: none(), integratorFeeBps: 0, integrator: creator, gateMint: none(), shards: 2, maxOrders: 64, proceedsTo: creator, oracle: none(), maxCrosses: 2n, rules: paddedRules({}) },
-          nextIndex, lastCross: none(), lastCloseTs: 0n, lastPrice: 0n, active, bump: 255,
+          config: { kind: CrossKind.Reopen, disclosure: Disclosure.Open, priceScale: 1_000_000n, grid: { relative: true, minPrice: 0n, tick: 0n, ticks: 20, tickBps: 50, center: 0n }, startTs: startTs, intervalSecs: 604_800n, calendar: none(), callSecs: 600n, revealSecs: 60n, minMatched: 0n, maxImbalanceBps: none(), integratorFeeBps: 0, integrator: creator, gateMint: none(), shards: 2, maxOrders: 64, proceedsTo: creator, oracle: none(), maxCrosses: 2n, rules: paddedRules({}) },
+          nextIndex, lastCross: lastCross ? some(lastCross) : none(), lastCloseTs: 0n, lastPrice: 0n, active, bump: 255,
         } as never)),
       });
     putSeries(true, 0n);
     const spawned = await post('/v1/tx/spawn-next', { series, payer: alice });
     expect(spawned.status).toBe(200);
     expect(spawned.body.cross).toBe(await crossAddress(series, 0n));
+    expect(spawned.body).toMatchObject({ closeTs: String(NOW + 3_000), openTs: String(NOW + 2_400) });
+    // the first close is more than a day and a call window away: the program would refuse it as too early
+    startTs = BigInt(NOW + 3 * 86_400);
+    putSeries(true, 0n);
+    const early = await post('/v1/tx/spawn-next', { series, payer: alice });
+    expect(early.status).toBe(409);
+    expect(early.body).toMatchObject({ reason: 'SPAWN_TOO_EARLY', openTs: String(NOW + 3 * 86_400 - 600), spawnableAt: String(NOW + 3 * 86_400 - 600 - 86_400) });
+    startTs = BigInt(NOW + 3_000 - 604_800); // so that the second slot (index 1) closes at NOW + 3,000
+    // the second cross waits for the first to resolve: live, unreadable, or resolved
+    const first = await crossAddress(series, 0n);
+    putSeries(true, 1n, first);
+    expect((await post('/v1/tx/spawn-next', { series, payer: alice })).body.reason).toBe('PREVIOUS_MISSING');
+    accounts.set(first, { ...accounts.get(cleared)!, owner: CROSS_CORE_PROGRAM_ADDRESS });
+    expect((await post('/v1/tx/spawn-next', { series, payer: alice })).status).toBe(200);
+    accounts.set(first, { ...accounts.get(live)!, owner: CROSS_CORE_PROGRAM_ADDRESS });
+    expect((await post('/v1/tx/spawn-next', { series, payer: alice })).body.reason).toBe('PREVIOUS_LIVE');
     putSeries(false, 0n);
     expect((await post('/v1/tx/spawn-next', { series, payer: alice })).body.reason).toBe('SERIES_PAUSED');
     putSeries(true, 2n);

@@ -8,6 +8,7 @@ import { CROSS_BODY_LEN, CROSS_CORE_PROGRAM_ADDRESS, CrossKind, CrossState, Disc
 import { CROSS_SETTLE_PROGRAM_ADDRESS, CLAIM_PARTNER_FEE_DISCRIMINATOR, CREATE_GREENSHOE_DISCRIMINATOR, DEPLOY_GREENSHOE_BID_DISCRIMINATOR, FINISH_GREENSHOE_DISCRIMINATOR, SETTLE_GREENSHOE_LEVEL_DISCRIMINATOR, getGreenshoeEncoder } from '@opening-cross/cross-settle-client';
 import { dlmmAddresses, greenshoeAddresses, greenshoeBinFor, greenshoeMinBudget } from '@opening-cross/adapters';
 import { RequestError } from '../src/tx.js';
+import { COMPUTE_BUDGET_PROGRAM } from '../src/routes/program-gate.js';
 import { registerSettleTx } from '../src/routes/settle-tx.js';
 
 const NOW = 1_800_000_000;
@@ -31,6 +32,8 @@ describe('cross_settle over HTTP', () => {
     const decoded = getTransactionDecoder().decode(Uint8Array.from(Buffer.from(tx, 'base64')));
     return decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(decoded.messageBytes)).instructions as Instruction[];
   };
+  /** The program's instructions: the compute-budget instruction every one of these transactions starts with is checked on its own. */
+  const settleOf = (tx: string): Instruction[] => instructionsOf(tx).filter((i) => i.programAddress !== COMPUTE_BUDGET_PROGRAM);
   const is = (ix: Instruction, disc: Uint8Array) => ix.programAddress === CROSS_SETTLE_PROGRAM_ADDRESS && disc.every((b, i) => ix.data![i] === b);
 
   async function putCross(id: bigint, o: { state: CrossState; buyerPaid?: bigint }): Promise<Address> {
@@ -75,8 +78,11 @@ describe('cross_settle over HTTP', () => {
     expect((await post('/v1/tx/claim-partner-fee', { cross: live, payer })).body.reason).toBe('LIVE');
     const r = await post('/v1/tx/claim-partner-fee', { cross: finalized, payer, maxQuote: '1000' });
     expect(r.status).toBe(200);
-    const [ix] = instructionsOf(r.body.transaction);
+    const [ix] = settleOf(r.body.transaction);
     expect(is(ix!, CLAIM_PARTNER_FEE_DISCRIMINATOR)).toBe(true);
+    // the compute limit comes first, and the release was not checkable here (no program account), which the answer says
+    expect(instructionsOf(r.body.transaction)[0]!.programAddress).toBe(COMPUTE_BUDGET_PROGRAM);
+    expect(r.body.release).toEqual({ program: CROSS_SETTLE_PROGRAM_ADDRESS, instruction: 'claim_partner_fee', deployed: null });
     expect(r.body.recipient).toBe(fees);
     expect((await post('/v1/tx/claim-partner-fee', { cross: finalized, payer: 'x' })).status).toBe(400);
     expect((await post('/v1/tx/withdraw-partner-surplus', { cross: finalized, payer })).status).toBe(200);
@@ -98,7 +104,7 @@ describe('cross_settle over HTTP', () => {
       putPair(finalized, 262, 10);
       const ok = await post('/v1/tx/create-greenshoe', g());
       expect(ok.status).toBe(200);
-      expect(is(instructionsOf(ok.body.transaction)[0]!, CREATE_GREENSHOE_DISCRIMINATOR)).toBe(true);
+      expect(is(settleOf(ok.body.transaction)[0]!, CREATE_GREENSHOE_DISCRIMINATOR)).toBe(true);
     });
 
     it('bids, level settlement and finish are refused when the greenshoe is not in the state they need, and built when it is', async () => {
@@ -117,7 +123,7 @@ describe('cross_settle over HTTP', () => {
       const ok = await post('/v1/tx/deploy-greenshoe-bid', { cross: finalized, payer, limitOrder, level: 0, amount: '100000000' });
       expect(ok.status).toBe(200);
       expect(ok.body.binId).toBe(bin);
-      expect(is(instructionsOf(ok.body.transaction)[0]!, DEPLOY_GREENSHOE_BID_DISCRIMINATOR)).toBe(true);
+      expect(is(settleOf(ok.body.transaction)[0]!, DEPLOY_GREENSHOE_BID_DISCRIMINATOR)).toBe(true);
       // the limit order is a fresh keypair that signs next to the payer
       expect(ok.body.signers).toEqual(expect.arrayContaining([payer, limitOrder]));
       expect((await post('/v1/tx/deploy-greenshoe-bid', { cross: finalized, payer, limitOrder, level: 0, amount: '200000000' })).body.reason).toBe('OVER_LEVEL_CAP');
@@ -131,14 +137,52 @@ describe('cross_settle over HTTP', () => {
       expect((await post('/v1/tx/finish-greenshoe', { cross: finalized, payer })).body.reason).toBe('LEVELS_OPEN');
       const settle = await post('/v1/tx/settle-greenshoe-level', { cross: finalized, payer, level: 0, hook: false });
       expect(settle.status).toBe(200);
-      expect(is(instructionsOf(settle.body.transaction)[0]!, SETTLE_GREENSHOE_LEVEL_DISCRIMINATOR)).toBe(true);
+      expect(is(settleOf(settle.body.transaction)[0]!, SETTLE_GREENSHOE_LEVEL_DISCRIMINATOR)).toBe(true);
       shoe({ expiresTs: BigInt(NOW - 1), orders: [limitOrder, ZERO, ZERO], bins: [bin, 0, 0], levelSettled: [true, false, false] });
       expect((await post('/v1/tx/settle-greenshoe-level', { cross: finalized, payer, level: 0 })).body.reason).toBe('ALREADY_SETTLED');
       const done = await post('/v1/tx/finish-greenshoe', { cross: finalized, payer });
       expect(done.status).toBe(200);
-      expect(is(instructionsOf(done.body.transaction)[0]!, FINISH_GREENSHOE_DISCRIMINATOR)).toBe(true);
+      expect(is(settleOf(done.body.transaction)[0]!, FINISH_GREENSHOE_DISCRIMINATOR)).toBe(true);
       shoe({ finished: true });
       expect((await post('/v1/tx/finish-greenshoe', { cross: finalized, payer })).body.reason).toBe('FINISHED');
     });
+  });
+
+  it('every route refuses with PROGRAM_NOT_DEPLOYED when the deployed cross_settle lacks its instruction, and builds when it has it', async () => {
+    const mk = (presence: 'absent' | 'present') => {
+      const a = Fastify({ logger: false });
+      a.setErrorHandler((err, _req, reply) => {
+        if (err instanceof RequestError) return reply.code(err.status).type('application/json').send(JSON.stringify({ error: err.message, ...err.detail }, (_k, x) => (typeof x === 'bigint' ? x.toString() : x)));
+        return reply.code(500).send({ error: String(err) });
+      });
+      registerSettleTx(a, { account: async (k) => accounts.get(k) ?? null, lifetime: async () => ({ blockhash: BLOCKHASH, lastValidBlockHeight: 100n }), clock: () => NOW, gate: async () => presence });
+      return a;
+    };
+    const ask = async (a: ReturnType<typeof Fastify>, url: string, payload: unknown) => {
+      const r = await a.inject({ method: 'POST', url, payload: payload as never });
+      return { status: r.statusCode, body: JSON.parse(r.body) };
+    };
+    const bodies: [string, unknown, string][] = [
+      ['/v1/tx/claim-partner-fee', { cross: finalized, payer }, 'claim_partner_fee'],
+      ['/v1/tx/withdraw-partner-surplus', { cross: finalized, payer }, 'withdraw_partner_surplus'],
+      ['/v1/tx/withdraw-partner-migration-fee', { cross: finalized, payer }, 'withdraw_partner_migration_fee'],
+      ['/v1/tx/claim-partner-pool-creation-fee', { cross: finalized, payer }, 'claim_partner_pool_creation_fee'],
+      ['/v1/tx/claim-pol-fees', { cross: finalized, payer, pool: payer, position: payer, positionNftAccount: payer, tokenAMint: payer, tokenBMint: payer, tokenAVault: payer, tokenBVault: payer }, 'claim_pol_fees'],
+      ['/v1/tx/create-greenshoe', { cross: finalized, creator, budget: '300000000', startTs: String(NOW + 60), periodSecs: '3600', periodCap: '300000000' }, 'create_greenshoe'],
+      ['/v1/tx/deploy-greenshoe-bid', { cross: finalized, payer, limitOrder, level: 0, amount: '1' }, 'deploy_greenshoe_bid'],
+      ['/v1/tx/settle-greenshoe-level', { cross: finalized, payer, level: 0 }, 'settle_greenshoe_level'],
+      ['/v1/tx/finish-greenshoe', { cross: finalized, payer }, 'finish_greenshoe'],
+    ];
+    const old = mk('absent');
+    for (const [url, payload, name] of bodies) {
+      const r = await ask(old, url, payload);
+      expect(r.status, url).toBe(409);
+      expect(r.body.reason, url).toBe('PROGRAM_NOT_DEPLOYED');
+      expect(r.body.instruction, url).toBe(name);
+    }
+    const released = mk('present');
+    const ok = await ask(released, '/v1/tx/withdraw-partner-surplus', { cross: finalized, payer });
+    expect(ok.status).toBe(200);
+    expect(ok.body.release.deployed).toBe(true);
   });
 });

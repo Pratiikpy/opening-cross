@@ -334,6 +334,25 @@ describe('treasury extension over HTTP', () => {
       expect((await post(`/v1/treasuries/${liquidating}/tx/stake`, { owner: alice, amount: '1' })).body.reason).toBe('LIQUIDATING');
     });
 
+    it('redemption is closed once the leftover has been swept to the recovery account (the program refuses with WoundDown)', async () => {
+      const coin5 = await key();
+      accounts.set(coin5, { owner: TOKEN_2022_PROGRAM_ADDRESS, data: mintBytes(1_000_000_000n) });
+      await hold(alice, coin5, 400_000_000n);
+      const swept = await putTreasury(coin5, { state: TreasuryState.Liquidating, ext: { windStart: BigInt(NOW - 200 * 86_400), swept: true } });
+      const r = await post(`/v1/treasuries/${swept}/tx/redeem`, { holder: alice, amount: '400000000' });
+      expect(r.status).toBe(409);
+      expect(r.body).toMatchObject({ reason: 'WOUND_DOWN', recovery });
+      expect((await post(`/v1/treasuries/${swept}/tx/sweep-unclaimed`, { payer: stranger })).body.reason).toBe('ALREADY_SWEPT');
+      // inside the window the same treasury still redeems, and the sweep is refused with the second it opens
+      const coin6 = await key();
+      accounts.set(coin6, { owner: TOKEN_2022_PROGRAM_ADDRESS, data: mintBytes(1_000_000_000n) });
+      await hold(alice, coin6, 400_000_000n);
+      const inside = await putTreasury(coin6, { state: TreasuryState.Liquidating, ext: { windStart: BigInt(NOW - 10 * 86_400), swept: false } });
+      expect((await post(`/v1/treasuries/${inside}/tx/redeem`, { holder: alice, amount: '400000000' })).status).toBe(200);
+      const early = await post(`/v1/treasuries/${inside}/tx/sweep-unclaimed`, { payer: stranger });
+      expect(early.body).toMatchObject({ reason: 'WINDOW_OPEN', opensAt: String(NOW - 10 * 86_400 + 180 * 86_400) });
+    });
+
     it('reads: terms and state, proposals with a status, a staker\'s position, grants, rounds', async () => {
       const ext = await get(`/v1/treasuries/${extended}/ext`);
       expect(ext.body.extended).toBe(true);

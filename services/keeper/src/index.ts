@@ -4,3 +4,4 @@ export * from './discovery.js';
 export * from './send.js';
 export * from './halt.js';
 export * from './calendar.js';
+export * from './duties.js';

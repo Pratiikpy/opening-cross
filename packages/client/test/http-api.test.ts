@@ -73,6 +73,38 @@ describe('api client', () => {
     expect(built.extra).toEqual({ cross: 'C' });
   });
 
+  it('the market, Meteora and neutrality methods call the routes the API registers, with the body as given', async () => {
+    const seen: { url: string; method: string; body: unknown }[] = [];
+    const api = make((url, init) => {
+      seen.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      return json({ transaction: 'AAAA', signers: ['S'] });
+    });
+    const posts: [keyof typeof api.tx, string][] = [
+      ['openDbcPool', 'open-dbc-pool'], ['bindDbcMint', 'bind-dbc-mint'], ['seedDammV2', 'seed-damm-v2'], ['openDlmmPair', 'open-dlmm-pair'], ['seedRaydiumCpmm', 'seed-raydium-cpmm'],
+      ['alphaVaultInit', 'alpha-vault-init'], ['alphaVaultDeposit', 'alpha-vault-deposit'], ['alphaVaultFill', 'alpha-vault-fill'], ['alphaVaultClaim', 'alpha-vault-claim'], ['alphaVaultWithdrawRemaining', 'alpha-vault-withdraw-remaining'],
+      ['metlockCreate', 'metlock-create'], ['metlockClaim', 'metlock-claim'],
+      ['feeShareCreate', 'fee-share-create'], ['feeShareFund', 'fee-share-fund'], ['feeShareClaim', 'fee-share-claim'], ['feeShareTransferPosition', 'fee-share-transfer-position'], ['feeShareFundFromDamm', 'fee-share-fund-from-damm'],
+    ];
+    for (const [method, path] of posts) {
+      seen.length = 0;
+      await (api.tx[method] as (b: Record<string, unknown>) => Promise<unknown>)({ cross: 'C' });
+      expect(seen, method).toHaveLength(1);
+      expect(seen[0]!.url, method).toBe(`http://api.test/v1/tx/${path}`);
+      expect(seen[0]!.method).toBe('POST');
+      expect(seen[0]!.body).toEqual({ cross: 'C' });
+    }
+    seen.length = 0;
+    await api.getVenues('C');
+    await api.getAlphaVault('C', { owner: 'O' });
+    await api.getAlphaVault('C');
+    await api.getMetLockEscrow('E');
+    await api.getFeeShareVault('B', 'M');
+    await api.getArbiter();
+    await api.getChallengeState('C');
+    await api.getPrograms();
+    expect(seen.map((x) => x.url.replace('http://api.test', ''))).toEqual(['/v1/crosses/C/venues', '/v1/crosses/C/alpha-vault?owner=O', '/v1/crosses/C/alpha-vault', '/v1/metlock/escrows/E', '/v1/fee-share/B/M', '/v1/arbiter', '/v1/crosses/C/challenge-state', '/v1/programs']);
+  });
+
   it('lists owner orders and batches order lookups, skipping the request when there is nothing to look up', async () => {
     const seen: string[] = [];
     const api = make((url) => {

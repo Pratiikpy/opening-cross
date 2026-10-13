@@ -57,6 +57,11 @@ import {
   CROSS_DISCRIMINATOR,
   CrossState,
   CHALLENGE_DEPOSIT_LAMPORTS,
+  ARBITER_DEADLINE_SECS,
+  spawnReadiness,
+  arbiterRegistryAddress,
+  getArbiterRegistryDecoder,
+  ARBITER_REGISTRY_DISCRIMINATOR,
   FLAG_FEEDS_LENDERS,
   FLAG_GUARD_SCALED_UI,
   FLAG_RESUMES_HALT,
@@ -91,6 +96,7 @@ import {
   drawProgress,
   drawPurpose,
   getChallengeDecoder,
+  getCrossDecoder,
   getLockupDecoder,
   getOrderDecoder,
   getSeriesDecoder,
@@ -110,6 +116,7 @@ import {
   LOCKUP_DISCRIMINATOR,
   challengeAddress,
 } from '@opening-cross/sdk';
+import { calendarFromAccount } from '@opening-cross/indexer';
 import { loadBook } from '@opening-cross/router';
 import { referenceClearCapped } from '@opening-cross/verifier';
 import { withChain } from '../chain-context.js';
@@ -369,6 +376,10 @@ export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
     const challenger = addr(b.challenger, 'challenger');
     const subject = addr(b.subject, 'subject');
     const evidence = hex32(b.evidence, 'evidence');
+    if (cross.data.state !== CrossState.Cleared) throw new RequestError(409, cross.data.state === CrossState.Live ? 'The cross has not cleared, so there is no challenge window yet.' : 'The challenge window closes when the cross is finalized or did not print.', { reason: cross.data.state === CrossState.Live ? 'LIVE' : 'WINDOW_CLOSED' });
+    const closesAt = x.clearing.clearedTs + BigInt(x.neutrality.challengeSecs);
+    if (now() >= closesAt) throw new RequestError(409, `The challenge window closed at ${closesAt}.`, { reason: 'WINDOW_CLOSED', closesAt });
+    if (x.neutrality.insiders.slice(0, x.neutrality.insiderCount).includes(subject)) throw new RequestError(422, 'That wallet is a declared insider already; a challenge names an undeclared one.', { reason: 'ALREADY_DECLARED', subject });
     const id = x.neutralState.challenges;
     const ix = await buildChallengeInsider({ cross: cross.address, challenger: createNoopSigner(challenger), id, subject, evidence });
     return send(reply, { ...compile(challenger, [ix], await d.lifetime()), id, challenge: await challengeAddress(cross.address, id), depositLamports: CHALLENGE_DEPOSIT_LAMPORTS });
@@ -393,6 +404,10 @@ export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
     if (upheld && slash > bond) throw new RequestError(422, `A slash is at most the bond held (${bond}).`, { reason: 'SLASH_OVER_BOND', bondHeld: bond });
     if (!upheld && slash !== 0n) throw new RequestError(422, 'A rejected challenge slashes nothing.', { reason: 'SLASH_ON_REJECT' });
     const arbiter = addr(b.arbiter, 'arbiter');
+    const registry = await d.account(await arbiterRegistryAddress());
+    if (!registry || registry.owner !== CROSS_CORE_PROGRAM_ADDRESS || !(ARBITER_REGISTRY_DISCRIMINATOR as Uint8Array).every((v, i) => registry.data[i] === v)) throw new RequestError(409, 'No arbiter has been named yet (docs/HUMAN_TASKS.md H28), so no challenge can be ruled on. After the deadline anyone may close it with expire-challenge.', { reason: 'NO_ARBITER' });
+    const named = getArbiterRegistryDecoder().decode(registry.data).arbiter;
+    if (named !== arbiter) throw new RequestError(422, `Only the arbiter, ${named}, can rule on a challenge.`, { reason: 'NOT_THE_ARBITER', arbiter: named });
     const ix = await buildResolveChallenge({ cross, arbiter: createNoopSigner(arbiter), id, challenger: ch.challenger, feeRecipient: cross.data.feeRecipient, upheld, slash });
     return send(reply, compile(arbiter, [ix], await d.lifetime()));
   });
@@ -404,6 +419,8 @@ export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
     const id = int(b.id, 'id', 0xffff_ffff);
     const ch = await challengeOf(cross, id);
     if (ch.status !== 0) throw new RequestError(409, 'This challenge is already ruled on.', { reason: 'ALREADY_RESOLVED' });
+    const expirableAt = ch.filedTs + ARBITER_DEADLINE_SECS;
+    if (now() < expirableAt) throw new RequestError(409, `The arbiter has until ${expirableAt} to rule on this challenge; after that anyone may close it.`, { reason: 'DEADLINE_NOT_REACHED', expirableAt, filedTs: ch.filedTs });
     const ix = await buildExpireChallenge({ cross: cross.address, id, challenger: ch.challenger });
     return send(reply, compile(addr(b.payer, 'payer'), [ix], await d.lifetime()));
   });
@@ -496,11 +513,35 @@ export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
   app.post('/v1/tx/spawn-next', async (req, reply) => {
     const b = obj(req.body);
     const series = await seriesOf(addr(b.series, 'series'));
-    if (!series.data.active) throw new RequestError(409, 'This series is paused.', { reason: 'SERIES_PAUSED' });
-    if (series.data.config.maxCrosses > 0n && series.data.nextIndex >= series.data.config.maxCrosses) throw new RequestError(409, 'This series has run its last cross.', { reason: 'SERIES_DONE' });
     const payer = addr(b.payer, 'payer');
+    // The conditions at the top of spawn_next, read the way the program reads them: the previous cross must have resolved, and the next close is derived on chain.
+    const s = series.data;
+    let previous: { address: Address; state: CrossState } | null = null;
+    if (s.lastCross.__option === 'Some') {
+      const acct = await d.account(s.lastCross.value);
+      if (acct && acct.owner === CROSS_CORE_PROGRAM_ADDRESS && (CROSS_DISCRIMINATOR as Uint8Array).every((v, i) => acct.data[i] === v)) previous = { address: s.lastCross.value, state: getCrossDecoder().decode(acct.data).state };
+    }
+    let sessionStarts: bigint[] | null = null;
+    if (s.config.calendar.__option === 'Some') {
+      const cal = await d.account(s.config.calendar.value);
+      const row = cal ? calendarFromAccount(s.config.calendar.value, cal) : null;
+      sessionStarts = row ? row.sessions.map((x) => BigInt(x.startTs)) : null;
+    }
+    const ready = spawnReadiness(s, previous, now(), sessionStarts);
+    if (!ready.ready) {
+      const why: Record<string, [string, string]> = {
+        INACTIVE: ['SERIES_PAUSED', 'This series is paused.'],
+        DONE: ['SERIES_DONE', 'This series has run its last cross.'],
+        PREVIOUS_MISSING: ['PREVIOUS_MISSING', 'The previous cross of this series cannot be read, so the next cannot be spawned.'],
+        PREVIOUS_LIVE: ['PREVIOUS_LIVE', 'The previous cross is still live: crosses of a series run one at a time.'],
+        NO_SESSION_AHEAD: ['NO_SESSION_AHEAD', 'The series calendar has no session ahead.'],
+        TOO_EARLY: ['SPAWN_TOO_EARLY', `The next cross opens at ${ready.openTs}; it can be spawned from ${ready.spawnableAt}, a day before.`],
+      };
+      const [reason, message] = why[ready.reason]!;
+      throw new RequestError(409, message, { reason, ...(ready.closeTs !== undefined && { closeTs: ready.closeTs }), ...(ready.openTs !== undefined && { openTs: ready.openTs }), ...(ready.spawnableAt !== undefined && { spawnableAt: ready.spawnableAt }) });
+    }
     const built = await buildSpawnNext(series, createNoopSigner(payer), { feed: b.feed === undefined ? false : bool(b.feed, 'feed') });
-    return send(reply, { ...compile(payer, [built.instruction], await d.lifetime()), cross: built.cross });
+    return send(reply, { ...compile(payer, [built.instruction], await d.lifetime()), cross: built.cross, closeTs: ready.closeTs, openTs: ready.openTs, note: 'The new cross has no shards yet: send init-shards for it before anyone trades.' });
   });
   app.post('/v1/tx/set-series-active', async (req, reply) => {
     const b = obj(req.body);

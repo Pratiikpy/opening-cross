@@ -446,3 +446,6 @@ export async function buildSeriesWithdraw(input: { authority: TransactionSigner;
 
 /** What `challenge_insider` takes from the challenger, in lamports, on top of the new account's rent (`CHALLENGE_DEPOSIT`, neutral.rs). */
 export const CHALLENGE_DEPOSIT_LAMPORTS = 10_000_000n;
+
+/** An open challenge the arbiter has not ruled on can be closed by anyone after this long (`ARBITER_DEADLINE_SECS`, neutral.rs); the deposit goes back to the challenger and the bond is untouched. */
+export const ARBITER_DEADLINE_SECS = 14n * 24n * 3600n;

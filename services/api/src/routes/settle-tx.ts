@@ -15,11 +15,26 @@
 //   POST /v1/tx/settle-greenshoe-level             { cross, payer, level, hook? }                   after the week: cancel a level, run the transfer hook, close the order
 //   POST /v1/tx/finish-greenshoe                   { cross, payer }                                 burn what the bids bought, return the unspent budget to the issuer
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { type Address, createNoopSigner, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
+import { type Address, type Instruction, createNoopSigner, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import { CROSS_DISCRIMINATOR, CROSS_CORE_PROGRAM_ADDRESS, CrossState, readRuledCross, type CrossView } from '@opening-cross/sdk';
-import { CROSS_SETTLE_PROGRAM_ADDRESS, GREENSHOE_DISCRIMINATOR, getGreenshoeDecoder } from '@opening-cross/cross-settle-client';
+import {
+  CLAIM_PARTNER_FEE_DISCRIMINATOR,
+  CLAIM_PARTNER_POOL_CREATION_FEE_DISCRIMINATOR,
+  CLAIM_POL_FEES_DISCRIMINATOR,
+  CREATE_GREENSHOE_DISCRIMINATOR,
+  CROSS_SETTLE_PROGRAM_ADDRESS,
+  DEPLOY_GREENSHOE_BID_DISCRIMINATOR,
+  FINISH_GREENSHOE_DISCRIMINATOR,
+  GREENSHOE_DISCRIMINATOR,
+  OPEN_DBC_POOL_DISCRIMINATOR,
+  SETTLE_GREENSHOE_LEVEL_DISCRIMINATOR,
+  WITHDRAW_PARTNER_MIGRATION_FEE_DISCRIMINATOR,
+  WITHDRAW_PARTNER_SURPLUS_DISCRIMINATOR,
+  getGreenshoeDecoder,
+} from '@opening-cross/cross-settle-client';
 import { type Lifetime, RequestError, compile } from '../tx.js';
 import { addr, int, json, obj, opt, u64, i64 } from './_inputs.js';
+import { HEAVY_UNITS, type ReleaseGate, computeUnits, fits, releaseGate, requireInstruction } from './program-gate.js';
 
 type ChainAccount = { data: Uint8Array; owner: Address };
 export type SettleTxDeps = {
@@ -27,6 +42,8 @@ export type SettleTxDeps = {
   lifetime: () => Promise<Lifetime>;
   /** Unix seconds; defaults to the wall clock. Tests inject one. */
   clock?: () => number;
+  /** Replaces the release check (tests); by default the program's own bytes are read (routes/program-gate.ts). */
+  gate?: ReleaseGate;
 };
 
 const send = (reply: FastifyReply, v: unknown, status = 200) => reply.code(status).type('application/json').send(json(v));
@@ -38,6 +55,15 @@ const adapters = () => import('@opening-cross/adapters');
 
 export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
   const now = () => BigInt(d.clock?.() ?? Math.floor(Date.now() / 1000));
+  const gate = d.gate ?? releaseGate({ account: d.account, ...(d.clock && { clock: d.clock }) });
+  /** The release check for one instruction: 409 PROGRAM_NOT_DEPLOYED when the deployed cross_settle lacks it. */
+  const need = (name: string, discriminator: Uint8Array) => requireInstruction(gate, CROSS_SETTLE_PROGRAM_ADDRESS, { name, discriminator }, OPEN_DBC_POOL_DISCRIMINATOR as Uint8Array);
+  /** One transaction with the compute limit these instructions are proved with (they call into Meteora's programs), measured against the size limit. */
+  const build = async (payer: Address, ixs: Instruction[], what: string, extra: Record<string, unknown> = {}) => {
+    const all = [computeUnits(HEAVY_UNITS), ...ixs];
+    const bytes = fits(payer, all, what);
+    return { ...compile(payer, all, await d.lifetime()), bytes, ...extra };
+  };
 
   async function readCross(a: Address): Promise<CrossView> {
     const acct = await d.account(a);
@@ -71,6 +97,7 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
 
   app.post('/v1/tx/claim-partner-fee', async (req, reply) => {
     const { b, cross, payer } = await body(req);
+    const release = await need('claim_partner_fee', CLAIM_PARTNER_FEE_DISCRIMINATOR as Uint8Array);
     settled(cross);
     bound(cross);
     const { buildClaimPartnerFee } = await adapters();
@@ -79,32 +106,36 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
     const ix = await buildClaimPartnerFee({ cross, ...(maxBase !== null && { maxBase }), ...(maxQuote !== null && { maxQuote }) }).catch((e: Error) => {
       throw new RequestError(409, e.message);
     });
-    return send(reply, { ...compile(payer, [ix], await d.lifetime()), recipient: cross.data.feeRecipient });
+    return send(reply, await build(payer, [ix], 'partner fee claim', { recipient: cross.data.feeRecipient, release }));
   });
 
   app.post('/v1/tx/withdraw-partner-surplus', async (req, reply) => {
     const { cross, payer } = await body(req);
+    const release = await need('withdraw_partner_surplus', WITHDRAW_PARTNER_SURPLUS_DISCRIMINATOR as Uint8Array);
     settled(cross);
     const { buildWithdrawPartnerSurplus } = await adapters();
-    return send(reply, { ...compile(payer, [await buildWithdrawPartnerSurplus(cross)], await d.lifetime()), recipient: cross.data.proceedsTo });
+    return send(reply, await build(payer, [await buildWithdrawPartnerSurplus(cross)], 'partner surplus withdrawal', { recipient: cross.data.proceedsTo, release }));
   });
 
   app.post('/v1/tx/withdraw-partner-migration-fee', async (req, reply) => {
     const { cross, payer } = await body(req);
+    const release = await need('withdraw_partner_migration_fee', WITHDRAW_PARTNER_MIGRATION_FEE_DISCRIMINATOR as Uint8Array);
     settled(cross);
     const { buildWithdrawPartnerMigrationFee } = await adapters();
-    return send(reply, { ...compile(payer, [await buildWithdrawPartnerMigrationFee(cross)], await d.lifetime()), recipient: cross.data.feeRecipient });
+    return send(reply, await build(payer, [await buildWithdrawPartnerMigrationFee(cross)], 'partner migration fee withdrawal', { recipient: cross.data.feeRecipient, release }));
   });
 
   app.post('/v1/tx/claim-partner-pool-creation-fee', async (req, reply) => {
     const { cross, payer } = await body(req);
+    const release = await need('claim_partner_pool_creation_fee', CLAIM_PARTNER_POOL_CREATION_FEE_DISCRIMINATOR as Uint8Array);
     settled(cross);
     const { buildClaimPartnerPoolCreationFee } = await adapters();
-    return send(reply, { ...compile(payer, [await buildClaimPartnerPoolCreationFee(cross)], await d.lifetime()), recipient: cross.data.feeRecipient });
+    return send(reply, await build(payer, [await buildClaimPartnerPoolCreationFee(cross)], 'pool creation fee claim', { recipient: cross.data.feeRecipient, release }));
   });
 
   app.post('/v1/tx/claim-pol-fees', async (req, reply) => {
     const { b, cross, payer } = await body(req);
+    const release = await need('claim_pol_fees', CLAIM_POL_FEES_DISCRIMINATOR as Uint8Array);
     settled(cross);
     bound(cross);
     const { buildClaimPolFees } = await adapters();
@@ -118,7 +149,7 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
       tokenAVault: addr(b.tokenAVault, 'tokenAVault'),
       tokenBVault: addr(b.tokenBVault, 'tokenBVault'),
     });
-    return send(reply, { ...compile(payer, [ix], await d.lifetime()), recipient: cross.data.proceedsTo });
+    return send(reply, await build(payer, [ix], 'protocol-owned liquidity fee claim', { recipient: cross.data.proceedsTo, release }));
   });
 
   // ---------------------------------------------------------------- greenshoe
@@ -126,6 +157,7 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
     const b = obj(req.body);
     const cross = await readCross(addr(b.cross, 'cross'));
     const creator = addr(b.creator, 'creator');
+    const release = await need('create_greenshoe', CREATE_GREENSHOE_DISCRIMINATOR as Uint8Array);
     if (cross.data.state !== CrossState.Finalized) throw new RequestError(409, 'A greenshoe follows a finalized cross.', { reason: 'NOT_FINALIZED' });
     if (creator !== cross.data.creator) throw new RequestError(422, `Only the cross's creator, ${cross.data.creator}, can commit a greenshoe.`, { reason: 'NOT_THE_CREATOR' });
     const { buildCreateGreenshoe, greenshoeMinBudget, dlmmAddresses } = await adapters();
@@ -137,11 +169,12 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
     if (await d.account(await greenshoeOf(cross.address))) throw new RequestError(409, 'This cross has a greenshoe already.', { reason: 'GREENSHOE_EXISTS' });
     await readPair(dlmmAddresses(cross.data.baseMint, cross.data.quoteMint).lbPair);
     const ix = await buildCreateGreenshoe({ cross, creator: createNoopSigner(creator), budget, startTs, periodSecs: i64(b.periodSecs, 'periodSecs'), periodCap: u64(b.periodCap, 'periodCap') });
-    return send(reply, { ...compile(creator, [ix], await d.lifetime()), minBudget });
+    return send(reply, await build(creator, [ix], 'greenshoe creation', { minBudget, release }));
   });
 
   app.post('/v1/tx/deploy-greenshoe-bid', async (req, reply) => {
     const { b, cross, payer } = await body(req);
+    const release = await need('deploy_greenshoe_bid', DEPLOY_GREENSHOE_BID_DISCRIMINATOR as Uint8Array);
     const g = await readGreenshoe(cross.address);
     const limitOrder = addr(b.limitOrder, 'limitOrder');
     const level = int(b.level, 'level', 2);
@@ -157,11 +190,12 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
     const binId = b.binId === undefined ? greenshoeBinFor(g.referencePrice, g.priceScale, pair.binStep, level) : int(b.binId, 'binId', 2 ** 31 - 1, -(2 ** 31));
     if (binId >= pair.activeId) throw new RequestError(422, `A bid sits below the active bin (${pair.activeId}).`, { reason: 'BIN_NOT_BELOW_ACTIVE', activeId: pair.activeId });
     const ix = await buildDeployGreenshoeBid({ cross, payer: createNoopSigner(payer), limitOrder: createNoopSigner(limitOrder), level, binId, amount });
-    return send(reply, { ...compile(payer, [ix], await d.lifetime()), binId, level });
+    return send(reply, await build(payer, [ix], 'greenshoe bid', { binId, level, release }));
   });
 
   app.post('/v1/tx/settle-greenshoe-level', async (req, reply) => {
     const { b, cross, payer } = await body(req);
+    const release = await need('settle_greenshoe_level', SETTLE_GREENSHOE_LEVEL_DISCRIMINATOR as Uint8Array);
     const g = await readGreenshoe(cross.address);
     const level = int(b.level, 'level', 2);
     if (now() < g.expiresTs) throw new RequestError(409, `The bids stand until ${g.expiresTs}.`, { reason: 'NOT_EXPIRED', expiresTs: g.expiresTs });
@@ -169,17 +203,18 @@ export function registerSettleTx(app: FastifyInstance, d: SettleTxDeps): void {
     if (g.levelSettled[level]) throw new RequestError(409, `Level ${level} is settled already.`, { reason: 'ALREADY_SETTLED' });
     const { buildSettleGreenshoeLevel } = await adapters();
     const ix = await buildSettleGreenshoeLevel({ cross, rentReceiver: payer, level, limitOrder: g.orders[level]!, binId: g.bins[level]!, ...(b.hook === undefined ? {} : { hook: b.hook === true }) });
-    return send(reply, compile(payer, [ix], await d.lifetime()));
+    return send(reply, await build(payer, [ix], 'greenshoe level settlement', { release }));
   });
 
   app.post('/v1/tx/finish-greenshoe', async (req, reply) => {
     const { cross, payer } = await body(req);
+    const release = await need('finish_greenshoe', FINISH_GREENSHOE_DISCRIMINATOR as Uint8Array);
     const g = await readGreenshoe(cross.address);
     if (g.finished) throw new RequestError(409, 'This greenshoe is finished.', { reason: 'FINISHED' });
     if (now() < g.expiresTs) throw new RequestError(409, `The bids stand until ${g.expiresTs}.`, { reason: 'NOT_EXPIRED', expiresTs: g.expiresTs });
     const open = g.orders.map((o, i) => (o !== ZERO && !g.levelSettled[i] ? i : -1)).filter((i) => i >= 0);
     if (open.length > 0) throw new RequestError(409, `Levels ${open.join(', ')} are still to be settled before the greenshoe can finish.`, { reason: 'LEVELS_OPEN', levels: open });
     const { buildFinishGreenshoe } = await adapters();
-    return send(reply, { ...compile(payer, [await buildFinishGreenshoe(cross)], await d.lifetime()), toIssuer: cross.data.proceedsTo });
+    return send(reply, await build(payer, [await buildFinishGreenshoe(cross)], 'greenshoe finish', { toIssuer: cross.data.proceedsTo, release }));
   });
 }

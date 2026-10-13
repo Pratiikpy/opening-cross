@@ -538,6 +538,8 @@ export function registerTreasuryTx(app: FastifyInstance, d: TreasuryTxDeps): voi
     route(async (f, b) => {
       const { a, s } = signer(b, 'holder');
       if (f.treasury.state !== TreasuryState.Liquidating) throw new RequestError(409, 'Redemption at the liquidation snapshot opens when the treasury liquidates.', { reason: 'NOT_LIQUIDATING' });
+      // After the wind-down window the leftover was swept to the recovery account and the program refuses every redemption (WoundDown).
+      if (f.ext?.swept) throw new RequestError(409, 'The wind-down window is over and the unclaimed funds were swept to the recovery account: redemption is closed.', { reason: 'WOUND_DOWN', recovery: f.ext.recovery });
       const amount = amountOf(b);
       const held = await balanceOf(a, f.c.coinMint, f.c.coinTokenProgram);
       if (held < amount) throw new RequestError(422, `This wallet holds ${held} coins; it cannot redeem ${amount}.`, { reason: 'INSUFFICIENT_COINS', held });
