@@ -19,7 +19,7 @@ import { groupObservations } from '@opening-cross/premium';
 import { coverage as premiumCoverage, latestPerTicker, observationsSince } from '@opening-cross/premium-service';
 import { createFactsLoader, executionQuality, externalFlow, fairness as fairnessReport, crossFairness } from './metrics.js';
 import { type RateLimit, createLimiter } from './rate-limit.js';
-import { createSafety, gate } from './safety.js';
+import { createSafety, gate, isTransient } from './safety.js';
 import { rankVenues } from './venues.js';
 import { recentReplays, replayRow } from './replay.js';
 import { registerCalendar } from './routes/calendar.js';
@@ -142,12 +142,35 @@ export async function buildServer(d: ApiDeps) {
   // create-cross and the router.
   const safety = createSafety({ account: d.account, ...(d.clock && { now: () => d.clock!() * 1000 }), ...d.safety });
 
-  async function crossView(a: Address) {
+  async function readCrossView(a: Address) {
     const acct = await d.account(a);
     if (!acct) throw new RequestError(404, `cross ${a} not found on chain`);
     const data = owned(acct, CROSS_DISCRIMINATOR as Uint8Array);
     if (!data) throw new RequestError(404, `${a} is not an Opening Cross account`);
     return { address: a, data: getCrossDecoder().decode(data) };
+  }
+  // The last good read of each cross. When the public endpoint is rate-limiting and a read has not answered within four seconds,
+  // a read from the last minute is served (a finalized cross never changes, so its read is kept for good) instead of a 503; the
+  // read carries on and replaces it. A cross never read before waits for the chain as before.
+  type CrossViewT = Awaited<ReturnType<typeof readCrossView>>;
+  const lastViews = new Map<string, { at: number; view: CrossViewT }>();
+  async function crossView(a: Address): Promise<CrossViewT> {
+    const kept = lastViews.get(a);
+    if (kept?.view.data.state === CrossState.Finalized) return kept.view;
+    const fresh = readCrossView(a).then((view) => {
+      lastViews.set(a, { at: Date.now(), view });
+      if (lastViews.size > 2000) lastViews.delete(lastViews.keys().next().value as string);
+      return view;
+    });
+    if (!kept || Date.now() - kept.at >= 60_000) return fresh;
+    fresh.catch(() => undefined);
+    return Promise.race([
+      fresh.catch((e) => {
+        if (isTransient(e)) return kept.view;
+        throw e;
+      }),
+      new Promise<CrossViewT>((r) => setTimeout(() => r(kept.view), 4_000).unref()),
+    ]);
   }
 
   function present(address: Address, c: ReturnType<ReturnType<typeof getCrossDecoder>['decode']>) {
