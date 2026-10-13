@@ -124,3 +124,9 @@ Fixes made while getting here, each a response to a measured failure on the live
 - RPC client (API, indexer, keeper, promiser): `RPC_URL` may list several endpoints; a call moves to the next on a 429 or dropped connection and never on an empty answer (`services/indexer/test/rpc-failover.test.ts`). The deployed list is the public devnet endpoint, Tatum and OnFinality; all three allow only short bursts, so this spreads load and does not replace H26.
 - Browser: confirmations are polled every 1.5 s, and the same endpoint rotation applies in the page.
 - Indexer reads calendars, bindings and treasuries every fourth poll. Keeper remembers a cross whose account belongs to an earlier layout (`AccountOwnedByWrongProgram`) for an hour instead of failing every pass.
+
+### Passing run on the final build (2026-10-13)
+
+After the last two fixes (account reads made together travel as one `getMultipleAccounts` call; the indexer's reconciliation reads every cross and order account in batches of 100 instead of about 300 single requests), the public endpoint's 429 rate seen from the AWS host fell from about 75% to about 12% with every service running, and `live-devnet.mjs` passed in full against the real URLs: cross `3S7Vs2gbfXggcpTqWYBJo6AhcuzqgWmiQsdZcwDGFLkM`, all ten functional checks, the issuer's and the buyer's zero-console-errors checks, `ALL PASSED`. The band was graded `SCORED` (outcome tick 4, error 0 ticks). `live-smoke.mjs` on the same build, run just before: 68 page views, `NO PROBLEMS`. Screenshots: `screens/w2-live-final3/`.
+
+The run before it failed on the harness wallets, not the product: the issuer had 0.134 SOL against the 0.168 a cross needs, and the buyer's quote balance was under 780, which the order ticket's new shortfall guard reported correctly. One passing run is one run: it was not repeated three times, and the shared public endpoint remains the weak point (H26).
