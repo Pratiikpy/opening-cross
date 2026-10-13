@@ -1,0 +1,1010 @@
+{
+ "at": 1791874263,
+ "sizes": [
+  100,
+  1000,
+  10000
+ ],
+ "dropped": [
+  {
+   "ticker": "AAOI",
+   "reason": "quote failed: Jupiter: No routes found"
+  },
+  {
+   "ticker": "ACN",
+   "reason": "no route"
+  },
+  {
+   "ticker": "ARM",
+   "reason": "no route"
+  },
+  {
+   "ticker": "BABA",
+   "reason": "no route"
+  },
+  {
+   "ticker": "BB",
+   "reason": "no route"
+  },
+  {
+   "ticker": "BE",
+   "reason": "quote failed: Jupiter: No routes found"
+  },
+  {
+   "ticker": "BOT",
+   "reason": "no route"
+  },
+  {
+   "ticker": "BX",
+   "reason": "no route"
+  },
+  {
+   "ticker": "CBRS",
+   "reason": "no route"
+  },
+  {
+   "ticker": "CL",
+   "reason": "no route"
+  },
+  {
+   "ticker": "COIN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRCL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRWD",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRWV",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CVX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DELL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DKNG",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DRAM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWJ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWZ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GEV",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GLW",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GME",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GOOGL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "HIMS",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "HOOD",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "IBM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "INTC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "IREN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "KORU",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LITE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LLY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LRCX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LYTE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "META",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MRNA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MRVL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MSFT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MSTR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MU",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NBIS",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NET",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NFLX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NOW",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NVDA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ORCL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "PLTR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "QCOM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "QNT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RDDT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RIVN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RKLB",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SHAZ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SKHY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SMH",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SNDK",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SNXX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SOXL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SPCX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "STRC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TSLA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TSM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TWST",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "URNM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "USAR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "WDC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "XBI",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "XLE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ZM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  }
+ ],
+ "observations": [
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AAPL",
+   "symbol": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "342340000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00326901254"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMAT",
+   "symbol": "AMATx",
+   "mint": "XsQZdaWUAGC4R3fgD2N1fupKvJfJq6YM51ccnsLUWFA",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "486480000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.00161753527"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMD",
+   "symbol": "AMDx",
+   "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "585010000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AMZN",
+   "symbol": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "258460000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "ASML",
+   "symbol": "ASMLx",
+   "mint": "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "1719600000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.002866334415"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "AVGO",
+   "symbol": "AVGOx",
+   "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "350330000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1.006162318065"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "buy",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "sell",
+   "sizeUsd": 100,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "buy",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "sell",
+   "sizeUsd": 1000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "buy",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  },
+  {
+   "at": 1791874263,
+   "ticker": "BMNR",
+   "symbol": "BMNRx",
+   "mint": "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn",
+   "leg": "sell",
+   "sizeUsd": 10000,
+   "session": "overnight",
+   "referenceKind": "hip3_oracle",
+   "status": "quote_failed",
+   "referenceE6": "24000000",
+   "perShareE6": null,
+   "premiumBpsX100": null,
+   "priceImpactBpsX100": null,
+   "route": null,
+   "multiplier": "1"
+  }
+ ]
+}

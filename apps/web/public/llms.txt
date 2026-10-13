@@ -66,6 +66,7 @@ These return transactions for your wallet to sign and send. The API never holds 
 - [README](https://github.com/Pratiikpy/opening-cross/blob/main/README.md): `pnpm --filter @opening-cross/verifier verify <cross-address> --rpc <your RPC URL>` recomputes a cleared cross from its on-chain book and exits 0 only when it matches.
 - [Clearing rule (ADR-0003)](https://github.com/Pratiikpy/opening-cross/blob/main/docs/adr/0003-clearing-rule.md)
 - [Conformance vectors](https://github.com/Pratiikpy/opening-cross/blob/main/docs/evidence/D5-conformance.md)
+- [OCIP-1 interface specification](https://github.com/Pratiikpy/opening-cross/blob/main/docs/spec/OCIP-1.md): accounts, instructions, the clearing rule, the fairness proof and the conformance vectors (draft; devnet only, no audit).
 
 ## Signed price bands
 

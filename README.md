@@ -98,7 +98,7 @@ All five main programs match the local builds byte for byte ([`L4-verifiable-bui
 | `apps/web`, `apps/mobile` | Opening Bell web app (Next.js) and Android app (Expo, Mobile Wallet Adapter). |
 | `examples/ts-quickstart`, `examples/venue` | A full cross from a clean project; a third-party program routing orders into a cross with one CPI. |
 | `tests/` | LiteSVM program tests, devnet proofs, and the browser harness. |
-| `docs/` | [ROADMAP](docs/ROADMAP.md), [feature status](docs/FEATURE_STATUS.md), [ADRs](docs/adr), [security](docs/security), [configuration](docs/CONFIGURATION.md), [evidence](docs/evidence), [human tasks](docs/HUMAN_TASKS.md). |
+| `docs/` | [ROADMAP](docs/ROADMAP.md), [feature status](docs/FEATURE_STATUS.md), [ADRs](docs/adr), [OCIP-1 interface specification](docs/spec/OCIP-1.md), [security](docs/security), [configuration](docs/CONFIGURATION.md), [evidence](docs/evidence), [human tasks](docs/HUMAN_TASKS.md). |
 
 ## Verified numbers
 

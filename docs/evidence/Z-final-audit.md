@@ -156,3 +156,11 @@ Found by looking at the deployed site and its API as a stranger, then fixed and 
 - The premium monitor's Jupiter quotes are rate limited from the server (the latest rounds often price few tickers); the page says how many quotes failed.
 - Programs were not changed or rebuilt; the five deployed programs still equal the repository builds.
 - The second wave's claim center was not exercised with a real signed Claim all (API rate limits during the attempt); the issuer console at 390 px was not covered; the router quotes crosses only on devnet (Jupiter is mainnet-only); DP13 misses its 5 s target and DP15 fails for NVDA on a Pyth entitlement, both external and recorded in their evidence files.
+
+### Found while writing the OCIP specification, not fixed (read from the code, not run)
+
+- `finalize` on an escrow-mode cross does not fail when `base_vault`, `base_mint` and `proceeds_base` are omitted: it finalizes and leaves the base dust in the vault.
+- `bind_base_mint` does not check `settle_deadline_ts`; after the deadline, whichever of bind and `abandon_settlement` lands first decides the outcome.
+- `AdminChanged` has the same discriminator in `cross_core` and `cross_calendar`, so an indexer must attribute events by program.
+Each needs a program change and a redeploy, so none was made before the submission deadline.
+
