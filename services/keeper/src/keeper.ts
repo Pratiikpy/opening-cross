@@ -43,6 +43,8 @@ export type MintHalt = { code: string; message: string };
 export type Deferred = { sig: string; at: bigint };
 
 /** Seconds before a step refused for a frozen token account is tried again; the issuer can thaw it at any time. */
+const LAYOUT = 'LAYOUT';
+const LAYOUT_RETRY_SECONDS = 3600n;
 const FROZEN_RETRY_SECONDS = 600n;
 const FROZEN = 'ACCOUNT_FROZEN';
 type Halt = MintHalt & { role: 'base' | 'quote'; mint: Address };
@@ -96,7 +98,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
   const mark = `${address}|`;
   if (memory && halts.length === 0) {
     // Whatever was holding this cross back is gone; forget it so the steps are tried again (a frozen-account entry keeps its own delay).
-    for (const [k, v] of memory) if (k.startsWith(mark) && v.sig !== FROZEN) memory.delete(k);
+    for (const [k, v] of memory) if (k.startsWith(mark) && v.sig !== FROZEN && v.sig !== LAYOUT) memory.delete(k);
   }
   const why = (h: Halt) => `the ${h.role} mint ${h.mint} cannot move right now: ${h.message}`;
   let progressed = false;
@@ -110,6 +112,10 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
     }
     const key = `${mark}${action.kind}|${action.kind === 'claim' ? action.order.address : ''}`;
     const known = memory?.get(key);
+    if (known?.sig === LAYOUT && now - known.at < LAYOUT_RETRY_SECONDS) {
+      p.skipped.push({ cross: address, code: LAYOUT, reason: 'an account of this cross belongs to a different program than this one expects (an earlier layout), so it cannot be settled; checked again hourly' });
+      continue;
+    }
     if (known && ((known.sig === FROZEN && now - known.at < FROZEN_RETRY_SECONDS) || (known.sig !== FROZEN && halts.length > 0 && known.sig === sig))) {
       if (known.sig === FROZEN) frozen++;
       else held++;
@@ -131,7 +137,11 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       // succeed, so report it once as skipped with the reason rather than failing every pass.
       if (error.includes('AccountDidNotDeserialize')) p.skipped.push({ cross: address, reason: `the program cannot read this account (${error})` });
       // A cross created without its order-book shards can never be settled either; report it once instead of failing every pass.
-      else if (error.includes('AccountNotInitialized')) p.skipped.push({ cross: address, reason: `an account this cross needs was never created, so it cannot be settled (${error})` });
+      else if (error.includes('AccountOwnedByWrongProgram')) {
+        // An account of an earlier program layout: the same step will be refused every pass, so it is remembered for an hour.
+        memory?.set(key, { sig: LAYOUT, at: now });
+        p.skipped.push({ cross: address, code: LAYOUT, reason: `an account of this cross belongs to a different program than this one expects, so it cannot be settled (${error})` });
+      } else if (error.includes('AccountNotInitialized')) p.skipped.push({ cross: address, reason: `an account this cross needs was never created, so it cannot be settled (${error})` });
       // The step was refused while a mint is halted on chain: that is the cause, not a fault to retry every pass. Remember it
       // and try again only when the set of halts changes.
       else if (halts.length > 0) {
