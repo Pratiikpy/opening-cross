@@ -21,9 +21,11 @@ export type DashboardOptions = {
   skip?: readonly string[];
   /** How long a result is reused, in milliseconds. Default 15,000. */
   ttlMs?: number;
+  /** How long one section may take before its last good answer is shown instead. Default 8,000. */
+  sectionWaitMs?: number;
 };
 
-type Section = { ok: true; source: string; data: unknown } | { ok: false; source: string; error: string };
+type Section = ({ ok: true; source: string; data: unknown } | { ok: false; source: string; error: string }) & { stale?: boolean; staleSeconds?: number; staleBecause?: string };
 
 const BPF_UPGRADEABLE = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const PROGRAMS: [string, string][] = [
@@ -88,6 +90,26 @@ export function registerDashboard(app: FastifyInstance, d: DashboardDeps, opts: 
     }
   }
 
+  // Every section is given SECTION_WAIT_MS. One that fails or does not answer in time is replaced by its last good answer, marked
+  // `stale` with its age, and only when there is none does the page say the section failed. The programs section reads five whole
+  // program binaries from the chain, so it is rebuilt every ten minutes, not every fifteen seconds.
+  const SECTION_WAIT_MS = opts.sectionWaitMs ?? 8_000;
+  const SECTION_TTL_MS: Record<string, number> = { programs: 600_000 };
+  const lastGood = new Map<string, { at: number; section: Section }>();
+  async function bounded(name: string, run: () => Promise<Section>): Promise<Section> {
+    const kept = lastGood.get(name);
+    const ttlFor = SECTION_TTL_MS[name];
+    if (kept && ttlFor && Date.now() - kept.at < ttlFor) return kept.section;
+    const timeout = new Promise<Section>((r) => setTimeout(() => r({ ok: false, source: name, error: `did not answer within ${SECTION_WAIT_MS / 1000} s` }), SECTION_WAIT_MS).unref());
+    const result = await Promise.race([run().catch((e): Section => ({ ok: false, source: name, error: e instanceof Error ? e.message : String(e) })), timeout]);
+    if (result.ok) {
+      lastGood.set(name, { at: Date.now(), section: result });
+      return result;
+    }
+    if (kept) return { ...kept.section, stale: true, staleSeconds: Math.round((Date.now() - kept.at) / 1000), staleBecause: result.error } as Section;
+    return result;
+  }
+
   async function build() {
     const sections: Record<string, () => Promise<Section>> = {
       health: () => viaRoute('/v1/health'),
@@ -117,7 +139,7 @@ export function registerDashboard(app: FastifyInstance, d: DashboardDeps, opts: 
       },
     };
     const names = Object.keys(sections).filter((n) => !skip.has(n));
-    const results = await Promise.all(names.map((n) => sections[n]!()));
+    const results = await Promise.all(names.map((n) => bounded(n, sections[n]!)));
     return {
       schema: 'opening-cross/dashboard/v1',
       network: d.network ?? 'unknown',
