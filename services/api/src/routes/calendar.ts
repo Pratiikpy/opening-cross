@@ -66,7 +66,7 @@ const rank = (c: { state: string; next: unknown }) => (c.state === 'open' ? 0 : 
  * `chainTtlMs`: how long one calendar account read is reused (default 10 s), so a page that polls the list does not cost one RPC read
  * per calendar per request on a rate-limited endpoint. Simultaneous requests share a read either way. 0 reads on every request.
  */
-export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chainTtlMs?: number } = {}): void {
+export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chainTtlMs?: number; chainWaitMs?: number } = {}): void {
   const ttl = opts.chainTtlMs ?? 10_000;
   const reads = new Map<string, { at: number; value: Promise<Awaited<ReturnType<ApiDeps['account']>>> }>();
   const readAccount = (a: Address) => {
@@ -79,10 +79,15 @@ export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chain
     return value;
   };
   const nowSec = () => BigInt(Math.floor(d.clock ? d.clock() : Date.now() / 1000));
+  // A chain read that has not answered within this long (the shared endpoint rate-limits and the client retries with growing pauses) is
+  // given up on: the page is served from the index, marked `verified: false`, instead of waiting out every retry.
+  const chainWaitMs = opts.chainWaitMs ?? 3_000;
+  const within = <T>(p: Promise<T>, fallback: T): Promise<T> =>
+    Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), chainWaitMs).unref())]);
 
   /** The protocol-wide pause flag, or null when the Protocol account cannot be read. */
   async function protocolPaused(): Promise<boolean | null> {
-    const acct = await d.account(await protocolAddress());
+    const acct = await within(protocolAddress().then((a) => d.account(a)), null);
     if (!acct || acct.owner !== CROSS_CORE_PROGRAM_ADDRESS) return null;
     try {
       return getProtocolDecoder().decode(acct.data).paused;
@@ -93,7 +98,7 @@ export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chain
 
   /** The calendar as the chain holds it now; the indexed row when the chain read finds nothing usable. */
   async function fromChain(address: string, indexed: CalendarRow | null): Promise<{ row: CalendarRow; verified: boolean; inSync: boolean | null } | null> {
-    const acct = await readAccount(address as Address);
+    const acct = await within(readAccount(address as Address), null);
     const row = acct ? calendarFromAccount(address, acct) : null;
     if (row) return { row, verified: true, inSync: indexed ? canonicalJson(indexed) === canonicalJson(row) : null };
     return indexed ? { row: indexed, verified: false, inSync: false } : null;
@@ -176,7 +181,7 @@ export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chain
     // A cross the index shows as unfinished is read from chain, so the page never shows a cleared cross as still collecting orders.
     const crosses = await mapLimit(bound.get(market) ?? [], READ_CONCURRENCY, async (c) => {
       if (c.state === 'Finalized') return c;
-      const acct = await d.account(c.address as Address);
+      const acct = await within(d.account(c.address as Address), null);
       if (!acct || acct.owner !== CROSS_CORE_PROGRAM_ADDRESS || !(CROSS_DISCRIMINATOR as Uint8Array).every((b, i) => acct.data[i] === b)) return c;
       const x = getCrossDecoder().decode(acct.data);
       const clearing = x.clearing.__option === 'Some' ? x.clearing.value : null;

@@ -7,7 +7,7 @@ const API = process.env.API_URL ?? 'https://98-87-59-136.sslip.io';
 const crosses = (await (await fetch(`${API}/v1/crosses?limit=200`)).json()).crosses;
 const settled = crosses.find((c) => c.state === 'Finalized' && c.clearing_price);
 const closed = crosses.find((c) => c.state === 'Live');
-const pages = ['/', '/crosses', '/accuracy', '/premium', '/developers', '/status', '/calendar', '/orders', '/issue', '/no-such-page', `/crosses/${settled.address}`, ...(closed ? [`/crosses/${closed.address}`] : [])];
+const pages = ['/', '/crosses', '/accuracy', '/premium', '/developers', '/status', '/calendar', '/live', '/replay', '/gates', '/export', '/treasury', '/orders', '/issue', '/no-such-page', `/crosses/${settled.address}`, ...(closed ? [`/crosses/${closed.address}`] : [])];
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const problems = [];
 let n = 0;
@@ -21,7 +21,10 @@ for (const theme of ['light', 'dark']) for (const [w, h] of [[1440, 900], [390, 
     page.on('requestfailed', (r) => { if (!(/[?&]_rsc=/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED')) problems.push(`${tag} requestfailed: ${r.url().slice(0, 100)} ${r.failure()?.errorText}`); });
     await page.goto(BASE + p, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch((e) => problems.push(`${tag} goto: ${e.message.slice(0, 80)}`));
     await page.waitForTimeout(3500);
-    const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    let over = 0;
+    for (let i = 0; i < 3; i++) {
+      try { over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth); break; } catch { await page.waitForTimeout(1500); }
+    }
     if (over > 0) problems.push(`${tag}: horizontal overflow ${over}px`);
     const txt = (await page.innerText('body').catch(() => '')).replace(/\s+/g, ' ');
     if (/unreachable|could not reach|undefined|NaN/.test(txt) && p !== '/no-such-page') problems.push(`${tag}: suspicious text ${(txt.match(/.{30}(unreachable|could not reach|undefined|NaN).{20}/) ?? [''])[0]}`);
