@@ -29,12 +29,14 @@ import {
   buildClaim,
   buildCreateCross,
   buildFinalizeWithAccounts,
+  buildMissingRuledAccounts,
   buildMissingShards,
   buildPlaceOrder,
   buildReveal,
   buildSettleBook,
   getOrderDecoder,
   orderAddress,
+  readOrderExt,
   shardAddress,
 } from '@opening-cross/sdk';
 import { AuthorityType, getSetAuthorityInstruction } from '@solana-program/token-2022';
@@ -45,7 +47,20 @@ import { bytesOfHex, hexOfBytes } from './sealed.js';
 import type { RpcClient } from './rpc.js';
 import type { BuiltAction, Side, UnsignedTransaction } from './types.js';
 
-export type PlaceOrderRequest = { cross: string; owner: string; nonce: bigint; side: Side; price: bigint; quantity: bigint; escrow?: bigint; salt?: Uint8Array };
+export type PlaceOrderRequest = {
+  cross: string;
+  owner: string;
+  nonce: bigint;
+  side: Side;
+  price: bigint;
+  quantity: bigint;
+  escrow?: bigint;
+  salt?: Uint8Array;
+  /** Allocation class of a buy on a cross with rules: 1 identity-verified small buyer, 2 accepts a lockup, 3 priority. */
+  class?: number;
+  /** Seconds of lockup a class-2 buyer accepts. */
+  lockSecs?: number;
+};
 export type CancelRequest = { cross: string; owner: string; nonce: bigint };
 export type RevealRequest = { cross: string; owner: string; nonce: bigint; price: bigint; quantity: bigint; salt: Uint8Array };
 export type SettleRequest = { cross: string; payer: string; oraclePrice?: string };
@@ -109,7 +124,20 @@ export function apiTxBuilder(api: ApiClient): TxBuilder {
   const s = (v: bigint) => v.toString();
   return {
     kind: 'api',
-    placeOrder: (r) => api.tx.placeOrder({ cross: r.cross, owner: r.owner, side: r.side, price: s(r.price), quantity: s(r.quantity), nonce: s(r.nonce), ...(r.escrow !== undefined ? { escrow: s(r.escrow) } : {}), ...(r.salt ? { salt: hexOfBytes(r.salt) } : {}) }),
+    // A class or a lockup goes through the route that takes them; every other order uses the original route, which also builds the right accounts for a cross with rules.
+    placeOrder: (r) =>
+      (r.class !== undefined || r.lockSecs !== undefined ? api.tx.placeOrderExt : api.tx.placeOrder)({
+        cross: r.cross,
+        owner: r.owner,
+        side: r.side,
+        price: s(r.price),
+        quantity: s(r.quantity),
+        nonce: s(r.nonce),
+        ...(r.escrow !== undefined ? { escrow: s(r.escrow) } : {}),
+        ...(r.salt ? { salt: hexOfBytes(r.salt) } : {}),
+        ...(r.class !== undefined ? { class: r.class } : {}),
+        ...(r.lockSecs !== undefined ? { lockSecs: r.lockSecs } : {}),
+      }),
     cancel: (r) => api.tx.cancel({ cross: r.cross, owner: r.owner, nonce: s(r.nonce) }),
     reveal: (r) => api.tx.reveal({ cross: r.cross, owner: r.owner, nonce: s(r.nonce), price: s(r.price), quantity: s(r.quantity), salt: hexOfBytes(r.salt) }),
     settle: (r) => api.tx.settle({ cross: r.cross, payer: r.payer, ...(r.oraclePrice ? { oraclePrice: r.oraclePrice } : {}) }),
@@ -173,15 +201,17 @@ const toSide = (s: Side): OrderSide => (s === 'buy' ? OrderSide.Buy : OrderSide.
 
 export function localTxBuilder(rpc: RpcClient): TxBuilder {
   async function view(addr: string): Promise<CrossView> {
-    const { address, data } = await readCrossFromChain(rpc, addr);
-    return { address, data };
+    const { address, data, ext } = await readCrossFromChain(rpc, addr);
+    return { address, data, ext };
   }
   async function orderData(cross: Address, owner: string, nonce: bigint) {
     const a = await orderAddress(cross, toAddress(owner), nonce);
     const acct = await rpc.getAccount(a);
     const disc = ORDER_DISCRIMINATOR as Uint8Array;
-    if (!acct || acct.data.length < 8 || !disc.every((b, i) => acct.data[i] === b)) return { address: a, order: null };
-    return { address: a, order: getOrderDecoder().decode(acct.data) };
+    if (!acct || acct.data.length < 8 || !disc.every((b, i) => acct.data[i] === b)) return { address: a, order: null, facts: null };
+    const order = getOrderDecoder().decode(acct.data);
+    // What a cross with rules needs to route an order: its ending bucket (the shard it lives in) and its side.
+    return { address: a, order, facts: { ext: readOrderExt(acct.data), isBuy: order.side === OrderSide.Buy } };
   }
   const build = async (feePayer: string, groups: Instruction[][], extra: Record<string, unknown> = {}): Promise<BuiltAction> => {
     const lt = await rpc.latestBlockhash();
@@ -198,22 +228,25 @@ export function localTxBuilder(rpc: RpcClient): TxBuilder {
       if (r.salt && r.salt.length !== 32) throw new ActionError('salt must be 32 bytes', 'INVALID_INPUT');
       const existing = await orderData(cross.address, r.owner, r.nonce);
       if (existing.order) throw new ActionError(`nonce ${r.nonce} is already used by this owner in this cross`, 'CONFLICT');
-      const ix = await buildPlaceOrder({ cross, owner: createNoopSigner(toAddress(r.owner)), nonce: r.nonce, side: toSide(r.side), price: r.price, quantity: r.quantity, ...(r.escrow !== undefined ? { escrow: r.escrow } : {}), ...(r.salt ? { salt: r.salt } : {}) });
+      if (!cross.ext && ((r.class ?? 0) !== 0 || (r.lockSecs ?? 0) !== 0)) throw new ActionError('this cross has no rules, so it takes no allocation class and no lockup', 'INVALID_INPUT');
+      const ix = await buildPlaceOrder({ cross, owner: createNoopSigner(toAddress(r.owner)), nonce: r.nonce, side: toSide(r.side), price: r.price, quantity: r.quantity, ...(r.escrow !== undefined ? { escrow: r.escrow } : {}), ...(r.salt ? { salt: r.salt } : {}), ...(r.class !== undefined ? { class: r.class } : {}), ...(r.lockSecs !== undefined ? { lockSecs: r.lockSecs } : {}) }).catch((e: Error) => {
+        throw new ActionError(e.message, 'INVALID_INPUT');
+      });
       return build(r.owner, [[ix]], { order: existing.address });
     },
 
     async cancel(r) {
       const cross = await view(r.cross);
-      const { order } = await orderData(cross.address, r.owner, r.nonce);
-      if (!order) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
-      return build(r.owner, [[await buildCancel(cross, createNoopSigner(toAddress(r.owner)), r.nonce, order.side, order.state === 1)]]);
+      const { order, facts } = await orderData(cross.address, r.owner, r.nonce);
+      if (!order || !facts) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
+      return build(r.owner, [[await buildCancel(cross, createNoopSigner(toAddress(r.owner)), r.nonce, order.side, order.state === 1, facts)]]);
     },
 
     async reveal(r) {
       const cross = await view(r.cross);
-      const { order } = await orderData(cross.address, r.owner, r.nonce);
-      if (!order) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
-      return build(r.owner, [[await buildReveal(cross, createNoopSigner(toAddress(r.owner)), r.nonce, r.price, r.quantity, r.salt)]]);
+      const { order, facts } = await orderData(cross.address, r.owner, r.nonce);
+      if (!order || !facts) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
+      return build(r.owner, [[await buildReveal(cross, createNoopSigner(toAddress(r.owner)), r.nonce, r.price, r.quantity, r.salt, facts)]]);
     },
 
     async settle(r) {
@@ -229,10 +262,10 @@ export function localTxBuilder(rpc: RpcClient): TxBuilder {
       const cross = await view(r.cross);
       if (cross.data.state === CrossState.Live) throw new ActionError('cross has not settled yet', 'CONFLICT');
       if (cross.data.state === CrossState.Finalized) throw new ActionError('cross is finalized: every order has already been paid or refunded', 'CONFLICT');
-      const { order } = await orderData(cross.address, r.owner, r.nonce);
-      if (!order) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
+      const { order, facts } = await orderData(cross.address, r.owner, r.nonce);
+      if (!order || !facts) throw new ActionError(`no open order for owner ${r.owner} with nonce ${r.nonce} in cross ${r.cross}`, 'NOT_FOUND');
       const payer = r.payer ?? r.owner;
-      return build(payer, [await buildClaim(cross, createNoopSigner(toAddress(payer)), toAddress(r.owner), r.nonce)]);
+      return build(payer, [await buildClaim(cross, createNoopSigner(toAddress(payer)), toAddress(r.owner), r.nonce, facts)]);
     },
 
     async finalize(r) {
@@ -246,7 +279,9 @@ export function localTxBuilder(rpc: RpcClient): TxBuilder {
       const present = new Map<string, boolean>();
       const shards = await Promise.all(Array.from({ length: Number(cross.data.shards) }, (_, i) => shardAddress(cross.address, i)));
       (await rpc.getAccounts(shards)).forEach((a, i) => present.set(shards[i]!, a !== null));
-      const ixs = await buildMissingShards(cross, createNoopSigner(toAddress(r.payer)), async (a) => present.get(a) ?? false);
+      const payer = createNoopSigner(toAddress(r.payer));
+      const exists = async (a: Address) => (present.has(a) ? present.get(a)! : (await rpc.getAccount(a)) !== null);
+      const ixs = [...(await buildMissingShards(cross, payer, exists)), ...(await buildMissingRuledAccounts({ ...cross, ext: cross.ext ?? null }, payer, exists))];
       if (ixs.length === 0) throw new ActionError('every shard of this cross already exists', 'CONFLICT');
       return build(r.payer, ixs.map((ix) => [ix]));
     },

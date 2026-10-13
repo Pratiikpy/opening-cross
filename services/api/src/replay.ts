@@ -12,6 +12,18 @@ const KIND: Record<string, string> = {
   OrderClaimed: 'order_claimed',
   BaseMintBound: 'base_mint_bound',
   CrossFinalized: 'finalized',
+  // The rules extension (ADR-0450 to ADR-0462).
+  RulesSet: 'rules_set',
+  OrderPlacement: 'order_placement',
+  DrawStarted: 'draw_started',
+  DrawFinished: 'draw_finished',
+  ExtensionPending: 'extension_pending',
+  InsiderChallenged: 'insider_challenged',
+  ChallengeResolved: 'challenge_resolved',
+  ChallengeExpired: 'challenge_expired',
+  LockCreated: 'lock_created',
+  LockReleased: 'lock_released',
+  PrintFed: 'print_fed',
 };
 
 export type ReplayEvent = {

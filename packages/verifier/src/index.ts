@@ -17,11 +17,14 @@ import {
 } from '@opening-cross/cross-core-client';
 import { type RefOrder, referenceClear } from './reference.js';
 import { type Order2, type Rules2, referenceClearCapped, referenceGuards2, referenceInsiderBound } from './reference2.js';
+import { NO_BUCKET, drawEndBucket, lastCountedBucket, requiredAuxMask } from './ending.js';
 
 export * from './reference.js';
 export * from './reference2.js';
 export * from './conformance.js';
 export * from './conformance2.js';
+export * from './conformance3.js';
+export * from './ending.js';
 
 export const PROOF_SCHEMA = 'opening-cross/fairness-proof/v1';
 /** Proofs for crosses that carry rules (ADR-0100) add the rules, the draw and the allocation figures. */
@@ -46,6 +49,15 @@ export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
 
 export type BookLevel = { price: string; buy: string; sell: string; buyOrders: number; sellOrders: number };
 
+/** One re-derivation: `ok` is null when the inputs it needs were not supplied or no longer exist. */
+export type ProofCheck = { name: string; ok: boolean | null; detail: string };
+
+/** The result of a `draw_finish` as the program emitted it (`DrawFinished`). The seed of an earlier draw is replaced on chain by a later one, so a proof that
+ *  wants to check an earlier draw needs the event. */
+export type DrawRecord = { purpose: number; epoch: number; seed: string; endBucket: number; closeTs?: string };
+
+export type VerifyOptions = { draws?: readonly DrawRecord[] };
+
 export type FairnessProof = {
   schema: typeof PROOF_SCHEMA | typeof PROOF_SCHEMA_V2;
   program: Address;
@@ -69,6 +81,20 @@ export type FairnessProof = {
   notes: string[];
   /** Present on schema v2: what the cross's rules were and what they decided. */
   rules?: {
+    /** The ending period and the draw that fixed which of its buckets count; null when the cross has neither an ending period nor an extension. */
+    ending: {
+      endingSecs: number;
+      buckets: number;
+      cancelCutoffSecs: number;
+      randomEnd: boolean;
+      startsAt: string | null;
+      lastCountedBucket: number | null;
+      extension: { minSecs: number; maxSecs: number; used: boolean; epoch: number } | null;
+    } | null;
+    /** What was re-derived from the chain's state beyond the clearing itself, each with its result: true, false, or null when it cannot be checked from what was supplied. */
+    checks: ProofCheck[];
+    /** What this proof does not establish, in words. */
+    limits: string[];
     supplyCap: string | null;
     minRaiseQuote: string;
     totalSupply: string;
@@ -92,12 +118,13 @@ const STATE_NAMES = ['Live', 'Cleared', 'NoPrint', 'Finalized'] as const;
 // Mirrors cross_core::NoPrintReason.
 const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'] as const;
 
-export async function verifyCross(fetch: AccountFetcher, cross: Address): Promise<FairnessProof> {
+export async function verifyCross(fetch: AccountFetcher, cross: Address, opts: VerifyOptions = {}): Promise<FairnessProof> {
   const crossData = await fetch(cross);
   if (!crossData) throw new Error(`cross ${cross} not found`);
   const c: Cross = getCrossDecoder().decode(crossData);
   const ext = readExt(crossData);
-  let rulesBlock: FairnessProof['rules'] = ext ? rulesBlockOf(ext, null) : undefined;
+  let rulesBlock: FairnessProof['rules'] = ext ? rulesBlockOf(ext, null, c, []) : undefined;
+  const checks: ProofCheck[] = [];
   const bookData = await fetch(await bookAddressOf(cross));
   if (!bookData) throw new Error(`book for ${cross} not found`);
   const book = getLevelsDecoder().decode(bookData);
@@ -157,7 +184,7 @@ export async function verifyCross(fetch: AccountFetcher, cross: Address): Promis
         const classQty = [1, 2, 3].map((k) => synthetic.filter((o) => o.side === 'buy' && o.class === k && o.price === r.price).reduce((a, o) => a + o.quantity, 0n));
         allocation = { classQty: classQty.map(String), tickets, rho: Number(rules2.rho), insiderUpperBound: bound.toString(), counted: counted.toString() };
       }
-      rulesBlock = rulesBlockOf(ext, allocation);
+      rulesBlock = rulesBlockOf(ext, allocation, c, checks);
     }
     const imbalance = (() => {
       let d = 0n, s = 0n;
@@ -198,6 +225,12 @@ export async function verifyCross(fetch: AccountFetcher, cross: Address): Promis
     verified = recomputed.printed && recomputed.price === onchain.price && recomputed.matched === onchain.matched && recomputed.rationed === onchain.rationed;
   } else {
     verified = !recomputed.printed && recomputed.noPrintReason === onchainReason;
+  }
+  if (ext) {
+    for (const check of endingChecks(ext, c, opts)) checks.push(check);
+    rulesBlock = rulesBlockOf(ext, rulesBlock?.allocation ?? null, c, checks);
+    for (const check of checks) if (check.ok === false) notes.push(`Check failed: ${check.name}: ${check.detail}`);
+    if (checks.some((k) => k.ok === false)) verified = false;
   }
   return proof(verified, recomputed);
 
@@ -245,8 +278,22 @@ function rulesOfExt(x: CrossExt, priceScale: bigint): Rules2 {
   };
 }
 
-function rulesBlockOf(x: CrossExt, allocation: NonNullable<FairnessProof['rules']>['allocation']): FairnessProof['rules'] {
+function rulesBlockOf(x: CrossExt, allocation: NonNullable<FairnessProof['rules']>['allocation'], c: Cross, checks: ProofCheck[]): FairnessProof['rules'] {
+  const hasEnding = x.ending.endingSecs > 0 || x.ending.extensionMaxSecs > 0;
   return {
+    ending: hasEnding
+      ? {
+          endingSecs: x.ending.endingSecs,
+          buckets: x.ending.buckets,
+          cancelCutoffSecs: x.ending.cancelCutoffSecs,
+          randomEnd: x.ending.randomEnd,
+          startsAt: x.ending.endingSecs > 0 ? (c.closeTs - BigInt(x.ending.endingSecs)).toString() : null,
+          lastCountedBucket: x.ending.endingSecs > 0 ? lastCountedBucket(x.ending.buckets, x.draw.endBucket) : null,
+          extension: x.ending.extensionMaxSecs > 0 ? { minSecs: x.ending.extensionMinSecs, maxSecs: x.ending.extensionMaxSecs, used: x.draw.extensionUsed, epoch: x.draw.epoch } : null,
+        }
+      : null,
+    checks,
+    limits: LIMITS,
     supplyCap: x.guards.maxMatched > 0n ? x.guards.maxMatched.toString() : null,
     minRaiseQuote: x.guards.minRaiseQuote.toString(),
     totalSupply: x.guards.totalSupply.toString(),
@@ -260,6 +307,38 @@ function rulesBlockOf(x: CrossExt, allocation: NonNullable<FairnessProof['rules'
     draw: { epoch: x.draw.epoch, seed: x.draw.seedReady ? Buffer.from(x.draw.seed).toString('hex') : null, endBucket: x.draw.endBucket === 255 ? null : x.draw.endBucket },
     allocation,
   };
+}
+
+const LIMITS = [
+  'The draw is the cluster\'s own attested block hashes, not a verifiable random function. This proof checks what the seed decides (the last counted bucket, an extension\'s length, where the lottery starts), not that the block hashes were honest: the SlotHashes sysvar keeps 512 slots, so the hashes themselves cannot be re-read later.',
+  'A no-print reason that depends on the state of the asset at the moment of the clear (Halted, CorporateAction, IssuerPaused) or on an oracle update passed to the clear (OracleDivergence, OracleUnavailable, OracleDisagreement) cannot be reproduced from the book; for those the proof checks only that the cross did not print.',
+  'Per-order fills are not part of this proof: it covers the clearing price, volume, rationed side and the guards. A wallet\'s receipt recomputes its own fill.',
+];
+
+/** The invariants of a cross with rules that follow from the draw and the shards, re-derived from the account (programs/cross_core/src/lib.rs `merge_shard`, `clear`). */
+function endingChecks(x: CrossExt, c: Cross, opts: VerifyOptions): ProofCheck[] {
+  const out: ProofCheck[] = [];
+  if (c.state === CrossState.Live) return out;
+  const all = c.shards >= 32 ? 0xffff_ffff : ((1 << c.shards) - 1) >>> 0;
+  out.push({ name: 'main-shards-merged', ok: (c.mergedMask >>> 0) === all, detail: `merged mask ${(c.mergedMask >>> 0).toString(2)} of ${c.shards} main shards` });
+  const e = x.ending;
+  const required = requiredAuxMask({ endingSecs: e.endingSecs, buckets: e.buckets }, x.draw.endBucket, x.draw.epoch, c.shards);
+  out.push({ name: 'aux-shards-merged', ok: x.draw.auxMerged === required, detail: `merged 0x${x.draw.auxMerged.toString(16)}, required by the draw and the epoch 0x${required.toString(16)}` });
+  if (e.endingSecs > 0 && e.randomEnd) {
+    if (x.draw.endBucket === NO_BUCKET) out.push({ name: 'ending-drawn', ok: false, detail: 'the cross has a drawn ending but no last counted bucket was recorded' });
+    else {
+      const first = opts.draws?.find((d) => d.purpose === 1 && d.epoch === 0);
+      if (first) {
+        const seed = Uint8Array.from(Buffer.from(first.seed, 'hex'));
+        out.push({ name: 'ending-drawn', ok: drawEndBucket(seed, e.buckets) === x.draw.endBucket && first.endBucket === x.draw.endBucket, detail: `seed ${first.seed.slice(0, 16)}... gives bucket ${drawEndBucket(seed, e.buckets)} of ${e.buckets}; recorded ${x.draw.endBucket}` });
+      } else if (x.draw.epoch === 0 && x.draw.seedReady) {
+        out.push({ name: 'ending-drawn', ok: drawEndBucket(Uint8Array.from(x.draw.seed), e.buckets) === x.draw.endBucket, detail: `the stored seed gives bucket ${drawEndBucket(Uint8Array.from(x.draw.seed), e.buckets)} of ${e.buckets}; recorded ${x.draw.endBucket}` });
+      } else {
+        out.push({ name: 'ending-drawn', ok: null, detail: 'the ending was drawn before a later draw replaced the stored seed; supply the DrawFinished event of that draw to check it' });
+      }
+    }
+  }
+  return out;
 }
 
 /** The book's buy side split by class and insider, as synthetic orders: the pools and the insider bound depend only on these aggregates. */

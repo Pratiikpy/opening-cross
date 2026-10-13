@@ -26,7 +26,8 @@
     "dp:calendar-live": "tsx src/calendar-live-proof.ts",
     "dp:treasury": "tsx src/treasury-proof.ts",
     "dp:treasury-ext": "tsx src/treasury-ext-proof.ts",
-    "dp:w2d-core": "tsx src/w2d-core-proof.ts"
+    "dp:w2d-core": "tsx src/w2d-core-proof.ts",
+    "dp:w3a-builders": "tsx src/w3a-builders-live.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",

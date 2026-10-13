@@ -12,6 +12,12 @@ export type ApiOptions = HttpDeps & {
 
 export type ActionBody = Record<string, unknown>;
 
+/** The treasury actions `api.treasury.tx` builds. */
+export type TreasuryAction =
+  | 'init-ext' | 'propose' | 'vote' | 'reclaim-vote' | 'execute-proposal' | 'nav-redeem' | 'stake' | 'unstake' | 'deposit-distribution' | 'claim-distribution'
+  | 'pay-round' | 'mark-missed' | 'release-tranche' | 'create-grant' | 'release-milestone' | 'expire-grant' | 'post-disclosure' | 'request-disclosure'
+  | 'record-assignment' | 'sweep-unclaimed' | 'spend' | 'record-attested' | 'record-lapse' | 'trigger-liquidation' | 'redeem';
+
 /** The intent a best-execution quote is asked for. Amounts are decimal strings of atoms. */
 export type RouteIntent = { cross: string; side: Side; quantity: string; limitPrice?: string };
 
@@ -108,7 +114,65 @@ export function createApiClient(opts: ApiOptions) {
       throw failure(r);
     },
 
+    // ---- the rules extension, the treasury extension and cross_settle (docs/api/W3A-rules-treasury-settle.md). They read the extended programs; a cross, wallet or
+    // mint that has none of it gets an empty answer with a note.
+    getRules: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/rules`, signal),
+    getIndicative: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/indicative`, signal),
+    getEnding: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/ending`, signal),
+    getChallenges: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/challenges`, signal),
+    getProofWithDraws: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/proof/draws`, signal),
+    getSettlement: (cross: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/crosses/${encodeURIComponent(cross)}/settlement`, signal),
+    ownerLockups: (owner: string, o: { cross?: string } = {}, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/owners/${encodeURIComponent(owner)}/lockups${q(o)}`, signal),
+    getHalt: (baseMint: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/halts/${encodeURIComponent(baseMint)}`, signal),
+    getPrintFeed: (baseMint: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/feeds/${encodeURIComponent(baseMint)}`, signal),
+    getSeries: (series: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/series/${encodeURIComponent(series)}`, signal),
+    listSeries: (o: { authority?: string } = {}, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/series${q(o)}`, signal),
+    checkRules: (b: ActionBody) => fetchJson<Record<string, unknown>>(`${base}/v1/rules/check`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }, deps).then((r) => (r.ok ? r.data : Promise.reject(failure(r)))),
+    treasury: {
+      terms: (treasury: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/ext`, signal),
+      proposals: (treasury: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/proposals`, signal),
+      proposal: (treasury: string, id: string, o: { voter?: string } = {}, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/proposals/${encodeURIComponent(id)}${q(o)}`, signal),
+      position: (treasury: string, owner: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/positions/${encodeURIComponent(owner)}`, signal),
+      grants: (treasury: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/grants`, signal),
+      rounds: (treasury: string, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/rounds`, signal),
+      events: (treasury: string, o: { name?: string; limit?: number } = {}, signal?: AbortSignal) => read<Record<string, unknown>>(`/v1/treasuries/${encodeURIComponent(treasury)}/events${q(o)}`, signal),
+      /** An unsigned transaction for one treasury action: `init-ext`, `propose`, `vote`, `reclaim-vote`, `execute-proposal`, `nav-redeem`, `stake`, `unstake`, `deposit-distribution`, `claim-distribution`, `pay-round`, `mark-missed`, `release-tranche`, `create-grant`, `release-milestone`, `expire-grant`, `post-disclosure`, `request-disclosure`, `record-assignment`, `sweep-unclaimed`, `spend`, `record-attested`, `record-lapse`, `trigger-liquidation`, `redeem`. */
+      tx: (treasury: string, action: TreasuryAction, b: ActionBody) => build(`/v1/treasuries/${encodeURIComponent(treasury)}/tx/${action}`, b),
+    },
+
     tx: {
+      placeOrderExt: (b: ActionBody) => build('/v1/tx/place-order-ext', b),
+      createCrossRuled: (b: ActionBody) => build('/v1/tx/create-cross-ruled', b),
+      settleExt: (b: ActionBody) => build('/v1/tx/settle-ext', b),
+      drawBegin: (b: ActionBody) => build('/v1/tx/draw-begin', b),
+      drawFinish: (b: ActionBody) => build('/v1/tx/draw-finish', b),
+      releaseLocked: (b: ActionBody) => build('/v1/tx/release-locked', b),
+      pushRefunds: (b: ActionBody) => build('/v1/tx/push-refunds', b),
+      closeApplicant: (b: ActionBody) => build('/v1/tx/close-applicant', b),
+      challengeInsider: (b: ActionBody) => build('/v1/tx/challenge-insider', b),
+      resolveChallenge: (b: ActionBody) => build('/v1/tx/resolve-challenge', b),
+      expireChallenge: (b: ActionBody) => build('/v1/tx/expire-challenge', b),
+      setArbiter: (b: ActionBody) => build('/v1/tx/set-arbiter', b),
+      initHaltState: (b: ActionBody) => build('/v1/tx/init-halt-state', b),
+      setHalt: (b: ActionBody) => build('/v1/tx/set-halt', b),
+      setCorporateAction: (b: ActionBody) => build('/v1/tx/set-corporate-action', b),
+      syncPause: (b: ActionBody) => build('/v1/tx/sync-pause', b),
+      observePrice: (b: ActionBody) => build('/v1/tx/observe-price', b),
+      initPrintFeed: (b: ActionBody) => build('/v1/tx/init-print-feed', b),
+      setFeedPublishers: (b: ActionBody) => build('/v1/tx/set-feed-publishers', b),
+      createSeries: (b: ActionBody) => build('/v1/tx/create-series', b),
+      spawnNext: (b: ActionBody) => build('/v1/tx/spawn-next', b),
+      setSeriesActive: (b: ActionBody) => build('/v1/tx/set-series-active', b),
+      seriesWithdraw: (b: ActionBody) => build('/v1/tx/series-withdraw', b),
+      claimPartnerFee: (b: ActionBody) => build('/v1/tx/claim-partner-fee', b),
+      withdrawPartnerSurplus: (b: ActionBody) => build('/v1/tx/withdraw-partner-surplus', b),
+      withdrawPartnerMigrationFee: (b: ActionBody) => build('/v1/tx/withdraw-partner-migration-fee', b),
+      claimPartnerPoolCreationFee: (b: ActionBody) => build('/v1/tx/claim-partner-pool-creation-fee', b),
+      claimPolFees: (b: ActionBody) => build('/v1/tx/claim-pol-fees', b),
+      createGreenshoe: (b: ActionBody) => build('/v1/tx/create-greenshoe', b),
+      deployGreenshoeBid: (b: ActionBody) => build('/v1/tx/deploy-greenshoe-bid', b),
+      settleGreenshoeLevel: (b: ActionBody) => build('/v1/tx/settle-greenshoe-level', b),
+      finishGreenshoe: (b: ActionBody) => build('/v1/tx/finish-greenshoe', b),
       placeOrder: (b: ActionBody) => build('/v1/tx/place-order', b),
       cancel: (b: ActionBody) => build('/v1/tx/cancel', b),
       reveal: (b: ActionBody) => build('/v1/tx/reveal', b),

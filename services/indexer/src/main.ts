@@ -3,12 +3,14 @@
 import { type Address, fetchEncodedAccount, fetchEncodedAccounts } from '@solana/kit';
 import pg from 'pg';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
+import { CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
 import { bindCrosses, pollCalendar, reconcileCalendars, rpcAccountReader, scanCalendars } from './calendar.js';
 import { createIndexerRpc } from './rpc.js';
 import { migrate } from './ingest.js';
 import { backfillOrderTerms } from './order-terms.js';
 import { pollOnce } from './rpc-source.js';
 import { type AccountFetcher, reconcileSettled } from './reconcile.js';
+import { pollSettleOnce } from './settle.js';
 import { pollTreasuryOnce } from './treasury.js';
 
 const dbUrl = process.env.DATABASE_URL;
@@ -20,6 +22,8 @@ if (!dbUrl || !rpcUrl) {
 const pollMs = Number(process.env.POLL_MS ?? 5_000);
 const reconcileEvery = Number(process.env.RECONCILE_EVERY ?? 60);
 const slowEvery = Math.max(1, Number(process.env.SLOW_EVERY ?? 4));
+// cross_settle programs to follow (a comma-separated list of addresses; the devnet Raydium variant is a second program with the same events).
+const settlePrograms = (process.env.SETTLE_PROGRAMS ?? CROSS_SETTLE_PROGRAM_ADDRESS).split(',').map((a) => a.trim()).filter(Boolean) as Address[];
 
 const db = new pg.Pool({ connectionString: dbUrl });
 const rpc = createIndexerRpc(rpcUrl);
@@ -62,6 +66,10 @@ for (let tick = 0; ; tick++) {
       if (bound.bound) console.log(JSON.stringify({ at: new Date().toISOString(), crossBindingsRead: bound.bound, remaining: bound.remaining }));
       const tre = await pollTreasuryOnce(db, rpc);
       if (tre) console.log(JSON.stringify({ at: new Date().toISOString(), treasuryEventsApplied: tre }));
+      for (const program of settlePrograms) {
+        const settled = await pollSettleOnce(db, rpc, program);
+        if (settled) console.log(JSON.stringify({ at: new Date().toISOString(), settleEventsApplied: settled, program }));
+      }
     }
     if (tick % reconcileEvery === 0) {
       const calDrift = await reconcileCalendars(db, () => scanCalendars(rpc), { catchUp: () => pollCalendar(db, rpc, readAccounts), waitMs: pollMs, attempts: 5, record: true, repair: true });

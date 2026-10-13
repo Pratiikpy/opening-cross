@@ -15,6 +15,7 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/websocket": "11.3.3",
+    "@opening-cross/adapters": "workspace:*",
     "@opening-cross/agent-identity": "workspace:*",
     "@opening-cross/attest": "workspace:*",
     "@opening-cross/authenticity": "workspace:*",

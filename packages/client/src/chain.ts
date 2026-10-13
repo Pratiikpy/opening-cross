@@ -8,9 +8,16 @@ import {
   type Cross,
   CrossState,
   Disclosure,
+  AUX_END_BASE,
+  AUX_EXT_BASE,
+  type CrossExt,
+  auxBit,
+  auxShardIndexesFor,
   bookAddress,
   getCrossDecoder,
   getLevelsDecoder,
+  lastBucket,
+  readCrossExt,
   shardAddress,
 } from '@opening-cross/sdk';
 import { referenceClear } from '@opening-cross/verifier';
@@ -57,27 +64,42 @@ export function presentCross(address: string, c: Cross): CrossDetail {
 }
 
 /** Reads and decodes a cross from the cluster. Throws a typed NOT_FOUND if the address holds no cross. */
-export async function readCrossFromChain(rpc: RpcClient, addr: string): Promise<{ address: Address; data: Cross; detail: CrossDetail }> {
+export async function readCrossFromChain(rpc: RpcClient, addr: string): Promise<{ address: Address; data: Cross; ext: CrossExt | null; detail: CrossDetail }> {
   const account = await rpc.getAccount(addr);
   if (!account) throw new ActionError(`cross ${addr} not found on chain`, 'NOT_FOUND');
   const data = decodeCross(account);
   if (!data) throw new ActionError(`${addr} is not an Opening Cross account`, 'NOT_FOUND');
-  return { address: toAddress(addr), data, detail: presentCross(addr, data) };
+  // The rules tail of a cross the extended program wrote; null for a cross without rules (including every cross of the program deployed before it).
+  return { address: toAddress(addr), data, ext: readCrossExt(account.data), detail: presentCross(addr, data) };
 }
 
 /**
  * The resting book from chain: the merged book plus every shard not yet merged (while the call is open, orders rest in the
  * shards), summed per tick, and the indicative clear of a live book computed with the independent reference rule.
  */
-export async function readBookFromChain(rpc: RpcClient, addr: string, c: Cross): Promise<BookResponse> {
+export async function readBookFromChain(rpc: RpcClient, addr: string, c: Cross, ext: CrossExt | null = null): Promise<BookResponse> {
   const sources = [await bookAddress(toAddress(addr))];
   for (let i = 0; i < c.shards; i++) if (!((c.mergedMask >>> i) & 1)) sources.push(await shardAddress(toAddress(addr), i));
+  // A cross with an ending period keeps the orders placed in the ending in one shard per bucket (up to the last bucket the draw counts), and a drawn
+  // extension in more. An auxiliary shard that is not on chain holds no orders.
+  const optional = new Set<string>();
+  if (ext && (ext.ending.endingSecs > 0 || ext.ending.extensionMaxSecs > 0)) {
+    const upTo = ext.draw.endBucket === 255 ? ext.ending.buckets : lastBucket(ext) + 1;
+    for (const index of auxShardIndexesFor(ext.ending, c.shards)) {
+      if (index >= AUX_EXT_BASE ? ext.draw.epoch === 0 : index - AUX_END_BASE >= upTo) continue;
+      if ((ext.draw.auxMerged & auxBit(index)) !== 0n) continue;
+      const a = await shardAddress(toAddress(addr), index);
+      sources.push(a);
+      optional.add(a);
+    }
+  }
   const accounts = await rpc.getAccounts(sources);
   const buy = new Array<bigint>(c.ticks).fill(0n);
   const sell = new Array<bigint>(c.ticks).fill(0n);
   const buyOrders = new Array<number>(c.ticks).fill(0);
   const sellOrders = new Array<number>(c.ticks).fill(0);
   for (const [i, acct] of accounts.entries()) {
+    if (!acct && optional.has(sources[i]!)) continue;
     if (!acct || acct.owner !== CROSS_CORE_PROGRAM_ADDRESS) throw new ActionError(`order book account ${sources[i]} not found`, 'NOT_FOUND');
     const levels = getLevelsDecoder().decode(acct.data);
     for (let t = 0; t < c.ticks; t++) {

@@ -3,19 +3,32 @@
 // first release's fixed-size prefix, and starts with the magic `TEX1`.
 import {
   type Address,
+  type Encoder,
   type ReadonlyUint8Array,
   fixDecoderSize,
+  fixEncoderSize,
   getAddressDecoder,
+  getAddressEncoder,
   getArrayDecoder,
+  getArrayEncoder,
   getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
+  getBytesEncoder,
   getI64Decoder,
+  getI64Encoder,
   getStructDecoder,
+  getStructEncoder,
   getU128Decoder,
+  getU128Encoder,
   getU16Decoder,
+  getU16Encoder,
   getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
+  getU64Encoder,
   getU8Decoder,
+  getU8Encoder,
 } from '@solana/kit';
 
 /** `8 + Treasury::INIT_SPACE`: where the extension tail starts in a treasury account. */
@@ -76,6 +89,9 @@ export type TreasuryExt = {
   windStart: bigint;
   swept: boolean;
 };
+
+/** The tail as a caller supplies it to the encoder: numbers may be given as bigint or number. */
+export type TreasuryExtArgs = Omit<TreasuryExt, 'coinVaultBump' | 'distVaultBump' | 'quorumBps'> & { coinVaultBump: number; distVaultBump: number; quorumBps: number };
 
 export function getTreasuryExtDecoder() {
   return getStructDecoder([
@@ -140,4 +156,61 @@ export function decodeTreasuryExt(data: ReadonlyUint8Array): TreasuryExt | null 
   const tail = data.subarray(TREASURY_EXT_OFFSET);
   if (tail.length < 4 || TREASURY_EXT_MAGIC.some((b, i) => tail[i] !== b)) return null;
   return getTreasuryExtDecoder().decode(tail) as TreasuryExt;
+}
+
+/** The encoder of the tail: what `init_ext` writes. Used to build fixtures and to check the decoder against the layout. */
+export function getTreasuryExtEncoder(): Encoder<TreasuryExtArgs> {
+  const bytesE = (n: number) => fixEncoderSize(getBytesEncoder(), n);
+  return getStructEncoder([
+    ['magic', bytesE(4)],
+    ['coinVaultBump', getU8Encoder()],
+    ['distVaultBump', getU8Encoder()],
+    ['votePeriodSecs', getI64Encoder()],
+    ['timelockSecs', getI64Encoder()],
+    ['quorumBps', getU16Encoder()],
+    ['thresholdBps', getU16Encoder()],
+    ['maxProposalBps', getU16Encoder()],
+    ['proposerMinBps', getU16Encoder()],
+    ['proposalCount', getU64Encoder()],
+    ['votesLocked', getU64Encoder()],
+    ['totalStaked', getU64Encoder()],
+    ['grantsUnreleased', getU64Encoder()],
+    ['grantCount', getU64Encoder()],
+    ['minLockupSecs', getI64Encoder()],
+    ['navOpen', getBooleanEncoder()],
+    ['navPeriodSecs', getI64Encoder()],
+    ['navCapBps', getU16Encoder()],
+    ['navPeriodStart', getI64Encoder()],
+    ['navPeriodSupply', getU64Encoder()],
+    ['navBurned', getU64Encoder()],
+    ['insiders', getArrayEncoder(getAddressEncoder(), { size: 4 })],
+    ['accPerStake', getU128Encoder()],
+    ['streamSecs', getI64Encoder()],
+    ['streamAmount', getU64Encoder()],
+    ['streamEnd', getI64Encoder()],
+    ['streamLast', getI64Encoder()],
+    ['revShareBps', getU16Encoder()],
+    ['revCredential', getAddressEncoder()],
+    ['revSchema', getAddressEncoder()],
+    ['roundSecs', getI64Encoder()],
+    ['revStart', getI64Encoder()],
+    ['payGraceSecs', getI64Encoder()],
+    ['missedRounds', getU32Encoder()],
+    ['trancheMinRevenue', getU64Encoder()],
+    ['trancheAmount', getU64Encoder()],
+    ['disclosurePeriodSecs', getI64Encoder()],
+    ['lastDisclosureTs', getI64Encoder()],
+    ['lastDisclosureHash', bytesE(32)],
+    ['disclosures', getU32Encoder()],
+    ['openRequestTs', getI64Encoder()],
+    ['requestMinBps', getU16Encoder()],
+    ['assignRequired', getBooleanEncoder()],
+    ['assigned', getBooleanEncoder()],
+    ['assignCredential', getAddressEncoder()],
+    ['assignSchema', getAddressEncoder()],
+    ['windowSecs', getI64Encoder()],
+    ['recovery', getAddressEncoder()],
+    ['windStart', getI64Encoder()],
+    ['swept', getBooleanEncoder()],
+  ]);
 }

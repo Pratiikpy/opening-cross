@@ -9,7 +9,7 @@
 // The cross result is indicative until the call period closes: later orders can move it, which
 // the report states. Nothing here signs or sends anything.
 import type { Address } from '@solana/kit';
-import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, type Cross, getCrossDecoder, getLevelsDecoder } from '@opening-cross/cross-core-client';
+import { AUX_END_BASE, AUX_EXT_BASE, CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, type Cross, auxBit, auxShardIndexesFor, getCrossDecoder, getLevelsDecoder, lastBucket, readCrossExt } from '@opening-cross/cross-core-client';
 import { shardAddress } from '@opening-cross/sdk';
 import { type RefOrder, bookAddressOf, referenceClear, referenceFills } from '@opening-cross/verifier';
 
@@ -47,15 +47,33 @@ export type BestExecutionReport = {
 };
 
 /** Per-tick resting quantity of a cross: the merged book plus every shard not yet merged (while the
- *  call is open, orders rest in the shards). Returns the reason as a string if an account is missing. */
+ *  call is open, orders rest in the shards). A cross with an ending period also keeps the orders placed in
+ *  the ending in one shard per bucket, and a drawn extension in more: those count too, up to the last bucket
+ *  the draw counts (all of them until it is drawn). Returns the reason as a string if an account is missing. */
 export async function loadBook(read: AccountReader, cross: Address, c: Cross): Promise<{ buy: bigint[]; sell: bigint[]; buyOrders: number[]; sellOrders: number[] } | string> {
   const sources = [await bookAddressOf(cross)];
   for (let i = 0; i < c.shards; i++) if (!((c.mergedMask >>> i) & 1)) sources.push(await shardAddress(cross, i));
   const out = { buy: new Array<bigint>(c.ticks).fill(0n), sell: new Array<bigint>(c.ticks).fill(0n), buyOrders: new Array<number>(c.ticks).fill(0), sellOrders: new Array<number>(c.ticks).fill(0) };
-  // Read together, so a reader that batches (the API's) asks the endpoint once for the book and every shard.
-  const accounts = await Promise.all(sources.map((a) => read(a)));
+  // Read together, so a reader that batches (the API's) asks the endpoint once for the book, every shard and the cross itself (its rules tail).
+  const accounts = await Promise.all([...sources, cross].map((a) => read(a)));
+  const crossAcct = accounts.pop();
+  const ext = crossAcct && crossAcct.owner === CROSS_CORE_PROGRAM_ADDRESS ? readCrossExt(crossAcct.data) : null;
+  const optional = new Set<string>();
+  if (ext && (ext.ending.endingSecs > 0 || ext.ending.extensionMaxSecs > 0)) {
+    const last = ext.draw.endBucket === 255 ? ext.ending.buckets : lastBucket(ext) + 1;
+    for (const index of auxShardIndexesFor(ext.ending, c.shards)) {
+      if (index >= AUX_EXT_BASE ? ext.draw.epoch === 0 : index - AUX_END_BASE >= last) continue;
+      if ((ext.draw.auxMerged & auxBit(index)) !== 0n) continue;
+      const a = await shardAddress(cross, index);
+      sources.push(a);
+      optional.add(a);
+      accounts.push(await read(a));
+    }
+  }
   for (const [n, a] of sources.entries()) {
     const src = accounts[n];
+    // An auxiliary shard that is not on chain holds no orders.
+    if (!src && optional.has(a)) continue;
     if (!src || src.owner !== CROSS_CORE_PROGRAM_ADDRESS) return `order book account ${a} not found`;
     const levels = getLevelsDecoder().decode(src.data);
     for (let i = 0; i < c.ticks; i++) {

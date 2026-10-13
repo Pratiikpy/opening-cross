@@ -7,7 +7,7 @@
 // transaction at ingest time and, for rows indexed before this existed, by `backfillOrderTerms`.
 import { getBase58Encoder } from '@solana/kit';
 import type pg from 'pg';
-import { COMMIT_ORDER_DISCRIMINATOR, CROSS_CORE_PROGRAM_ADDRESS, getCommitOrderInstructionDataDecoder } from '@opening-cross/cross-core-client';
+import { COMMIT_ORDER_DISCRIMINATOR, COMMIT_ORDER_EXT_DISCRIMINATOR, CROSS_CORE_PROGRAM_ADDRESS, getCommitOrderExtInstructionDataDecoder, getCommitOrderInstructionDataDecoder } from '@opening-cross/cross-core-client';
 import type { IndexerRpc } from './rpc.js';
 
 export type OrderTerms = { price: bigint; quantity: bigint };
@@ -26,6 +26,7 @@ type RawInstruction = { programIdIndex: number; accounts: readonly number[]; dat
 const ORDER_ACCOUNT_INDEX = 3;
 const b58 = getBase58Encoder();
 const decoder = getCommitOrderInstructionDataDecoder();
+const extDecoder = getCommitOrderExtInstructionDataDecoder();
 /** Orders whose commit transaction could not be read or held no terms, so one stuck order cannot starve the rest of the backlog. */
 const unresolved = new Set<string>();
 
@@ -35,18 +36,42 @@ const unresolved = new Set<string>();
  * (non-zero commitment, zero terms) yields nothing.
  */
 export function commitTerms(tx: TxBody): Map<string, OrderTerms> {
+  const out = new Map<string, OrderTerms>();
+  for (const [order, c] of commits(tx)) if (c.price !== 0n && c.quantity !== 0n) out.set(order, { price: c.price, quantity: c.quantity });
+  return out;
+}
+
+/** What a commit carried besides its terms: the order's nonce (a lockup's address is derived from it), allocation class and accepted lockup. */
+export type CommitFacts = { nonce: bigint; class: number; lockSecs: number };
+
+/** The nonce, class and lockup of every order committed by this transaction, sealed or open, by `commit_order` or `commit_order_ext`. */
+export function commitFacts(tx: TxBody): Map<string, CommitFacts> {
+  const out = new Map<string, CommitFacts>();
+  for (const [order, c] of commits(tx)) out.set(order, { nonce: c.nonce, class: c.class, lockSecs: c.lockSecs });
+  return out;
+}
+
+type Commit = { price: bigint; quantity: bigint; nonce: bigint; class: number; lockSecs: number };
+
+/** Every commit_order and commit_order_ext instruction of the transaction, top-level or inside another program's CPI. */
+function commits(tx: TxBody): Map<string, Commit> {
   const loaded = tx.meta?.loadedAddresses;
   const keys = [...tx.transaction.message.accountKeys, ...(loaded?.writable ?? []), ...(loaded?.readonly ?? [])];
   const all = [...tx.transaction.message.instructions, ...(tx.meta?.innerInstructions ?? []).flatMap((i) => i.instructions)];
-  const out = new Map<string, OrderTerms>();
+  const out = new Map<string, Commit>();
   for (const ix of all) {
     if (keys[ix.programIdIndex] !== CROSS_CORE_PROGRAM_ADDRESS) continue;
     const bytes = b58.encode(ix.data);
-    if (bytes.length < 8 || !COMMIT_ORDER_DISCRIMINATOR.every((b, i) => bytes[i] === b)) continue;
-    const args = decoder.decode(bytes);
+    if (bytes.length < 8) continue;
     const order = keys[ix.accounts[ORDER_ACCOUNT_INDEX] ?? -1];
-    if (!order || args.price === 0n || args.quantity === 0n) continue;
-    out.set(order, { price: args.price, quantity: args.quantity });
+    if (!order) continue;
+    if (COMMIT_ORDER_DISCRIMINATOR.every((b, i) => bytes[i] === b)) {
+      const args = decoder.decode(bytes);
+      out.set(order, { price: args.price, quantity: args.quantity, nonce: args.nonce, class: 0, lockSecs: 0 });
+    } else if (COMMIT_ORDER_EXT_DISCRIMINATOR.every((b, i) => bytes[i] === b)) {
+      const args = extDecoder.decode(bytes);
+      out.set(order, { price: args.price, quantity: args.quantity, nonce: args.nonce, class: args.class, lockSecs: args.lockSecs });
+    }
   }
   return out;
 }

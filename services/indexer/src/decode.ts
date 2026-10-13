@@ -17,6 +17,23 @@ import {
   type OrderCommittedEvent,
   type OrderRevealedEvent,
   type PauseChangedEvent,
+  type AdminChangedEvent,
+  type AdminProposedEvent,
+  type ChallengeExpiredEvent,
+  type ChallengeResolvedEvent,
+  type CrossExtSnapshotEvent,
+  type DrawFinishedEvent,
+  type DrawStartedEvent,
+  type ExtensionPendingEvent,
+  type HaltChangedEvent,
+  type InsiderChallengedEvent,
+  type LockCreatedEvent,
+  type LockReleasedEvent,
+  type OrderPlacementEvent,
+  type PrintFedEvent,
+  type RulesSetEvent,
+  type SeriesCreatedEvent,
+  type SeriesSpawnedEvent,
   BASE_MINT_BOUND_EVENT_DISCRIMINATOR,
   CROSS_CLEARED_EVENT_DISCRIMINATOR,
   CROSS_CREATED_EVENT_DISCRIMINATOR,
@@ -26,6 +43,23 @@ import {
   ORDER_COMMITTED_EVENT_DISCRIMINATOR,
   ORDER_REVEALED_EVENT_DISCRIMINATOR,
   PAUSE_CHANGED_EVENT_DISCRIMINATOR,
+  ADMIN_CHANGED_EVENT_DISCRIMINATOR,
+  ADMIN_PROPOSED_EVENT_DISCRIMINATOR,
+  CHALLENGE_EXPIRED_EVENT_DISCRIMINATOR,
+  CHALLENGE_RESOLVED_EVENT_DISCRIMINATOR,
+  CROSS_EXT_SNAPSHOT_EVENT_DISCRIMINATOR,
+  DRAW_FINISHED_EVENT_DISCRIMINATOR,
+  DRAW_STARTED_EVENT_DISCRIMINATOR,
+  EXTENSION_PENDING_EVENT_DISCRIMINATOR,
+  HALT_CHANGED_EVENT_DISCRIMINATOR,
+  INSIDER_CHALLENGED_EVENT_DISCRIMINATOR,
+  LOCK_CREATED_EVENT_DISCRIMINATOR,
+  LOCK_RELEASED_EVENT_DISCRIMINATOR,
+  ORDER_PLACEMENT_EVENT_DISCRIMINATOR,
+  PRINT_FED_EVENT_DISCRIMINATOR,
+  RULES_SET_EVENT_DISCRIMINATOR,
+  SERIES_CREATED_EVENT_DISCRIMINATOR,
+  SERIES_SPAWNED_EVENT_DISCRIMINATOR,
   getBaseMintBoundEventDecoder,
   getCrossClearedEventDecoder,
   getCrossCreatedEventDecoder,
@@ -35,6 +69,23 @@ import {
   getOrderCommittedEventDecoder,
   getOrderRevealedEventDecoder,
   getPauseChangedEventDecoder,
+  getAdminChangedEventDecoder,
+  getAdminProposedEventDecoder,
+  getChallengeExpiredEventDecoder,
+  getChallengeResolvedEventDecoder,
+  getCrossExtSnapshotEventDecoder,
+  getDrawFinishedEventDecoder,
+  getDrawStartedEventDecoder,
+  getExtensionPendingEventDecoder,
+  getHaltChangedEventDecoder,
+  getInsiderChallengedEventDecoder,
+  getLockCreatedEventDecoder,
+  getLockReleasedEventDecoder,
+  getOrderPlacementEventDecoder,
+  getPrintFedEventDecoder,
+  getRulesSetEventDecoder,
+  getSeriesCreatedEventDecoder,
+  getSeriesSpawnedEventDecoder,
 } from '@opening-cross/cross-core-client';
 
 export type CrossEvent =
@@ -46,7 +97,24 @@ export type CrossEvent =
   | { name: 'OrderClaimed'; data: OrderClaimedEvent }
   | { name: 'BaseMintBound'; data: BaseMintBoundEvent }
   | { name: 'CrossFinalized'; data: CrossFinalizedEvent }
-  | { name: 'PauseChanged'; data: PauseChangedEvent };
+  | { name: 'PauseChanged'; data: PauseChangedEvent }
+  | { name: 'AdminChanged'; data: AdminChangedEvent }
+  | { name: 'AdminProposed'; data: AdminProposedEvent }
+  | { name: 'ChallengeExpired'; data: ChallengeExpiredEvent }
+  | { name: 'ChallengeResolved'; data: ChallengeResolvedEvent }
+  | { name: 'CrossExtSnapshot'; data: CrossExtSnapshotEvent }
+  | { name: 'DrawFinished'; data: DrawFinishedEvent }
+  | { name: 'DrawStarted'; data: DrawStartedEvent }
+  | { name: 'ExtensionPending'; data: ExtensionPendingEvent }
+  | { name: 'HaltChanged'; data: HaltChangedEvent }
+  | { name: 'InsiderChallenged'; data: InsiderChallengedEvent }
+  | { name: 'LockCreated'; data: LockCreatedEvent }
+  | { name: 'LockReleased'; data: LockReleasedEvent }
+  | { name: 'OrderPlacement'; data: OrderPlacementEvent }
+  | { name: 'PrintFed'; data: PrintFedEvent }
+  | { name: 'RulesSet'; data: RulesSetEvent }
+  | { name: 'SeriesCreated'; data: SeriesCreatedEvent }
+  | { name: 'SeriesSpawned'; data: SeriesSpawnedEvent };
 
 const DECODERS: [Uint8Array, CrossEvent['name'], { decode(b: Uint8Array): unknown }][] = [
   [CROSS_CREATED_EVENT_DISCRIMINATOR as Uint8Array, 'CrossCreated', getCrossCreatedEventDecoder()],
@@ -58,6 +126,24 @@ const DECODERS: [Uint8Array, CrossEvent['name'], { decode(b: Uint8Array): unknow
   [BASE_MINT_BOUND_EVENT_DISCRIMINATOR as Uint8Array, 'BaseMintBound', getBaseMintBoundEventDecoder()],
   [CROSS_FINALIZED_EVENT_DISCRIMINATOR as Uint8Array, 'CrossFinalized', getCrossFinalizedEventDecoder()],
   [PAUSE_CHANGED_EVENT_DISCRIMINATOR as Uint8Array, 'PauseChanged', getPauseChangedEventDecoder()],
+// Events of the rules extension (ADR-0450 to ADR-0462). The program deployed before it never emits them; a log without them decodes as before.
+  [ADMIN_CHANGED_EVENT_DISCRIMINATOR as Uint8Array, 'AdminChanged', getAdminChangedEventDecoder()],
+  [ADMIN_PROPOSED_EVENT_DISCRIMINATOR as Uint8Array, 'AdminProposed', getAdminProposedEventDecoder()],
+  [CHALLENGE_EXPIRED_EVENT_DISCRIMINATOR as Uint8Array, 'ChallengeExpired', getChallengeExpiredEventDecoder()],
+  [CHALLENGE_RESOLVED_EVENT_DISCRIMINATOR as Uint8Array, 'ChallengeResolved', getChallengeResolvedEventDecoder()],
+  [CROSS_EXT_SNAPSHOT_EVENT_DISCRIMINATOR as Uint8Array, 'CrossExtSnapshot', getCrossExtSnapshotEventDecoder()],
+  [DRAW_FINISHED_EVENT_DISCRIMINATOR as Uint8Array, 'DrawFinished', getDrawFinishedEventDecoder()],
+  [DRAW_STARTED_EVENT_DISCRIMINATOR as Uint8Array, 'DrawStarted', getDrawStartedEventDecoder()],
+  [EXTENSION_PENDING_EVENT_DISCRIMINATOR as Uint8Array, 'ExtensionPending', getExtensionPendingEventDecoder()],
+  [HALT_CHANGED_EVENT_DISCRIMINATOR as Uint8Array, 'HaltChanged', getHaltChangedEventDecoder()],
+  [INSIDER_CHALLENGED_EVENT_DISCRIMINATOR as Uint8Array, 'InsiderChallenged', getInsiderChallengedEventDecoder()],
+  [LOCK_CREATED_EVENT_DISCRIMINATOR as Uint8Array, 'LockCreated', getLockCreatedEventDecoder()],
+  [LOCK_RELEASED_EVENT_DISCRIMINATOR as Uint8Array, 'LockReleased', getLockReleasedEventDecoder()],
+  [ORDER_PLACEMENT_EVENT_DISCRIMINATOR as Uint8Array, 'OrderPlacement', getOrderPlacementEventDecoder()],
+  [PRINT_FED_EVENT_DISCRIMINATOR as Uint8Array, 'PrintFed', getPrintFedEventDecoder()],
+  [RULES_SET_EVENT_DISCRIMINATOR as Uint8Array, 'RulesSet', getRulesSetEventDecoder()],
+  [SERIES_CREATED_EVENT_DISCRIMINATOR as Uint8Array, 'SeriesCreated', getSeriesCreatedEventDecoder()],
+  [SERIES_SPAWNED_EVENT_DISCRIMINATOR as Uint8Array, 'SeriesSpawned', getSeriesSpawnedEventDecoder()],
 ];
 
 const INVOKE = /^Program (\w+) invoke \[\d+\]$/;

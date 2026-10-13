@@ -58,6 +58,21 @@ describe('agent skill', () => {
     expect(undocumented, 'routes in server.ts that SKILL.md does not list').toEqual([]);
   });
 
+  it('lists the routes of the rules, treasury and settlement layer in a block of their own, and only those the route files register', () => {
+    const files = ['rules-tx', 'rules-read', 'treasury-tx', 'settle-tx'].map((f) => read(`services/api/src/routes/${f}.ts`));
+    const real = new Set(files.flatMap((src) => [...src.matchAll(/app\.(get|post)\(\s*'(\/v1\/[^']*)'/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`)));
+    const block = /<!-- routes-rules:begin -->([\s\S]*?)<!-- routes-rules:end -->/.exec(SKILL)?.[1];
+    if (!block) throw new Error('SKILL.md has no routes-rules block');
+    const listed = block.split('\n').flatMap((line) => {
+      const m = /^\|\s*(GET|POST)\s*\|\s*`([^`]+)`\s*\|/.exec(line);
+      return m ? [`${m[1]} ${m[2]!.split('?')[0]}`] : [];
+    });
+    expect(listed.length).toBeGreaterThan(60);
+    expect(listed.filter((k) => !real.has(k)), 'listed but not registered').toEqual([]);
+    expect([...real].filter((k) => !listed.includes(k)), 'registered but not listed').toEqual([]);
+    expect(listed.filter((k, i) => listed.indexOf(k) !== i)).toEqual([]);
+  });
+
   it('lists no route twice', () => {
     const keys = skillRoutes().map(key);
     expect(keys.filter((k, i) => keys.indexOf(k) !== i)).toEqual([]);

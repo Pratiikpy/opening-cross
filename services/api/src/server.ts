@@ -28,7 +28,11 @@ import { registerGate } from './routes/gate.js';
 import { registerHolderRoutes } from './routes/holder.js';
 import { registerIssuerBoard } from './routes/issuer-board.js';
 import { registerIssuerTx } from './routes/issuer-tx.js';
+import { registerRulesRead } from './routes/rules-read.js';
+import { registerRulesTx } from './routes/rules-tx.js';
+import { registerSettleTx } from './routes/settle-tx.js';
 import { registerTreasury } from './routes/treasury.js';
+import { registerTreasuryTx } from './routes/treasury-tx.js';
 import { registerW2A } from './routes/w2a.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
@@ -135,6 +139,10 @@ export async function buildServer(d: ApiDeps) {
     return send(reply, { error: 'internal error' }, 500);
   });
   app.setNotFoundHandler((_req, reply) => send(reply, { error: 'no such route' }, 404));
+
+  // The rules extension (ADR-0450): its transactions and reads, and the request-scoped chain reader the settle and finalize builders use.
+  // Registered before the other routes so that its hook runs for every one of them.
+  registerRulesTx(app, { account: d.account, lifetime: d.lifetime, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
 
   // Only accounts owned by cross_core and carrying the right discriminator are ever decoded:
   // anyone can create an account whose bytes look like a cross under another program.
@@ -840,6 +848,9 @@ export async function buildServer(d: ApiDeps) {
   registerCrossList(app, d);
   registerGate(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
   registerTreasury(app, d);
+  registerTreasuryTx(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
+  registerRulesRead(app, { db: d.db, account: d.account, ...(d.clock && { clock: d.clock }) });
+  registerSettleTx(app, { account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
   registerIssuerTx(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
   registerIssuerBoard(app, { db: d.db, curators: new Set((process.env.ISSUER_CURATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean)), ...(d.clock && { clock: d.clock }) });
   const holder = await registerHolderRoutes(app, d);

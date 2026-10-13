@@ -3,7 +3,7 @@
 // `reconciliation_alerts` for an operator (or the API's health check) to act on.
 import type { Address } from '@solana/kit';
 import type pg from 'pg';
-import { CrossState, getCrossDecoder } from '@opening-cross/cross-core-client';
+import { CrossState, getCrossDecoder, readCrossExt } from '@opening-cross/cross-core-client';
 
 export type AccountFetcher = ((address: Address) => Promise<Uint8Array | null>) & {
   /** Reads many accounts in one call (the same order back). When present, a reconciliation reads every account it needs at once. */
@@ -42,6 +42,25 @@ export async function reconcile(db: pg.Pool, fetch: AccountFetcher, opts: { reco
     push('state', row.state, STATE[c.state]);
     push('base_mint', row.base_mint, c.baseMint);
     push('orders_committed', row.orders_committed, c.ordersTotal);
+    // A drawn extension moves the close (and with it the reveal window); a cross that never had one keeps both for good.
+    push('close_ts', row.close_ts, c.closeTs);
+    push('reveal_end_ts', row.reveal_end_ts, c.revealEndTs);
+    // The rules extension. A cross created by the program deployed before it has no tail, readCrossExt gives null for it, and it has no row
+    // in cross_rules: nothing to compare, nothing to report.
+    const x = readCrossExt(data);
+    const { rows: ruleRows } = await db.query('SELECT * FROM cross_rules WHERE cross_address = $1', [row.address]);
+    const rules = ruleRows[0] as Record<string, unknown> | undefined;
+    if (x || rules) {
+      push('rules_set', rules ? 'true' : 'false', x ? 'true' : 'false');
+      if (x && rules) {
+        push('rules.flags', rules.flags, x.flags);
+        push('rules.draw_epoch', rules.draw_epoch, x.draw.epoch);
+        push('rules.end_bucket', rules.end_bucket, x.draw.endBucket === 255 ? null : x.draw.endBucket);
+        push('rules.extension_pending', rules.extension_pending, x.draw.extPending);
+        const { rows: open } = await db.query("SELECT count(*)::int AS n FROM cross_challenges WHERE cross_address = $1 AND status = 'Open'", [row.address]);
+        push('rules.open_challenges', open[0].n, x.neutralState.openChallenges);
+      }
+    }
     if (c.state !== CrossState.Live) {
       push('clearing_price', row.clearing_price, clr?.price ?? null);
       push('matched', row.matched, clr?.matched ?? null);

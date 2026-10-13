@@ -66,7 +66,7 @@ const book: CommandDef = {
   async run(ctx, args) {
     noExtra(args, 1);
     const c = await loadCross(ctx, addressArg(positional(args, 0, 'cross'), '<cross>'));
-    const b = await readBookFromChain(ctx.rpc, c.detail.address, c.data);
+    const b = await readBookFromChain(ctx.rpc, c.detail.address, c.data, c.ext);
     const m = marketOf(c.detail);
     const lines =
       b.levels.length === 0

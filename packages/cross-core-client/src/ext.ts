@@ -114,6 +114,30 @@ export const usesLocks = (x: CrossExt | null | undefined): boolean =>
     x.neutrality.insiderCliffSecs > 0 ||
     x.neutrality.insiderVestSecs > 0);
 
+/** Slots a draw must wait between `draw_begin` and `draw_finish`, and the slots after which an unfinished draw is void (`draw.rs`). */
+export const DRAW_DELAY_SLOTS = 20n;
+export const DRAW_WINDOW_SLOTS = 400n;
+
+/**
+ * Which draw a cross is waiting for, as `draw_begin` decides it: `extension` when the first clear failed its guards and the cross has
+ * one drawn extension to run, `end` when the rules ask for a drawn ending or a lottery and the draw for the current epoch has not
+ * finished and the reveal window is over, null when no draw is called for.
+ */
+export function drawPurpose(x: CrossExt | null | undefined, revealEndTs: bigint, now: bigint): 'end' | 'extension' | null {
+  if (!x) return null;
+  if (x.draw.extPending) return 'extension';
+  if (needsDraw(x) && !(x.draw.seedReady && x.draw.seedEpoch === x.draw.epoch) && now >= revealEndTs) return 'end';
+  return null;
+}
+
+/** Where a draw stands at `slot`: nothing begun, begun and too early to finish, ready to finish, or void (restart it with `draw_begin`). */
+export function drawProgress(x: CrossExt, slot: bigint): 'not-begun' | 'waiting' | 'ready' | 'void' {
+  const begun = x.draw.pendingSlot;
+  if (begun === 0n) return 'not-begun';
+  if (slot < begun + DRAW_DELAY_SLOTS) return 'waiting';
+  return slot > begun + DRAW_WINDOW_SLOTS ? 'void' : 'ready';
+}
+
 /** Last counted ending bucket: the drawn one, or the final bucket when nothing was drawn. */
 export function lastBucket(x: CrossExt): number {
   return x.draw.endBucket === NO_BUCKET ? Math.max(x.ending.buckets - 1, 0) : x.draw.endBucket;

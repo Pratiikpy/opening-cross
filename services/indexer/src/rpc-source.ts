@@ -6,7 +6,7 @@ import type { Address, Signature } from '@solana/kit';
 import type pg from 'pg';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { ingestTransaction } from './ingest.js';
-import { type TxBody, commitTerms } from './order-terms.js';
+import { type TxBody, commitFacts, commitTerms } from './order-terms.js';
 import type { IndexerRpc as Rpc } from './rpc.js';
 
 /** Last cursor we warned about, so a node that keeps rejecting it logs once, not every poll. */
@@ -40,6 +40,7 @@ export async function pollOnce(db: pg.Pool, rpc: Rpc, program: Address = CROSS_C
       logs: tx.meta?.logMessages ?? [],
       err: tx.meta?.err ?? null,
       terms: commitTerms(tx as unknown as TxBody),
+      facts: commitFacts(tx as unknown as TxBody),
     });
     await db.query(
       `INSERT INTO cursors (source, last_signature, last_slot) VALUES ($1, $2, $3)
