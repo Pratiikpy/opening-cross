@@ -61,6 +61,7 @@ for (;;) {
       ...(creators ? { accept: (c: { creator: string }) => creators.has(c.creator) } : {}),
       ...discovery,
       now: clusterNow,
+      slot: async () => BigInt(await rpc.getSlot({ commitment: 'confirmed' }).send()),
       fetch: fetchAccount,
       send,
     });

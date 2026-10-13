@@ -4,8 +4,8 @@
 // made from account data fetched in this pass, never from the index. Sends are independent: one
 // failure (often a competing keeper that got there first) never stops the rest of the pass.
 import type { Address, Instruction, TransactionSigner } from '@solana/kit';
-import { type Cross, getAbandonSettlementInstruction, getCrossDecoder, getOrderDecoder } from '@opening-cross/cross-core-client';
-import { buildClaim, buildFinalizeWithAccounts, buildSettleBook } from '@opening-cross/sdk';
+import { type Cross, OrderSide, getAbandonSettlementInstruction, getCrossDecoder, getOrderDecoder, readCrossExt, readOrderExt } from '@opening-cross/cross-core-client';
+import { buildClaim, buildDrawBegin, buildDrawFinish, buildFinalizeWithAccounts, buildSettleBook } from '@opening-cross/sdk';
 import { type Action, type OpenOrder, type Skip, plan } from './plan.js';
 
 export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
@@ -21,6 +21,8 @@ export type KeeperDeps = {
   orders: (cross: Address) => Promise<Address[]>;
   /** Sends one transaction; resolves with its signature or rejects with the program's logs. */
   send: (ixs: Instruction[]) => Promise<string>;
+  /** The cluster's current slot. Needed to time the two steps of a draw; without it a cross that is owed a draw is skipped with a reason. */
+  slot?: () => Promise<bigint>;
   /** Pyth price update account for oracle-guarded crosses; null means the keeper cannot clear it. */
   oraclePrice?: (cross: Address) => Promise<Address | null>;
   /** Scopes the keeper to some crosses (for example one issuer's). Omitted, it serves every cross it discovers. */
@@ -83,7 +85,8 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
     const order = getOrderDecoder().decode(od);
     if (order.cross === address) open.push({ address: o, owner: order.owner, nonce: order.nonce });
   }
-  const p = plan(address, cross, open, now);
+  const slot = d.slot ? await d.slot().catch(() => null) : null;
+  const p = plan(address, cross, open, now, { ext: readCrossExt(data), slot });
   const halts: Halt[] = [];
   if (d.mintHalt) {
     for (const [role, mint] of [['base', cross.baseBound ? cross.baseMint : null], ['quote', cross.quoteMint]] as const) {
@@ -125,7 +128,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
       // Re-read before each step: a previous step changes the cross.
       const fresh = await d.fetch(address);
       if (!fresh) throw new Error('cross disappeared');
-      const view = { address, data: getCrossDecoder().decode(fresh) };
+      const view = { address, data: getCrossDecoder().decode(fresh), ext: readCrossExt(fresh) };
       let last = '';
       for (const ixs of await instructionsFor(action, view, d)) last = await d.send(ixs);
       result.done.push({ action, signature: last });
@@ -161,7 +164,7 @@ async function advance(address: Address, d: KeeperDeps, now: bigint, result: Pas
 }
 
 /** Each inner array is one transaction. */
-async function instructionsFor(a: Action, view: { address: Address; data: Cross }, d: KeeperDeps): Promise<Instruction[][]> {
+async function instructionsFor(a: Action, view: { address: Address; data: Cross; ext: ReturnType<typeof readCrossExt> }, d: KeeperDeps): Promise<Instruction[][]> {
   switch (a.kind) {
     case 'settle': {
       let oraclePrice: Address | undefined;
@@ -171,12 +174,23 @@ async function instructionsFor(a: Action, view: { address: Address; data: Cross 
         oraclePrice = p;
       }
       // One shard merge per transaction keeps each well inside the compute limit.
-      return (await buildSettleBook(view, oraclePrice ? { oraclePrice } : {})).map((ix) => [ix]);
+      return (await buildSettleBook(view, { ...(oraclePrice ? { oraclePrice } : {}), now: await d.now() })).map((ix) => [ix]);
     }
+    case 'draw-begin':
+      return [[buildDrawBegin(a.cross)]];
+    case 'draw-finish':
+      return [[buildDrawFinish(a.cross)]];
     case 'abandon':
       return [[getAbandonSettlementInstruction({ cross: a.cross })]];
     case 'claim':
-      return [await buildClaim(view, d.payer, a.order.owner, a.order.nonce)];
+    {
+      // A cross with rules pays from accounts that depend on the order's own tail (bucket, class, lockup), so read it.
+      if (!view.ext) return [await buildClaim(view, d.payer, a.order.owner, a.order.nonce)];
+      const raw = await d.fetch(a.order.address);
+      if (!raw) throw new Error('order disappeared');
+      const facts = { ext: readOrderExt(raw), isBuy: getOrderDecoder().decode(raw).side === OrderSide.Buy };
+      return [await buildClaim(view, d.payer, a.order.owner, a.order.nonce, facts)];
+    }
     case 'finalize':
       return [await buildFinalizeWithAccounts(view, d.payer)];
   }
