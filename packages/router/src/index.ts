@@ -52,8 +52,10 @@ export async function loadBook(read: AccountReader, cross: Address, c: Cross): P
   const sources = [await bookAddressOf(cross)];
   for (let i = 0; i < c.shards; i++) if (!((c.mergedMask >>> i) & 1)) sources.push(await shardAddress(cross, i));
   const out = { buy: new Array<bigint>(c.ticks).fill(0n), sell: new Array<bigint>(c.ticks).fill(0n), buyOrders: new Array<number>(c.ticks).fill(0), sellOrders: new Array<number>(c.ticks).fill(0) };
-  for (const a of sources) {
-    const src = await read(a);
+  // Read together, so a reader that batches (the API's) asks the endpoint once for the book and every shard.
+  const accounts = await Promise.all(sources.map((a) => read(a)));
+  for (const [n, a] of sources.entries()) {
+    const src = accounts[n];
     if (!src || src.owner !== CROSS_CORE_PROGRAM_ADDRESS) return `order book account ${a} not found`;
     const levels = getLevelsDecoder().decode(src.data);
     for (let i = 0; i < c.ticks; i++) {
