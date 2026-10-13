@@ -318,8 +318,13 @@ export async function buildServer(d: ApiDeps) {
   // The resting book (merged book plus unmerged shards) and the price it would clear at now.
   // Sealed crosses show nothing until bids are revealed: commitments carry no price.
   const bookCache = new Map<string, unknown>();
+  const recentBooks = new Map<string, { at: number; payload: unknown }>();
   app.get('/v1/crosses/:address/book', async (req, reply) => {
     const a = address((req.params as { address: string }).address, 'address');
+    // Pages poll this every few seconds and several people watch one cross: share one answer for two seconds instead of
+    // reading the cross and its book from the rate-limited public RPC for each of them.
+    const recent = recentBooks.get(a);
+    if (recent && Date.now() - recent.at < 2_000) return send(reply, recent.payload);
     const v = await crossView(a);
     const c = v.data;
     // A finalized cross never changes, so its book is read from chain once and served from memory afterwards.
@@ -355,6 +360,8 @@ export async function buildServer(d: ApiDeps) {
       if (bookCache.size >= 500) bookCache.delete(bookCache.keys().next().value as string);
       bookCache.set(a, payload);
     }
+    if (recentBooks.size >= 500) recentBooks.delete(recentBooks.keys().next().value as string);
+    recentBooks.set(a, { at: Date.now(), payload });
     return send(reply, payload);
   });
 
