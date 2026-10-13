@@ -17,6 +17,7 @@ import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promise
 import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
 import { groupObservations } from '@opening-cross/premium';
 import { coverage as premiumCoverage, latestPerTicker, observationsSince } from '@opening-cross/premium-service';
+import { createFactsLoader, executionQuality, externalFlow, fairness as fairnessReport, crossFairness } from './metrics.js';
 import { type RateLimit, createLimiter } from './rate-limit.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
@@ -31,6 +32,13 @@ export type ApiDeps = {
   network?: string;
   /** Public key that signs promises (the promiser's key); promises by any other key are not ours. */
   promiseSigner?: string;
+  /**
+   * Wallets we operate (OWN_WALLETS), excluded from the external-flow scorecard on top of each
+   * cross's own creator, proceeds recipient, integrator and fee recipient. Empty when unset.
+   */
+  ownWallets?: ReadonlySet<string>;
+  /** Read the immutable fields of every indexed cross from chain in the background at start, so the first metrics request is not the slow one. */
+  warmMetrics?: boolean;
   /** Allowed browser origins; default any. */
   corsOrigins?: string[];
   /** Per-address request limit; omit to leave the API unlimited (the tests do). */
@@ -172,6 +180,64 @@ export async function buildServer(d: ApiDeps) {
     return send(reply, { network: d.network ?? 'unknown', ...rows[0] });
   });
 
+  // ---- measured metrics. Each is computed from the indexer's tables and the immutable fields of the
+  // crosses (read from chain once, kept), cached for 15 s so a busy page does not recompute it, and
+  // returned with its sample size and a method line. Nothing here is estimated or defaulted.
+  const loadFacts = createFactsLoader(d.db, d.account);
+  const memo = new Map<string, { at: number; value: Promise<unknown> }>();
+  const cached = <T>(key: string, compute: () => Promise<T>): Promise<T> => {
+    const hit = memo.get(key);
+    if (hit && Date.now() - hit.at < 15_000) return hit.value as Promise<T>;
+    const value = compute();
+    memo.set(key, { at: Date.now(), value });
+    value.catch(() => memo.delete(key));
+    return value;
+  };
+  const generatedAt = () => new Date().toISOString();
+  if (d.warmMetrics) {
+    loadFacts({ states: [...STATE] }).catch((e: unknown) => console.error(JSON.stringify({ at: new Date().toISOString(), metrics: 'warm-up failed; the first request will retry', error: String(e) })));
+  }
+
+  // GET /v1/metrics/execution
+  //   What a bidder actually got, over every Finalized cross that printed: fill rate, price
+  //   improvement of each filled bid against its own limit (median and 10th percentile, in basis
+  //   points and quote atoms), the share of bid escrow returned, and close-to-finalized time.
+  //   Every figure carries its sample size; `method` states how it was computed.
+  //   200 { network, generatedAt, method, crosses, finalizedWithoutPrint, bids: { placed, filled, fillRate, ... },
+  //         priceImprovement: { filledBids, atClearingPrice, bps: { median, p10 }, quoteAtoms: { median, p10, quoteDecimals }, inconsistent },
+  //         refundShare: { crosses, median, min, max }, closeToFinalizedSeconds: { n, median, p90, max, excluded }, closeToClearedSeconds: {...} }
+  app.get('/v1/metrics/execution', async (_req, reply) => {
+    const out = await cached('execution', async () => executionQuality(await loadFacts({ states: ['Finalized'] })));
+    return send(reply, { network: d.network ?? 'unknown', generatedAt: generatedAt(), ...out });
+  });
+
+  // GET /v1/metrics/fairness?threshold=0.1
+  //   Concentration of fills over every Finalized cross that printed: for each cross and in
+  //   aggregate, distinct wallets, the share of one side's fill taken by its largest 1, 5 and 10
+  //   wallets, the identity count, and the proportion of crosses where the largest buyer took more
+  //   than `threshold` (default 0.1) with a Wilson 95% interval over crosses.
+  //   200 { network, generatedAt, method, crosses, threshold, topBuyerAboveThreshold: { k, n, proportion, wilsonLo, wilsonHi },
+  //         medianBuySide, crossesWithSelfCross, wallets, perCross: [{ address, bidders, sellers, wallets, buy, sell, bothSides, identity }] }
+  app.get('/v1/metrics/fairness', async (req, reply) => {
+    const raw = (req.query as { threshold?: string }).threshold;
+    const threshold = raw === undefined ? 0.1 : Number(raw);
+    if (!Number.isFinite(threshold) || threshold <= 0 || threshold >= 1) throw new RequestError(400, 'threshold must be a number strictly between 0 and 1');
+    const out = await cached(`fairness:${threshold}`, async () => fairnessReport(await loadFacts({ states: ['Finalized'] }), threshold));
+    return send(reply, { network: d.network ?? 'unknown', generatedAt: generatedAt(), ...out });
+  });
+
+  // GET /v1/metrics/external-flow
+  //   How much of the flow is not ours. Wallets and orders over every cross with orders, split into
+  //   own (OWN_WALLETS, and each cross's creator, proceeds recipient, integrator and fee recipient)
+  //   and external. When OWN_WALLETS is unset the external figures are an upper bound and the
+  //   verdict says so.
+  //   200 { network, generatedAt, method, ownWalletsConfigured, crosses: { withOrders, withAnExternalWallet, onlyOwnWallets },
+  //         wallets: { total, own, external, externalShare }, filledWallets: {...}, orders: {...}, verdict }
+  app.get('/v1/metrics/external-flow', async (_req, reply) => {
+    const out = await cached('external-flow', async () => externalFlow(await loadFacts({ states: [...STATE] }), d.ownWallets ?? new Set(), d.network ?? 'unknown'));
+    return send(reply, { generatedAt: generatedAt(), ...out });
+  });
+
   app.get('/v1/crosses', async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     const state = q.state;
@@ -189,7 +255,17 @@ export async function buildServer(d: ApiDeps) {
   app.get('/v1/crosses/:address', async (req, reply) => {
     const a = address((req.params as { address: string }).address, 'address');
     const v = await crossView(a);
-    return send(reply, present(a, v.data));
+    // Additive: the cross's fairness figures once it has printed and finalized (null before, and null if the index cannot be read; the cross itself never fails on it).
+    let fairness: ReturnType<typeof crossFairness> | null = null;
+    if (v.data.state === CrossState.Finalized && v.data.clearing.__option === 'Some') {
+      try {
+        const facts = await loadFacts({ states: ['Finalized'], address: a });
+        fairness = facts[0] ? crossFairness(facts[0]) : null;
+      } catch (e) {
+        console.error(JSON.stringify({ at: new Date().toISOString(), route: '/v1/crosses/:address', fairness: 'unavailable', error: String(e) }));
+      }
+    }
+    return send(reply, { ...present(a, v.data), fairness });
   });
 
   app.get('/v1/crosses/:address/orders', async (req, reply) => {

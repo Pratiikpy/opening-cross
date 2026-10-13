@@ -4,6 +4,7 @@ import { type Address, fetchEncodedAccount } from '@solana/kit';
 import pg from 'pg';
 import { createIndexerRpc } from './rpc.js';
 import { migrate } from './ingest.js';
+import { backfillOrderTerms } from './order-terms.js';
 import { pollOnce } from './rpc-source.js';
 import { reconcileSettled } from './reconcile.js';
 
@@ -31,6 +32,9 @@ for (let tick = 0; ; tick++) {
     // Written only after a poll that finished, so a long backfill or a stuck RPC shows up as an old heartbeat.
     await db.query('INSERT INTO indexer_heartbeat (id, head_slot, polled_at) VALUES (1, $1, now()) ON CONFLICT (id) DO UPDATE SET head_slot = EXCLUDED.head_slot, polled_at = EXCLUDED.polled_at', [head.toString()]);
     if (n) console.log(JSON.stringify({ at: new Date().toISOString(), applied: n }));
+    // Open orders indexed before their terms were captured are filled in a few at a time.
+    const filled = await backfillOrderTerms(db, rpc);
+    if (filled.updated) console.log(JSON.stringify({ at: new Date().toISOString(), orderTermsBackfilled: filled.updated, remaining: filled.remaining }));
     if (tick % reconcileEvery === 0) {
       const drift = await reconcileSettled(db, fetcher, () => pollOnce(db, rpc), { record: true, waitMs: pollMs, attempts: 5 });
       if (drift.length) console.error(JSON.stringify({ at: new Date().toISOString(), drift }));

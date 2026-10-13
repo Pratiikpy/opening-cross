@@ -6,8 +6,17 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
 import { type CrossEvent, decodeLogs, toJson } from './decode.js';
+import type { OrderTerms } from './order-terms.js';
 
-export type ChainTx = { signature: string; slot: bigint; blockTime: bigint | null; logs: readonly string[]; err: unknown };
+export type ChainTx = {
+  signature: string;
+  slot: bigint;
+  blockTime: bigint | null;
+  logs: readonly string[];
+  err: unknown;
+  /** Limit price and quantity of the open orders this transaction committed, by order account (see order-terms.ts). */
+  terms?: ReadonlyMap<string, OrderTerms>;
+};
 
 export async function migrate(db: pg.Pool | pg.Client): Promise<void> {
   const dir = fileURLToPath(new URL('../migrations/', import.meta.url));
@@ -33,7 +42,7 @@ export async function ingestTransaction(db: pg.Pool, tx: ChainTx): Promise<numbe
         [tx.signature, seq, tx.slot.toString(), tx.blockTime?.toString() ?? null, ev.name, cross, JSON.stringify(toJson(ev.data))],
       );
       if (res.rowCount === 0) continue;
-      await apply(client, ev, tx.slot.toString());
+      await apply(client, ev, tx.slot.toString(), tx.terms);
       applied++;
     }
     await client.query('COMMIT');
@@ -46,7 +55,7 @@ export async function ingestTransaction(db: pg.Pool, tx: ChainTx): Promise<numbe
   }
 }
 
-async function apply(db: pg.PoolClient, ev: CrossEvent, slot: string): Promise<void> {
+async function apply(db: pg.PoolClient, ev: CrossEvent, slot: string, terms?: ReadonlyMap<string, OrderTerms>): Promise<void> {
   switch (ev.name) {
     case 'CrossCreated': {
       const d = ev.data;
@@ -61,10 +70,12 @@ async function apply(db: pg.PoolClient, ev: CrossEvent, slot: string): Promise<v
     }
     case 'OrderCommitted': {
       const d = ev.data;
+      // An open order is never revealed, so its terms come from the commit instruction itself.
+      const t = d.sealed ? undefined : terms?.get(d.order);
       await db.query(
-        `INSERT INTO orders (cross_address, idx, address, owner, side, escrow, sealed, status, created_slot, updated_slot)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)`,
-        [d.cross, d.index, d.order, d.owner, d.side, d.escrow.toString(), d.sealed, d.sealed ? 'committed' : 'revealed', slot],
+        `INSERT INTO orders (cross_address, idx, address, owner, side, escrow, sealed, status, price, quantity, created_slot, updated_slot)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11)`,
+        [d.cross, d.index, d.order, d.owner, d.side, d.escrow.toString(), d.sealed, d.sealed ? 'committed' : 'revealed', t?.price.toString() ?? null, t?.quantity.toString() ?? null, slot],
       );
       await db.query(`UPDATE crosses SET orders_committed = orders_committed + 1, updated_slot = $2 WHERE address = $1`, [d.cross, slot]);
       return;
