@@ -98,3 +98,13 @@ Cross `FCH4LwNinphLkFcKQapLGdpupfTs48jKF9ZLR6bGm9Xm`: the whole flow completed. 
 
 After sharing one book answer per cross for two seconds (`services/api/src/server.ts`), `live-devnet.mjs` passed in full against the real URLs: cross `6im5Hf6WRK7XUGrb9J2Ffh4GoKo1wGJdQkj8PcxJon4w`, all ten functional checks and both zero-console-errors checks (issuer and buyer), `ALL PASSED`. `live-smoke.mjs` on the same build: 48 page views, no problems. The runs before it failed only on rate limiting of the shared public devnet RPC, described above; a dedicated endpoint (H26) is still the durable remedy, and this pass shows only that the current build holds up at this load. One pass is one pass: it was not repeated three times.
 
+### After the program upgrade (2026-10-13, afternoon)
+
+`cross_core` and `cross_calendar` were upgraded on devnet (ADR-0025 to 0027; hashes `MATCH`, `L4-verifiable-build.md` section 4b), then the backend and web were redeployed and `live-devnet.mjs` was run three times against the real URLs:
+
+- Run 1 and run 2 stopped early (a page reload at 30 s, then the order button stuck on "Preparing" for 120 s) while the server's requests to `api.devnet.solana.com` were answered `429 Connection rate limits exceeded`; measured from the server, about one in six single idle requests was refused, and a cold `GET /book` took 23 s.
+- Run 3, cross `AkJC44mFaXbsW8MmFkpTxoLP3qhfmEDsHs1j5hN6tmLP`: all ten functional checks PASS on the upgraded programs (create from the console, escrow read from chain, signed band, keeper clear and finalize at 1.20 with 600 matched, 600 tokens received on chain); the issuer page had zero console errors; the buyer page recorded one HTTP 503 from `GET /v1/crosses/:address`, the same rate limit. The band read UNRESOLVED (horizon not elapsed), the honest state this soon after close.
+- The devnet DAMM proof (`A2`) also passes on the upgraded `cross_core`.
+
+So the function holds on the final bytes, and the zero-console-errors condition is met only when the shared public endpoint does not throttle: H26 (a dedicated devnet RPC) remains the one step that removes the cause.
+
