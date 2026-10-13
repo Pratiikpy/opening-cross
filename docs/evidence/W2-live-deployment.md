@@ -108,3 +108,19 @@ After sharing one book answer per cross for two seconds (`services/api/src/serve
 
 So the function holds on the final bytes, and the zero-console-errors condition is met only when the shared public endpoint does not throttle: H26 (a dedicated devnet RPC) remains the one step that removes the cause.
 
+
+## Wave 1 deploy: final run on the deployed build (2026-10-13)
+
+Wave 1 (calendar, gates, treasury, replay, receipt, export) was deployed to the AWS stack and to Vercel, then `live-smoke.mjs` and `live-devnet.mjs` were run against the real URLs.
+
+- `live-smoke.mjs`: 68 page views (17 pages, light and dark, 1440 and 390), no console errors, page errors, failed requests or overflow, after the fixes below. Earlier passes on the same build failed only on the shared public RPC answering 429 (the pages showed their "RPC busy" message; no crash).
+- `live-devnet.mjs`, cross `FmbtqjSw7hXxQagDr5hHVz3nTyP8jYsN8TQ3auKMmXfz`: all ten functional checks PASS (cross created from the console, mint authority moved on chain, 780 quote escrowed, signed band shown on the cross page, keeper cleared and finalized at 1.20 with 600 matched, buyer received 600 tokens on chain, band graded `UNRESOLVED / HORIZON_NOT_ELAPSED`, which is the correct grade this soon). Issuer: zero console errors. **Buyer: FAIL on the zero-console-errors check**: one `503` from `GET /v1/crosses/:address/book` while the public RPC was rate-limiting. Not a PASS for condition 4's "zero console errors"; it needs a dedicated RPC (H26) or a rerun in a quieter window.
+- One earlier run on this build stopped at the shortfall guard (the buyer held 679.99 of the 780 quote needed); the guard worked, and the buyer was topped up.
+
+Fixes made while getting here, each a response to a measured failure on the live stack:
+- `/v1/calendar`, `/v1/treasuries`: a chain read that has not answered in 3 s is given up on and the indexed row served (`verified: false`); after one give-up the endpoint is not asked again for 15 s. 16 s responses became about 1 s.
+- `/v1/metrics/*`: each cross's immutable fields are kept in `cross_statics` (migration 007), so a restart no longer re-reads every cross from a throttled endpoint (a 50 s 503 became 0.9 s).
+- `/v1/crosses/:address` and `/book`: a read from the last minute is served when a fresh one has not answered in 4 s and the error is a rate limit; finalized crosses are kept for good.
+- RPC client (API, indexer, keeper, promiser): `RPC_URL` may list several endpoints; a call moves to the next on a 429 or dropped connection and never on an empty answer (`services/indexer/test/rpc-failover.test.ts`). The deployed list is the public devnet endpoint, Tatum and OnFinality; all three allow only short bursts, so this spreads load and does not replace H26.
+- Browser: confirmations are polled every 1.5 s, and the same endpoint rotation applies in the page.
+- Indexer reads calendars, bindings and treasuries every fourth poll. Keeper remembers a cross whose account belongs to an earlier layout (`AccountOwnedByWrongProgram`) for an hour instead of failing every pass.
