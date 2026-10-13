@@ -208,7 +208,18 @@ export async function buildServer(d: ApiDeps) {
   };
   const generatedAt = () => new Date().toISOString();
   if (d.warmMetrics) {
-    loadFacts({ states: [...STATE] }).catch((e: unknown) => console.error(JSON.stringify({ at: new Date().toISOString(), metrics: 'warm-up failed; the first request will retry', error: String(e) })));
+    // Each cross read is kept as soon as it succeeds, so repeating the warm-up converges even while the public RPC is rate limiting.
+    void (async () => {
+      for (let attempt = 1; attempt <= 30; attempt++) {
+        try {
+          await loadFacts({ states: [...STATE] });
+          return;
+        } catch (e) {
+          console.error(JSON.stringify({ at: new Date().toISOString(), metrics: `warm-up attempt ${attempt} failed; retrying`, error: String(e).slice(0, 120) }));
+          await new Promise((r) => setTimeout(r, 10_000));
+        }
+      }
+    })();
   }
 
   // GET /v1/metrics/execution
