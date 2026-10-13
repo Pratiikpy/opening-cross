@@ -13,6 +13,13 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::arithmetic_side_effects)]
 
+pub mod alloc;
+pub mod guards;
+pub use alloc::{
+    class0_fill_upper_bound, fill_with_policy, pools, wins, AllocPolicy, Marginal, Pools,
+};
+pub use guards::{check_all, PrintFailure, RaiseGuards};
+
 /// The cross's price grid. Prices passed to [`clear`] and the reference price lie on it.
 pub trait TickGrid {
     /// The next grid price strictly above `price`, if any.
@@ -154,6 +161,14 @@ struct Point {
 }
 
 impl Point {
+    /// Applies the supply cap to both supply figures.
+    fn capped(mut self, cap: Option<u128>) -> Self {
+        if let Some(c) = cap {
+            self.supply = self.supply.min(c);
+            self.supply_better = self.supply_better.min(c);
+        }
+        self
+    }
     fn matched(&self) -> u128 {
         self.demand.min(self.supply)
     }
@@ -163,8 +178,9 @@ impl Point {
     }
 }
 
-/// Evaluates `D`, `D⁺`, `S`, `S⁻` at an arbitrary price with one pass over the levels.
-fn point_at(levels: &[Level], price: u64) -> Point {
+/// Evaluates `D`, `D⁺`, `S`, `S⁻` at an arbitrary price with one pass over the levels. A supply
+/// cap limits both supply figures: the issuer never sells more than the cap (ADR-0101).
+fn point_at(levels: &[Level], price: u64, cap: Option<u128>) -> Point {
     let mut p = Point {
         price,
         demand: 0,
@@ -186,7 +202,7 @@ fn point_at(levels: &[Level], price: u64) -> Point {
             p.supply_better = p.supply_better.saturating_add(l.sell);
         }
     }
-    p
+    p.capped(cap)
 }
 
 /// `true` if `a` is preferred to `b` under ADR-0003 (both assumed feasible).
@@ -219,6 +235,20 @@ pub fn clear(
     reference: Option<u64>,
     grid: &impl TickGrid,
 ) -> Result<Option<Clearing>, ClearError> {
+    clear_with(levels, reference, grid, None)
+}
+
+/// [`clear`] with an optional supply cap: the most base the sell side will deliver, however many
+/// sell levels the schedule offers (ADR-0101, hard cap). With a cap the rule is unchanged except
+/// that `S(p)` and `S⁻(p)` are `min(·, cap)`, so the price rises until demand fits the cap. `None`
+/// is exactly [`clear`].
+pub fn clear_with(
+    levels: &[Level],
+    reference: Option<u64>,
+    grid: &impl TickGrid,
+    supply_cap: Option<u128>,
+) -> Result<Option<Clearing>, ClearError> {
+    let cap = supply_cap;
     let mut prev: Option<u64> = None;
     for l in levels {
         if prev.is_some_and(|p| l.price <= p) {
@@ -244,7 +274,8 @@ pub fn clear(
             demand_better: demand.saturating_sub(l.buy),
             supply: supply_below.saturating_add(l.sell),
             supply_better: supply_below,
-        };
+        }
+        .capped(cap);
         if p.feasible() && best.as_ref().is_none_or(|b| better(&p, b, reference)) {
             best = Some(p);
         }
@@ -269,7 +300,8 @@ pub fn clear(
                     demand_better: d,
                     supply: supply_below,
                     supply_better: supply_below,
-                };
+                }
+                .capped(cap);
                 if q.feasible() && best.as_ref().is_none_or(|b| better(&q, b, reference)) {
                     best = Some(q);
                 }
@@ -278,7 +310,7 @@ pub fn clear(
     }
     if let Some(r) = reference {
         if levels.binary_search_by_key(&r, |l| l.price).is_err() {
-            let p = point_at(levels, r);
+            let p = point_at(levels, r, cap);
             if p.feasible() && best.as_ref().is_none_or(|b| better(&p, b, reference)) {
                 best = Some(p);
             }

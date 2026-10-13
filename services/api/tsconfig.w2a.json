@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "rootDir": ".", "types": ["node"] },
+  "include": ["src/routes/w2a.ts", "test/w2a.test.ts", "src/routes/agents.ts", "test/agents.test.ts", "src/routes/presets.ts", "test/presets.test.ts", "src/routes/dashboard.ts", "test/dashboard.test.ts", "src/routes/integrity.ts", "test/integrity.test.ts", "src/routes/liquidity.ts", "src/routes/paid.ts", "src/routes/fees.ts", "src/routes/duplicates.ts", "test/duplicates.test.ts", "test/fees.test.ts", "src/routes/paid-config.ts", "src/routes/blinks.ts", "src/routes/execute.ts", "src/routes/simulate.ts", "test/execute.test.ts", "test/blinks.test.ts", "scripts", "test/helpers/w2a.ts", "test/liquidity.test.ts", "test/paid.test.ts"]
+}

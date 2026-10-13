@@ -1,0 +1,29 @@
+{
+  "name": "@opening-cross/ops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The operations console API: a listing queue with a recorded decision, an incident log fed by the monitor, compliance cases with append-only notes, and a hash-chained audit log whose head can be signed. Every action names who did it, and the log can be checked for tampering.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/attest": "workspace:*",
+    "@opening-cross/promises": "workspace:*",
+    "fastify": "5.12.5",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@opening-cross/indexer": "workspace:*",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

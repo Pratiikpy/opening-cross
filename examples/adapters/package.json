@@ -1,0 +1,31 @@
+{
+  "name": "@opening-cross/example-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference integrations for Opening Cross: a reopen, a halt-resume, a tender and a block-sale adapter, an aggregator and a market-maker quote publisher. Each plans from live state, explains what it would do, and runs against a cluster in shadow mode (simulation) or for real.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "opening-cross-adapter": "src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "start": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/client": "workspace:*",
+    "@opening-cross/liquidity": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/token-safety": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

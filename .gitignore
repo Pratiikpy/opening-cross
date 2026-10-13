@@ -55,3 +55,6 @@ video/public/clips/
 
 .vercel
 apps/web/e2e/screens/
+
+# Alternative Next.js output directories used by parallel dev servers and test builds (Tailwind scans anything not ignored)
+.next-*/

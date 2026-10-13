@@ -1,0 +1,31 @@
+{
+  "name": "@opening-cross/clearing-wasm",
+  "version": "0.1.0",
+  "description": "The Opening Cross clearing rule, the same clearing-core that runs on chain, compiled to WebAssembly with a typed loader for browsers and Node.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/clearing-wasm"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src",
+    "clearing.wasm"
+  ],
+  "scripts": {
+    "build": "cargo build -p clearing-wasm --release --target wasm32-unknown-unknown && wasm-opt -Oz --strip-debug --strip-producers ../../target/wasm32-unknown-unknown/release/clearing_wasm.wasm -o clearing.wasm",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

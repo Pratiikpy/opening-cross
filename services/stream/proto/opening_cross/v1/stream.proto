@@ -1,0 +1,156 @@
+// Opening Cross event stream, version 1.
+//
+// Every event cross_core emits, decoded and typed, in the order the indexer ingested it. A subscriber resumes from a cursor it
+// kept, so a disconnect loses nothing; the same call replays history and then follows live events. 64-bit amounts are uint64:
+// token atoms, never floats. Addresses are base58 strings. Prices are quote atoms per price scale, as in OCIP-1.
+//
+// Compatibility: fields are only ever added. A client ignores field numbers it does not know.
+syntax = "proto3";
+
+package opening_cross.v1;
+
+service EventStream {
+  // Server-streaming. Replays events after `from` (or starts at the head with `from_head`), then follows live. The first message
+  // is always a Heartbeat carrying the cursor the stream starts from; more heartbeats follow while the stream is quiet.
+  rpc Subscribe(SubscribeRequest) returns (stream Message);
+
+  // The newest cursor the server has, for a client that wants to start "now" and remember where.
+  rpc Head(HeadRequest) returns (HeadResponse);
+}
+
+message Cursor {
+  // Opaque to clients: keep it and send it back. Strictly increasing in ingestion order.
+  uint64 position = 1;
+}
+
+message SubscribeRequest {
+  // Resume after this cursor. Unset means the very beginning of the log unless from_head is set.
+  Cursor from = 1;
+  bool from_head = 2;
+  // Only these crosses (base58 addresses). Empty means all.
+  repeated string crosses = 3;
+  // Only these event names, for example "CrossCleared". Empty means all.
+  repeated string events = 4;
+}
+
+message HeadRequest {}
+
+message HeadResponse {
+  Cursor head = 1;
+  uint64 events = 2;
+}
+
+message Message {
+  oneof body {
+    Event event = 1;
+    Heartbeat heartbeat = 2;
+  }
+}
+
+message Heartbeat {
+  // The newest cursor the server has when this heartbeat was sent.
+  Cursor head = 1;
+  // Unix seconds on the server.
+  int64 at = 2;
+}
+
+message Event {
+  Cursor cursor = 1;
+  string name = 2;
+  // The cross the event belongs to; empty for protocol-wide events.
+  string cross = 3;
+  uint64 slot = 4;
+  // Transaction that emitted it, and the event's index within that transaction's events.
+  string signature = 5;
+  uint32 seq = 6;
+  // Block time of the transaction in unix seconds; 0 when the cluster did not report one.
+  int64 block_time = 7;
+  oneof payload {
+    CrossCreated cross_created = 10;
+    OrderCommitted order_committed = 11;
+    OrderCancelled order_cancelled = 12;
+    OrderRevealed order_revealed = 13;
+    CrossCleared cross_cleared = 14;
+    OrderClaimed order_claimed = 15;
+    BaseMintBound base_mint_bound = 16;
+    CrossFinalized cross_finalized = 17;
+    PauseChanged pause_changed = 18;
+  }
+}
+
+enum Side {
+  SIDE_UNSPECIFIED = 0;
+  SIDE_BUY = 1;
+  SIDE_SELL = 2;
+}
+
+message CrossCreated {
+  string creator = 1;
+  string kind = 2;          // launch | reopen | tender | recurring
+  string supply_mode = 3;   // escrow | mint | deferred-mint
+  string disclosure = 4;    // sealed | open
+  string base_mint = 5;
+  string quote_mint = 6;
+  uint64 open_ts = 7;
+  uint64 close_ts = 8;
+  uint64 reveal_end_ts = 9;
+  uint32 protocol_fee_bps = 10;
+  uint32 integrator_fee_bps = 11;
+}
+
+message OrderCommitted {
+  string order = 1;
+  string owner = 2;
+  Side side = 3;
+  uint64 escrow = 4;
+  uint32 index = 5;
+  bool sealed = 6;
+}
+
+message OrderCancelled {
+  string order = 1;
+  string owner = 2;
+}
+
+message OrderRevealed {
+  string order = 1;
+  Side side = 2;
+  uint64 price = 3;
+  uint64 quantity = 4;
+}
+
+message CrossCleared {
+  bool printed = 1;
+  // Set when printed.
+  uint64 price = 2;
+  // Matched base atoms. The program counts them in 128 bits, so this is a decimal string.
+  string matched = 3;
+  string rationed = 4;      // none | buy | sell
+  // Set when not printed.
+  string no_print_reason = 5;
+}
+
+message OrderClaimed {
+  string order = 1;
+  string owner = 2;
+  Side side = 3;
+  uint64 fill = 4;
+  uint64 quote_out = 5;
+  uint64 base_out = 6;
+  uint64 fee = 7;
+}
+
+message BaseMintBound {
+  string base_mint = 1;
+}
+
+message CrossFinalized {
+  uint64 protocol_fee = 1;
+  uint64 integrator_fee = 2;
+  uint64 proceeds_quote = 3;
+  uint64 dust_base = 4;
+}
+
+message PauseChanged {
+  bool paused = 1;
+}

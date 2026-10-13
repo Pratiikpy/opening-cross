@@ -1,0 +1,36 @@
+{
+  "name": "@opening-cross/backtester",
+  "version": "0.1.0",
+  "description": "Replays a strategy against the indexed history of Opening Cross: each settled cross is re-cleared with the strategy's orders added, by the independent implementation of the clearing rule, after a check that the replay of the cross as it was reproduces what the chain recorded.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/backtester"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "opening-cross-backtest": "src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/liquidity": "workspace:*",
+    "@opening-cross/marketmaker": "workspace:*",
+    "@opening-cross/verifier": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

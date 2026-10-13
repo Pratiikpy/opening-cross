@@ -231,7 +231,9 @@ export class LocalFacilitator implements Facilitator {
     const deadline = Date.now() + this.confirmTimeoutMs;
     let resentAt = Date.now();
     while (Date.now() < deadline) {
-      const s = await this.status(signature);
+      // A rate-limited or briefly unreachable endpoint answers a status poll with an error. That says nothing about the
+      // transaction, so it is treated as "not seen yet": the loop keeps resending the same bytes until the deadline.
+      const s = await this.status(signature).catch(() => null);
       if (s) {
         if (s.err !== null) return `the transaction failed on chain: ${JSON.stringify(s.err, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 200)}`;
         if (s.confirmationStatus === 'finalized' || (this.commitment === 'confirmed' && s.confirmationStatus === 'confirmed')) return 'ok';

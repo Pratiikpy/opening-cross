@@ -46,6 +46,7 @@ export const PROPOSED_RATE_CARD: RateCard = {
     { product: 'proof-verification', unit: 'call', priceUnits: 10_000n },
     { product: 'attestation', unit: 'attestation', priceUnits: 250_000n },
     { product: 'data-export', unit: 'request', priceUnits: 50_000n },
+    { product: 'order-desk', unit: 'call', priceUnits: 20_000n },
   ],
 };
 

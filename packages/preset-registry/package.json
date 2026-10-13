@@ -1,0 +1,30 @@
+{
+  "name": "@opening-cross/preset-registry",
+  "version": "0.1.0",
+  "description": "An open registry of cross presets: signed, versioned parameter sets anyone can publish, a memo that attributes a cross to the preset it used, and honest performance figures for the crosses that used it.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/preset-registry"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/attest": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@opening-cross/monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Watches the live protocol for the conditions an operator would pause on, tells people, and (only when armed) pauses new crosses and orders with the guardian key. It never unpauses and never touches a claim or a refund.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "start": "tsx src/main.ts",
+    "pins": "tsx src/main.ts --print-pins",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@opening-cross/cross-calendar-client": "workspace:*",
+    "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/cross-gate-client": "workspace:*",
+    "@opening-cross/cross-settle-client": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@opening-cross/treasury-client": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

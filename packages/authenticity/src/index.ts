@@ -5,3 +5,4 @@ export * from './classify.js';
 export * from './observe.js';
 export { loadBundledBook, BUNDLED_REGISTRY } from './registry.js';
 export * from './csv.js';
+export * from './duplicates.js';

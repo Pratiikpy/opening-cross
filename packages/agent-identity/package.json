@@ -1,0 +1,29 @@
+{
+  "name": "@opening-cross/agent-identity",
+  "version": "0.1.0",
+  "description": "Verifies Metaplex Agent Registry identities for Opening Cross: whether an asset is a registered agent, which wallet is its own, which bidders in a cross are registered agents, and whether a cross's bidders meet an issuer's policy on agents.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/agent-identity"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

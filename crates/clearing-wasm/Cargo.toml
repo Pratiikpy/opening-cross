@@ -1,0 +1,15 @@
+[package]
+name = "clearing-wasm"
+version = "0.1.0"
+description = "The clearing rule of Opening Cross compiled to WebAssembly: the same clearing-core that runs on chain, behind a small C interface, for browsers, Node and Python (ADR-0300)."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+clearing-core = { path = "../clearing-core" }
+

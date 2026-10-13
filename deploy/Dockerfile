@@ -16,6 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages ./packages
 COPY services ./services
 COPY tests ./tests
+COPY examples ./examples
 COPY apps/web/package.json ./apps/web/package.json
 
 # Services and everything they depend on; devDependencies stay because tsx is one. The web app and the

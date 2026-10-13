@@ -1,0 +1,30 @@
+{
+  "name": "@opening-cross/integrity",
+  "version": "0.1.0",
+  "description": "Integrity analysis for Opening Cross: who holds a token and how the holders are connected, which bidders are conflicted, an organic-volume score with bounds, supply and backing reconciliation, an open rating with its track record, and a cited brief whose claims can be checked.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/integrity"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/attest": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

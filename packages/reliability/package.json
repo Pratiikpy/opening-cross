@@ -1,0 +1,30 @@
+{
+  "name": "@opening-cross/reliability",
+  "version": "0.1.0",
+  "description": "RPC failover with health scoring, and transaction landing for Opening Cross: priority fees from recent cluster fees, sends by every route, resends until the blockhash expires, and rebuilds at a higher fee only once a transaction can no longer land.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/reliability"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@solana-program/system": "0.15.0",
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

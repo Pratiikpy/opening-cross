@@ -14,6 +14,8 @@ export interface ToolDef {
   readonly request: (args: Record<string, unknown>) => { method: 'GET' | 'POST'; path: string; body?: Record<string, unknown> };
   /** Where third-party strings sit in the response (see untrusted.ts). */
   readonly untrusted: readonly string[];
+  /** True when the API route behind the tool takes payment (x402): the MCP binding relays the payment and the settlement. */
+  readonly paid?: true;
 }
 
 const ADDRESS = { type: 'string', pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$', description: 'A base58 Solana address.' };
@@ -167,6 +169,39 @@ export const TOOLS: readonly ToolDef[] = [
     kind: 'read',
     inputSchema: obj({ owner: ADDRESS }, ['owner']),
     request: (a) => ({ method: 'GET', path: `/v1/owners/${enc(str(a.owner))}/orders` }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_paid_verify_cross',
+    title: 'Paid: signed verification of a settled cross',
+    description:
+      'Costs money (x402). Recomputes a settled cross with an independent implementation and returns the verdict as a document signed by the published attestation key, with the hash of the full proof. The verdict itself is in the free sample; the signature is what a payment adds. The same unsigned proof is free with oc_get_proof.',
+    kind: 'read',
+    paid: true,
+    inputSchema: obj({ cross: ADDRESS }, ['cross']),
+    request: (a) => ({ method: 'GET', path: `/v1/paid/verify/${enc(str(a.cross))}` }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_paid_audit_bundle',
+    title: 'Paid: signed audit bundle of a settled cross',
+    description:
+      'Costs money (x402). One signed document with a settled cross, every order, every event and the proof, with a hash of each part, for an auditor who needs a single artefact. Counts are in the free sample; the same facts are free through oc_get_cross, oc_get_replay and oc_get_proof.',
+    kind: 'read',
+    paid: true,
+    inputSchema: obj({ cross: ADDRESS }, ['cross']),
+    request: (a) => ({ method: 'GET', path: `/v1/paid/bundle/${enc(str(a.cross))}` }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_draft_paid_order_desk',
+    title: 'Paid draft: pre-trade checked order',
+    description:
+      "Costs money (x402). Builds the UNSIGNED place-order transaction exactly like oc_draft_place_order, and also returns the cluster's own simulation of it with the cross's phase, escrow and fee, so an agent knows before signing that it would succeed. The check (escrow, fee, phase) is in the free sample; the transaction and the simulation are what a payment adds. Nothing moves until the owner signs.",
+    kind: 'draft',
+    paid: true,
+    inputSchema: obj({ ...crossArg, ...ownerArg, nonce: U64, side: { type: 'string', enum: ['buy', 'sell'] }, price: U64, quantity: U64, salt: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' } }, ['cross', 'owner', 'nonce', 'side', 'price', 'quantity']),
+    request: (a) => ({ method: 'POST', path: '/v1/paid/order-desk', body: pick(a, ['cross', 'owner', 'nonce', 'side', 'price', 'quantity', 'salt']) }),
     untrusted: [],
   },
   {

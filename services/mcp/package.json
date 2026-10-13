@@ -15,12 +15,15 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "bin": {
-    "opening-cross-mcp": "src/stdio.ts"
+    "opening-cross-mcp": "src/stdio.ts",
+    "opening-cross-docs-mcp": "src/docs-stdio.ts"
   },
   "scripts": {
     "start": "tsx src/stdio.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs": "tsx src/docs-stdio.ts",
+    "docs:corpus": "tsx scripts/docs-corpus.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1"

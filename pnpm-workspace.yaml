@@ -3,6 +3,7 @@ packages:
   - "apps/*"
   - "!apps/mobile"
   - "services/*"
+  - "examples/adapters"
   - "tests/*"
 
 # Install native optional dependencies for Windows and Linux so the same tree runs tests in

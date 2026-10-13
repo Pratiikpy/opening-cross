@@ -170,3 +170,41 @@ export function bestExecution(intent: Intent, cross: CrossQuote, dex: DexQuote, 
 
 const ceilDiv = (a: bigint, b: bigint) => (a + b - 1n) / b;
 const json = (v: unknown) => JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? x.toString() : x))) as Record<string, unknown>;
+
+export type JupiterSwap = {
+  /** Base64 wire bytes of an unsigned (VersionedTransaction) swap; the user is the fee payer and only signer. */
+  transaction: string;
+  lastValidBlockHeight: bigint;
+  /** The quote the swap was built from. */
+  quote: { inAmount: bigint; outAmount: bigint; priceImpactPct: string; route: string[]; swapMode: 'ExactIn' | 'ExactOut'; slippageBps: number };
+};
+
+/**
+ * An unsigned Jupiter swap for the same intent `quoteJupiter` prices: ExactOut for buys (base out), ExactIn for sells. It asks
+ * Jupiter for a quote and then for the transaction that executes exactly that quote for `userPublicKey`. Jupiter routes mainnet
+ * liquidity only, so on devnet this is not callable; the caller says so instead of calling. Nothing is signed or sent.
+ */
+export async function jupiterSwapTransaction(p: { baseMint: Address; quoteMint: Address; intent: Intent; userPublicKey: Address; slippageBps?: number; baseUrl?: string; fetchImpl?: typeof fetch }): Promise<JupiterSwap> {
+  const f = p.fetchImpl ?? fetch;
+  const base = p.baseUrl ?? 'https://lite-api.jup.ag/swap/v1';
+  const buy = p.intent.side === 'buy';
+  const slippageBps = p.slippageBps ?? 50;
+  const url = new URL(`${base}/quote`);
+  url.searchParams.set('inputMint', buy ? p.quoteMint : p.baseMint);
+  url.searchParams.set('outputMint', buy ? p.baseMint : p.quoteMint);
+  url.searchParams.set('amount', p.intent.quantity.toString());
+  url.searchParams.set('swapMode', buy ? 'ExactOut' : 'ExactIn');
+  url.searchParams.set('slippageBps', String(slippageBps));
+  const q = await f(url, { headers: { accept: 'application/json' } });
+  if (!q.ok) throw new Error(`Jupiter quote answered HTTP ${q.status}: ${(await q.text()).slice(0, 200)}`);
+  const quoteResponse = (await q.json()) as { inAmount: string; outAmount: string; priceImpactPct: string; routePlan: { swapInfo: { label: string } }[] };
+  const s = await f(`${base}/swap`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ quoteResponse, userPublicKey: p.userPublicKey, wrapAndUnwrapSol: true }) });
+  if (!s.ok) throw new Error(`Jupiter swap answered HTTP ${s.status}: ${(await s.text()).slice(0, 200)}`);
+  const swap = (await s.json()) as { swapTransaction?: string; lastValidBlockHeight?: number };
+  if (typeof swap.swapTransaction !== 'string') throw new Error('Jupiter returned no transaction');
+  return {
+    transaction: swap.swapTransaction,
+    lastValidBlockHeight: BigInt(swap.lastValidBlockHeight ?? 0),
+    quote: { inAmount: BigInt(quoteResponse.inAmount), outAmount: BigInt(quoteResponse.outAmount), priceImpactPct: quoteResponse.priceImpactPct, route: quoteResponse.routePlan.map((r) => r.swapInfo.label), swapMode: buy ? 'ExactOut' : 'ExactIn', slippageBps },
+  };
+}

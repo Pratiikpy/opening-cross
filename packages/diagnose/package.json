@@ -1,0 +1,31 @@
+{
+  "name": "@opening-cross/diagnose",
+  "version": "0.1.0",
+  "description": "Explains why a Solana transaction failed, in plain words, from the program's own error tables: custom error codes mapped through the IDLs of Meteora DBC, DAMM v2, DLMM, Raydium CPMM and Opening Cross, Anchor framework errors, and the token and system programs.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/diagnose"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@solana-program/system": "0.15.0",
+    "@solana-program/token": "0.16.0",
+    "@solana-program/token-2022": "0.19.0",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

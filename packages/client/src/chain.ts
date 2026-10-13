@@ -19,7 +19,7 @@ import type { RpcClient } from './rpc.js';
 import type { BookLevel, BookResponse, CrossDetail } from './types.js';
 
 const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'] as const;
-const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused'] as const;
+const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'] as const;
 
 /** The decoded cross if these bytes really are one owned by cross_core; anyone can create an account whose bytes look like a cross under another program. */
 export function decodeCross(account: { data: Uint8Array; owner: string } | null): Cross | null {

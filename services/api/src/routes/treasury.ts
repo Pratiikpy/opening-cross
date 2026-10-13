@@ -12,8 +12,8 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type pg from 'pg';
 import { type Address, getAddressDecoder, getAddressEncoder, getProgramDerivedAddress, isAddress } from '@solana/kit';
 import { getMintDecoder, getTokenDecoder } from '@solana-program/token-2022';
-import { TREASURY_DISCRIMINATOR, TREASURY_PROGRAM_ADDRESS, TreasuryState, findVaultPda, getTreasuryDecoder, type Treasury } from '@opening-cross/treasury-client';
-import { type TreasuryFacts, rightsCards } from '@opening-cross/rights-card';
+import { TREASURY_DISCRIMINATOR, TREASURY_PROGRAM_ADDRESS, TreasuryState, decodeTreasuryExt, findVaultPda, getTreasuryDecoder, type Treasury, type TreasuryExt } from '@opening-cross/treasury-client';
+import { type ExtFacts, type TreasuryFacts, rightsCards } from '@opening-cross/rights-card';
 import { createIndexerRpc } from '@opening-cross/indexer';
 import { RequestError } from '../tx.js';
 import { type MemoTx, type SignedUpdate, type UpdateBody, checkAnchor, CLOCK_SKEW_SECONDS, disclosureState, memoTextOf, parseMemo, verifyUpdate } from './treasury-updates.js';
@@ -85,6 +85,8 @@ async function upgradeAuthorityOf(account: TreasuryDeps['account']): Promise<str
 type ChainView = {
   address: Address;
   treasury: Treasury;
+  /** The extension tail, or null for a treasury that was never extended. */
+  ext: TreasuryExt | null;
   vault: { address: string; balance: bigint | null };
   coin: { supply: bigint | null; mintAuthority: string | null | 'unknown' };
 };
@@ -104,7 +106,7 @@ async function readChain(d: TreasuryDeps, address: Address, withCoin = true): Pr
     supply = m.supply;
     mintAuthority = m.mintAuthority.__option === 'Some' ? m.mintAuthority.value : null;
   }
-  return { address, treasury, vault: { address: vaultAddress, balance: vaultBalance }, coin: { supply, mintAuthority } };
+  return { address, treasury, ext: decodeTreasuryExt(acct.data), vault: { address: vaultAddress, balance: vaultBalance }, coin: { supply, mintAuthority } };
 }
 
 const terms = (t: Treasury) => ({
@@ -118,6 +120,35 @@ const terms = (t: Treasury) => ({
   credential: t.credential,
   schema: t.schema,
 });
+
+const NONE = '11111111111111111111111111111111';
+
+/** What the rights cards need of an extension tail: a feature the team left off is null. */
+function extFacts(e: TreasuryExt): ExtFacts {
+  const on = (secs: bigint) => secs !== 0n;
+  return {
+    voting: on(e.votePeriodSecs)
+      ? { votePeriodSecs: e.votePeriodSecs, timelockSecs: e.timelockSecs, quorumBps: e.quorumBps, thresholdBps: e.thresholdBps, maxProposalBps: e.maxProposalBps, proposerMinBps: e.proposerMinBps }
+      : null,
+    nav: on(e.navPeriodSecs) ? { periodSecs: e.navPeriodSecs, capBps: e.navCapBps, open: e.navOpen, insiders: e.insiders.filter((i) => i !== NONE) } : null,
+    revenue: e.revShareBps !== 0 ? { shareBps: e.revShareBps, roundSecs: e.roundSecs, payGraceSecs: e.payGraceSecs, missedRounds: e.missedRounds, trancheAmount: e.trancheAmount } : null,
+    disclosure: on(e.disclosurePeriodSecs)
+      ? {
+          periodSecs: e.disclosurePeriodSecs,
+          requestMinBps: e.requestMinBps,
+          openRequestTs: e.openRequestTs === 0n ? null : e.openRequestTs,
+          lastDisclosureTs: e.lastDisclosureTs === 0n ? null : e.lastDisclosureTs,
+          disclosures: e.disclosures,
+        }
+      : null,
+    assignment: e.assignRequired ? { assigned: e.assigned } : null,
+    windDown: on(e.windowSecs) ? { windowSecs: e.windowSecs, recovery: e.recovery, windStart: e.windStart === 0n ? null : e.windStart, swept: e.swept } : null,
+    minLockupSecs: e.minLockupSecs,
+    totalStaked: e.totalStaked,
+    grantsUnreleased: e.grantsUnreleased,
+    streamSecs: e.streamSecs,
+  };
+}
 
 const stateName = (t: Treasury) => (t.state === TreasuryState.Active ? 'Active' : 'Liquidating');
 
@@ -341,6 +372,7 @@ export function registerTreasury(app: FastifyInstance, d: TreasuryDeps): void {
       attestation: attestation === null ? 'unknown' : attestation.live ? 'live' : 'not-live',
       programUpgradeAuthority: upgrade,
       now: BigInt(at),
+      ext: chain.ext ? extFacts(chain.ext) : null,
     };
     // A coin whose mint authority could not be read is not reported as revoked.
     const cards = rightsCards(facts).map((c) => (c.id === 'fixed-supply' && chain.coin.mintAuthority === 'unknown' ? { ...c, now: 'The coin mint could not be read just now.' } : c));

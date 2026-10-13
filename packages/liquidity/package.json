@@ -1,0 +1,33 @@
+{
+  "name": "@opening-cross/liquidity",
+  "version": "0.1.0",
+  "description": "Off-chain liquidity for Opening Cross: signed maker quotes checked against the resting order on chain, sealed liquidity curves turned into orders, signed aggregator intents, maker obligations and the rebate split.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratiikpy/opening-cross.git",
+    "directory": "packages/liquidity"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@opening-cross/fees": "workspace:*",
+    "@opening-cross/promises": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

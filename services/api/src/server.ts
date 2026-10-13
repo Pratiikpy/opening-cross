@@ -9,7 +9,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyReply } from 'fastify';
 import type pg from 'pg';
 import { type Address, isAddress } from '@solana/kit';
-import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
+import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, NoPrintReason, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
 import { referenceClear, verifyCross } from '@opening-cross/verifier';
 import { type DexQuote, type Intent, bestExecution, loadBook, quoteCross, quoteJupiter } from '@opening-cross/router';
 import { anchorFor, getInputs, getPromise, latestForCross, records, samples } from '@opening-cross/promiser';
@@ -25,7 +25,11 @@ import { recentReplays, replayRow } from './replay.js';
 import { registerCalendar } from './routes/calendar.js';
 import { registerCrossList } from './routes/crosslist.js';
 import { registerGate } from './routes/gate.js';
+import { registerHolderRoutes } from './routes/holder.js';
+import { registerIssuerBoard } from './routes/issuer-board.js';
+import { registerIssuerTx } from './routes/issuer-tx.js';
 import { registerTreasury } from './routes/treasury.js';
+import { registerW2A } from './routes/w2a.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -58,6 +62,8 @@ export type ApiDeps = {
   dexQuote?: (p: { baseMint: Address; quoteMint: Address; intent: Intent }) => Promise<DexQuote>;
   /** Unix seconds; defaults to the wall clock. Tests inject one. */
   clock?: () => number;
+  /** Set false to leave out the W2A route groups (most tests build the server without them). */
+  w2a?: boolean;
   /** Cache lifetime for mint safety verdicts in ms (default 30 000) and read attempts before a 429 is surfaced (default 4). */
   safety?: { ttlMs?: number; attempts?: number; sleep?: (ms: number) => Promise<void> };
 };
@@ -96,7 +102,8 @@ function body(v: unknown): Record<string, unknown> {
 const opt = <T>(v: unknown, f: (x: unknown) => T): T | null => (v === undefined || v === null ? null : f(v));
 
 const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'] as const;
-const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable'] as const;
+// The program's own enum, so a reason added on chain is named here the day the client is regenerated.
+const NO_PRINT = (r: number): string => NoPrintReason[r] ?? `Unknown(${r})`;
 
 export async function buildServer(d: ApiDeps) {
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, ...(d.trustProxy ? { trustProxy: true } : {}) });
@@ -191,7 +198,7 @@ export async function buildServer(d: ApiDeps) {
       fees: { protocolBps: c.protocolFeeBps, integratorBps: c.integratorFeeBps, integrator: c.integrator },
       orders: { total: c.ordersTotal, open: c.ordersOpen, max: c.maxOrders },
       clearing: clearing && { price: clearing.price, matched: clearing.matched, rationed: ['none', 'buy', 'sell'][clearing.rationed] },
-      noPrintReason: c.noPrintReason.__option === 'Some' ? NO_PRINT[c.noPrintReason.value] : null,
+      noPrintReason: c.noPrintReason.__option === 'Some' ? NO_PRINT(c.noPrintReason.value) : null,
       gateMint: c.gateMint.__option === 'Some' ? c.gateMint.value : null,
       oracleGuard: c.oracle.__option === 'Some',
     };
@@ -833,6 +840,20 @@ export async function buildServer(d: ApiDeps) {
   registerCrossList(app, d);
   registerGate(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
   registerTreasury(app, d);
+  registerIssuerTx(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
+  registerIssuerBoard(app, { db: d.db, curators: new Set((process.env.ISSUER_CURATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean)), ...(d.clock && { clock: d.clock }) });
+  const holder = await registerHolderRoutes(app, d);
+  app.addHook('onClose', async () => holder.stop());
+  // Liquidity, pay-per-call, Blinks, routed execution, fees, duplicate tickers, integrity, presets, agents, dashboard. RPC_URL may list
+  // several endpoints; W2A_SKIP names groups to leave out (tests that boot the server without them).
+  if (d.w2a !== false) {
+    const w2a = await registerW2A(app, d, { ...process.env, RPC_URL: process.env.RPC_URL ?? 'https://api.devnet.solana.com' });
+    if (w2a.reconcile) {
+      const timer = setInterval(() => void w2a.reconcile?.(), 60_000);
+      timer.unref();
+      app.addHook('onClose', async () => clearInterval(timer));
+    }
+  }
 
   app.get('/v1/stream', { websocket: true }, (socket, req) => {
     const q = req.query as { cross?: string };

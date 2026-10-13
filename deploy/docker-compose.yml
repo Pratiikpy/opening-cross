@@ -85,6 +85,9 @@ services:
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
       PROMISE_SIGNER: ${PROMISE_SIGNER:?set PROMISE_SIGNER (the promiser's public key) in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Wallets we operate (the keeper, promiser and market maker keys, the team wallets), comma-separated. /v1/metrics/external-flow
+      # excludes them on top of each cross's own creator, proceeds recipient, integrator and fee recipient. Empty means only those.
+      OWN_WALLETS: ${OWN_WALLETS:-}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 15s
@@ -143,6 +146,88 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  # ---- Optional services (docker compose --profile <name> up -d). None starts by default; each needs the variables named in
+  # .env.example and refuses to start with a clear message when one is missing.
+
+  # Typed event stream over gRPC (services/stream). Ports bind to localhost; reach it over an SSH tunnel or put TLS in front.
+  stream:
+    <<: *service
+    profiles: ["stream"]
+    working_dir: /app/services/stream
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      STREAM_PORT: "50051"
+      STREAM_HOST: 0.0.0.0
+      STREAM_TOKEN: ${STREAM_TOKEN:-}
+    ports:
+      - "127.0.0.1:50051:50051"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Issuer subscriptions (services/billing): plans, payments read back from the chain, entitlements, signed invoices.
+  billing:
+    <<: *service
+    profiles: ["billing"]
+    working_dir: /app/services/billing
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      BILLING_HOST: 0.0.0.0
+      BILLING_MINT: ${BILLING_MINT:-}
+      REVENUE_WALLET: ${REVENUE_WALLET:-}
+      BILLING_KEYPAIR: /run/secrets/billing.json
+    volumes:
+      - ./.secrets/billing.json:/run/secrets/billing.json:ro
+    ports:
+      - "127.0.0.1:8791:8791"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Operations console API (services/ops): listing queue, incidents, cases, hash-chained audit log. Not exposed through Caddy.
+  ops:
+    <<: *service
+    profiles: ["ops"]
+    working_dir: /app/services/ops
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      OPS_HOST: 0.0.0.0
+      OPS_TOKENS: ${OPS_TOKENS:-}
+      OPS_API_URL: http://api:8080
+      OPS_WEBHOOK_SECRET: ${OPS_WEBHOOK_SECRET:-}
+      OPS_KEYPAIR: /run/secrets/ops.json
+    volumes:
+      - ./.secrets/ops.json:/run/secrets/ops.json:ro
+    ports:
+      - "127.0.0.1:8792:8792"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Watches the protocol and reports. It only pauses when MONITOR_ARM=yes AND a guardian keypair is mounted; otherwise it is a dry run.
+  monitor:
+    <<: *service
+    profiles: ["monitor"]
+    working_dir: /app/services/monitor
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      <<: *env
+      MONITOR_ARM: ${MONITOR_ARM:-}
+      MONITOR_GUARDIAN_KEYPAIR: /run/secrets/guardian.json
+      MONITOR_WEBHOOK_URL: ${MONITOR_WEBHOOK_URL:-}
+      MONITOR_BACKING_URL: http://api:8080
+      MONITOR_EXPECT_ADMIN: ${MONITOR_EXPECT_ADMIN:-}
+      MONITOR_EXPECT_GUARDIAN: ${MONITOR_EXPECT_GUARDIAN:-}
+      MONITOR_EXPECT_FEE_RECIPIENT: ${MONITOR_EXPECT_FEE_RECIPIENT:-}
+    volumes:
+      - ./.secrets/guardian.json:/run/secrets/guardian.json:ro
+    depends_on:
+      api:
+        condition: service_healthy
 
   caddy:
     image: caddy:2
