@@ -5,7 +5,7 @@
 const SENTENCE: Record<string, string> = {
   NoCross: 'no buy order and sell order overlapped at any price',
   BelowMinimumVolume: 'the volume that would have traded was below the minimum the issuer set',
-  ImbalanceTooHigh: 'buyers and sellers were too far apart at the best price for the issuerâ€™s limit',
+  ImbalanceTooHigh: 'buyers and sellers were too far apart at the best price for the issuer’s limit',
   SettlementExpired: 'the token was not created before the settlement deadline',
   OracleDivergence: 'the price strayed too far from the oracle price',
   OracleUnavailable: 'the oracle price was missing, stale or unverified',

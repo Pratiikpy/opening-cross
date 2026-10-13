@@ -130,7 +130,7 @@ export function rightsCards(f: TreasuryFacts): RightsCard[] {
 
   let redeemNow: string;
   if (liquidating) {
-    redeemNow = `Open. Snapshot: ${q(f.snapshotVault)} over ${f.snapshotSupply.toString()} coin atoms. Burning N coin atoms pays floor(${f.snapshotVault} Ã— N Ã· ${f.snapshotSupply}) quote atoms.`;
+    redeemNow = `Open. Snapshot: ${q(f.snapshotVault)} over ${f.snapshotSupply.toString()} coin atoms. Burning N coin atoms pays floor(${f.snapshotVault} × N ÷ ${f.snapshotSupply}) quote atoms.`;
   } else if (f.coinSupply > 0n) {
     redeemNow = `Closed until liquidation. If the snapshot were taken now (an estimate, not a promise: the vault and supply can change first), it would be ${q(f.vaultBalance)} over ${f.coinSupply.toString()} coin atoms.`;
   } else {
@@ -418,11 +418,11 @@ export function rightsCards(f: TreasuryFacts): RightsCard[] {
       kind: 'entitles',
       title: 'After liquidation, every holder can redeem pro rata',
       statement:
-        'Once liquidation has started, a holder can burn coins for floor(snapshot vault Ã— coins burned Ã· snapshot supply) quote tokens. The snapshot of the vault and the coin supply is taken at liquidation. Rounding is down, and the remainder stays in the vault.',
+        'Once liquidation has started, a holder can burn coins for floor(snapshot vault × coins burned ÷ snapshot supply) quote tokens. The snapshot of the vault and the coin supply is taken at liquidation. Rounding is down, and the remainder stays in the vault.',
       now: redeemNow,
       enforcedBy: [
         { instruction: 'redeem', error: 'NotLiquidating', rule: 'refused before liquidation' },
-        { instruction: 'redeem', error: null, rule: 'the payout is snapshot_vault Ã— amount Ã· snapshot_supply, rounded down, paid from the vault after the coins are burned' },
+        { instruction: 'redeem', error: null, rule: 'the payout is snapshot_vault × amount ÷ snapshot_supply, rounded down, paid from the vault after the coins are burned' },
       ],
       absence: null,
     },
