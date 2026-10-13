@@ -391,6 +391,22 @@ export function createFactsLoader(db: pg.Pool, account: (a: Address) => Promise<
   async function staticsOf(a: string): Promise<CrossStatics> {
     const hit = statics.get(a);
     if (hit) return hit;
+    const kept = (await db.query('SELECT * FROM cross_statics WHERE address = $1', [a])).rows[0];
+    if (kept) {
+      const s: CrossStatics = {
+        priceScale: BigInt(kept.price_scale),
+        quoteDecimals: kept.quote_decimals,
+        baseDecimals: kept.base_decimals,
+        creator: kept.creator,
+        proceedsTo: kept.proceeds_to,
+        integrator: kept.integrator,
+        feeRecipient: kept.fee_recipient,
+        gateMint: kept.gate_mint,
+        sealed: kept.sealed,
+      };
+      statics.set(a, s);
+      return s;
+    }
     // The public cluster endpoint answers 429 under bursts; a few spaced retries keep a cold start from failing the whole request.
     let acct: Account = null;
     for (let attempt = 0; ; attempt++) {
@@ -418,6 +434,11 @@ export function createFactsLoader(db: pg.Pool, account: (a: Address) => Promise<
       sealed: c.disclosure === Disclosure.Sealed,
     };
     statics.set(a, s);
+    await db.query(
+      `INSERT INTO cross_statics (address, price_scale, quote_decimals, base_decimals, creator, proceeds_to, integrator, fee_recipient, gate_mint, sealed)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (address) DO NOTHING`,
+      [a, s.priceScale.toString(), s.quoteDecimals, s.baseDecimals, s.creator, s.proceedsTo, s.integrator, s.feeRecipient, s.gateMint, s.sealed],
+    );
     return s;
   }
 
