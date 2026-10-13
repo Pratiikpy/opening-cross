@@ -72,6 +72,98 @@ The API builds transactions and returns them unsigned. Your wallet signs and sen
 - POST /v1/tx/finalize: `{ cross, payer }`. 409 while orders are still open.
 - POST /v1/tx/init-shards: `{ cross, payer }`. Finishes a cross whose create transaction landed but whose shard transactions did not.
 
+## 5b. Rules, treasury and settlement (extended programs)
+
+The programs behind these routes were extended in Wave 2D and are proved on LiteSVM and a local validator; they are **not deployed on devnet yet** (the operator funding step H27), so a transaction for a new instruction is built correctly and the deployed program refuses it. A cross created before the upgrade has no rules and every route answers for it as for a cross with every rule off. Full request and response shapes: [the rules, treasury and settlement API notes](https://github.com/Pratiikpy/opening-cross/blob/main/docs/api/W3A-rules-treasury-settle.md).
+
+Conventions are those of sections 3 to 5: integers are decimal strings, a transaction route answers `{ transaction, signers }` or `{ transactions: [...] }` (send in order), an error is `{ error, reason? }` with 400 (malformed), 404, 409 (wrong state), 422 (the protocol would refuse it; `reason` and details say why) or 503. The `rules` object of `create-cross-ruled` has the fields `flags`, `guards`, `ending`, `identity`, `alloc`, `neutrality`, `referral`, `oracleSet`, all optional, documented in the API notes; an unknown field is refused.
+
+An open order in an ending period names the shard of its bucket and the chain clock decides the bucket: `place-order-ext` answers `placement.validUntil`, the last second the transaction is right for. Show `GET /v1/crosses/:address/indicative` instead of the book's indicative price while its `phase` is `ending`.
+
+Reads:
+
+- GET /v1/crosses/:address/rules: the rules a cross carries (print guards, ending and draw, identity limits, classes, lockups, insiders and bond, referral, oracle median), its draw and neutrality state and what they call for; null with a note for a cross without rules.
+- GET /v1/crosses/:address/indicative: the indicative clearing price; in coarse bands (nearest of eight prices, imbalance as a direction) while the ending period is open. A display rule, not secrecy: the chain account is public.
+- GET /v1/crosses/:address/ending: the ending period: buckets with the orders in each, the drawn last counted bucket, the extension state.
+- GET /v1/crosses/:address/challenges: insider challenges filed against a cross, with their outcome.
+- GET /v1/crosses/:address/proof/draws: the fairness proof with the draw events the index holds, so an ending drawn before a later draw replaced the stored seed is checked too.
+- GET /v1/crosses/:address/settlement: the venue a settlement adapter opened for a cross, the partner payouts and the greenshoe.
+- GET /v1/owners/:owner/lockups?cross=: a wallet's locked fills with what has been released and what can be released now.
+- GET /v1/halts/:baseMint: the halt state of a base mint: halted or not, why, who may halt and resume it.
+- GET /v1/feeds/:baseMint: the lender print feed of a base mint: publishers, latest print, recorded prints.
+- GET /v1/series/:address: a recurring series: schedule, whether it runs, the crosses it spawned.
+- GET /v1/series?authority=: recurring series, optionally of one authority.
+- GET /v1/treasuries/:address/ext: the terms and live state of a treasury's extension (votes, NAV window, distributions, revenue rounds, disclosure, assignment gate, wind-down), or extended: false.
+- GET /v1/treasuries/:address/proposals: holder proposals with tally, quorum needed and status.
+- GET /v1/treasuries/:address/proposals/:id?voter=: one proposal, and a voter's locked votes on it.
+- GET /v1/treasuries/:address/positions/:owner: what a wallet holds, has staked and can claim from a treasury.
+- GET /v1/treasuries/:address/grants: team grants with lockups, milestones and status.
+- GET /v1/treasuries/:address/rounds: revenue rounds: open, awaiting payment, late, paid or missed, with the attestation each needs.
+- GET /v1/treasuries/:address/events?name=&limit=: indexed treasury events (votes, distributions, grants, disclosures).
+
+Unsigned transactions:
+
+- POST /v1/rules/check: the create-cross body plus rules; answers whether the program would accept the rules, with each refusal by field. Builds nothing.
+- POST /v1/tx/create-cross-ruled: create-cross with rules: the creation and set_rules in one transaction, then the shards, bucket shards, class book and lock vault the rules call for.
+- POST /v1/tx/place-order-ext: place an order with an allocation class (1 small verified, 2 accepts a lockup, 3 priority) and a lockup; answers the ending bucket it names and how long it is right for.
+- POST /v1/tx/settle-ext: settle with the oracle accounts named.
+- POST /v1/tx/draw-begin: first step of a draw (drawn ending, lottery, drawn extension). Anyone may send it.
+- POST /v1/tx/draw-finish: second step of a draw, at least 20 slots later.
+- POST /v1/tx/release-locked: pay the vested part of a lockup to its owner.
+- POST /v1/tx/push-refunds: return up to 12 refund-only orders to their owners in one transaction.
+- POST /v1/tx/close-applicant: close a finished identity-limit record.
+- POST /v1/tx/challenge-insider: file a challenge that a wallet is an undeclared insider.
+- POST /v1/tx/resolve-challenge: the arbiter's ruling on a challenge.
+- POST /v1/tx/expire-challenge: close a challenge the arbiter left unanswered for 14 days.
+- POST /v1/tx/set-arbiter: the protocol admin names the arbiter.
+- POST /v1/tx/init-halt-state: create the halt state of a base mint.
+- POST /v1/tx/set-halt: halt crosses of a base mint.
+- POST /v1/tx/set-corporate-action: set or clear the corporate-action flag.
+- POST /v1/tx/sync-pause: copy a pausable mint's pause flag into its halt state.
+- POST /v1/tx/observe-price: feed a verified Pyth update to the circuit breaker.
+- POST /v1/tx/init-print-feed: create the lender print feed of a base mint.
+- POST /v1/tx/set-feed-publishers: change who may move the lender print feed.
+- POST /v1/tx/create-series: create a recurring series.
+- POST /v1/tx/spawn-next: spawn the next cross of a series.
+- POST /v1/tx/set-series-active: pause or resume a series.
+- POST /v1/tx/series-withdraw: withdraw from a series' own token account.
+- POST /v1/tx/claim-partner-fee: claim a DBC partner's trading fees to the fee recipient.
+- POST /v1/tx/withdraw-partner-surplus: after migration: the partner's share of the surplus quote to the issuer.
+- POST /v1/tx/withdraw-partner-migration-fee: after migration: the partner's slice of the migration fee to the fee recipient.
+- POST /v1/tx/claim-partner-pool-creation-fee: the pool-creation fee, in lamports, to the fee recipient.
+- POST /v1/tx/claim-pol-fees: fees of the protocol-owned liquidity position to the issuer.
+- POST /v1/tx/create-greenshoe: commit a budget to standing bids under the clearing price.
+- POST /v1/tx/deploy-greenshoe-bid: place one greenshoe level; a fresh keypair signs next to the payer.
+- POST /v1/tx/settle-greenshoe-level: after the week: cancel a level and close its order.
+- POST /v1/tx/finish-greenshoe: burn what the bids bought and return the unspent budget to the issuer.
+- POST /v1/treasuries/:address/tx/init-ext: extend a treasury once (votes, NAV window, distributions, revenue rounds, disclosure, assignment gate, wind-down); also the flagship preset.
+- POST /v1/treasuries/:address/tx/propose: a holder proposal: spend, open the NAV window, close it.
+- POST /v1/treasuries/:address/tx/vote: vote with coins that stay locked until the vote ends.
+- POST /v1/treasuries/:address/tx/reclaim-vote: take the locked coins back after the vote.
+- POST /v1/treasuries/:address/tx/execute-proposal: run a proposal that passed and waited out its timelock.
+- POST /v1/treasuries/:address/tx/nav-redeem: burn coins for their share of the vault at NAV while a window is open.
+- POST /v1/treasuries/:address/tx/stake: stake coins to earn distributions.
+- POST /v1/treasuries/:address/tx/unstake: take staked coins back.
+- POST /v1/treasuries/:address/tx/deposit-distribution: add quote tokens for the stakers.
+- POST /v1/treasuries/:address/tx/claim-distribution: claim earned distributions.
+- POST /v1/treasuries/:address/tx/pay-round: pay the stakers' share of an attested revenue round.
+- POST /v1/treasuries/:address/tx/mark-missed: mark a late revenue round missed; opens the NAV exit.
+- POST /v1/treasuries/:address/tx/release-tranche: release the team's tranche for a qualifying round.
+- POST /v1/treasuries/:address/tx/create-grant: escrow a team grant with milestones.
+- POST /v1/treasuries/:address/tx/release-milestone: release a milestone to the beneficiary.
+- POST /v1/treasuries/:address/tx/expire-grant: burn a grant's unearned coins after it expires.
+- POST /v1/treasuries/:address/tx/post-disclosure: the team posts a disclosure.
+- POST /v1/treasuries/:address/tx/request-disclosure: a holder requests a disclosure, starting a clock.
+- POST /v1/treasuries/:address/tx/record-assignment: record counsel's IP-assignment attestation.
+- POST /v1/treasuries/:address/tx/sweep-unclaimed: after the wind-down window, send what holders did not redeem to the recovery account.
+- POST /v1/treasuries/:address/tx/spend: the team spends within its allowance (deployed).
+- POST /v1/treasuries/:address/tx/record-attested: record a renewed attestation (deployed).
+- POST /v1/treasuries/:address/tx/record-lapse: record a lapsed attestation (deployed).
+- POST /v1/treasuries/:address/tx/trigger-liquidation: start the liquidation after the grace period (deployed).
+- POST /v1/treasuries/:address/tx/redeem: redeem coins at the liquidation snapshot (deployed).
+
+The fairness proof of a cross with rules has schema `opening-cross/fairness-proof/v2` (a published JSON Schema) and carries `rules.checks` and `rules.limits`: it re-derives which shards were merged and, where the stored seed still allows it, the drawn ending; it states that the block hashes behind a draw cannot be re-read later and that state-dependent no-print reasons (halt, corporate action, issuer pause, oracle) cannot be reproduced from the book. A cross without rules still gets version 1, unchanged.
+
 ## 6. Verify a cross yourself (no trust in us)
 
 1. Get a cleared cross: GET /v1/crosses?state=Cleared (or Finalized with a non-null clearing_price).

@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const server = read('../../../services/api/src/server.ts');
+// The route files of the rules, treasury and settlement layer (docs/api/W3A-rules-treasury-settle.md) register their routes the same way.
+const routeFiles = ['rules-tx', 'rules-read', 'treasury-tx', 'settle-tx'].map((f) => read(`../../../services/api/src/routes/${f}.ts`));
 
 /** Every route the API registers: `app.get('/v1/x', ...)` and `app.post(...)`. A WebSocket route is registered with get. */
-const registered = new Set([...server.matchAll(/app\.(get|post)\('(\/v1\/[^']+)'/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`));
+const registered = new Set([server, ...routeFiles].flatMap((src) => [...src.matchAll(/app\.(get|post)\(\s*'(\/v1\/[^']+)'/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`)));
 
 /** Route lines in the docs: `- GET /v1/crosses?state=&limit=: text`. The query string is documentation, not part of the route. */
 function documented(text: string): string[] {
@@ -28,7 +30,7 @@ describe.each(['llms.txt', 'llms-full.txt'])('%s', (file) => {
     expect(lines.find((l) => l.trim() !== '' && !l.startsWith('# '))).toMatch(/^> /);
   });
 
-  it('lists only routes that exist in services/api/src/server.ts', () => {
+  it('lists only routes that exist in services/api/src/server.ts and the route files of the rules layer', () => {
     const routes = documented(text);
     expect(routes.length).toBeGreaterThan(15);
     const unknown = routes.filter((r) => !registered.has(r));
