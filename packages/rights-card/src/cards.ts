@@ -130,7 +130,7 @@ export function rightsCards(f: TreasuryFacts): RightsCard[] {
 
   let redeemNow: string;
   if (liquidating) {
-    redeemNow = `Open. Snapshot: ${q(f.snapshotVault)} over ${f.snapshotSupply.toString()} coin atoms. Burning N coin atoms pays floor(${f.snapshotVault} × N ÷ ${f.snapshotSupply}) quote atoms.`;
+    redeemNow = `Open. Snapshot: ${q(f.snapshotVault)} over ${f.snapshotSupply.toString()} coin atoms. Burning N coin atoms pays floor(${f.snapshotVault} Ã— N Ã· ${f.snapshotSupply}) quote atoms.`;
   } else if (f.coinSupply > 0n) {
     redeemNow = `Closed until liquidation. If the snapshot were taken now (an estimate, not a promise: the vault and supply can change first), it would be ${q(f.vaultBalance)} over ${f.coinSupply.toString()} coin atoms.`;
   } else {
@@ -191,7 +191,7 @@ export function rightsCards(f: TreasuryFacts): RightsCard[] {
       id: 'nav-redemption',
       kind: 'entitles',
       title: 'While the NAV window is open, holders can redeem at net asset value',
-      statement: `When the window is open (by a holder vote, or automatically after a revenue round is missed), a holder can burn coins for floor(vault � coins burned � coin supply) quote tokens, up to ${pct(n.capBps)} of the supply in each ${formatDuration(n.periodSecs)} period. The authority and ${n.insiders.length} other listed key${n.insiders.length === 1 ? '' : 's'} cannot redeem this way. The team cannot spend while the window is open, so redemption is against an intact vault. Rounding is down, so a redemption never lowers the value of the coins that stay.`,
+      statement: `When the window is open (by a holder vote, or automatically after a revenue round is missed), a holder can burn coins for floor(vault × coins burned ÷ coin supply) quote tokens, up to ${pct(n.capBps)} of the supply in each ${formatDuration(n.periodSecs)} period. The authority and ${n.insiders.length} other listed key${n.insiders.length === 1 ? '' : 's'} cannot redeem this way. The team cannot spend while the window is open, so redemption is against an intact vault. Rounding is down, so a redemption never lowers the value of the coins that stay.`,
       now: liquidating ? 'Not available: the treasury is in liquidation (redemption is the snapshot redeem).' : n.open ? 'The NAV window is open now.' : 'The NAV window is closed now.',
       enforcedBy: [
         { instruction: 'nav_redeem', error: 'NavClosed', rule: 'refused while the window is closed' },
@@ -418,11 +418,11 @@ export function rightsCards(f: TreasuryFacts): RightsCard[] {
       kind: 'entitles',
       title: 'After liquidation, every holder can redeem pro rata',
       statement:
-        'Once liquidation has started, a holder can burn coins for floor(snapshot vault × coins burned ÷ snapshot supply) quote tokens. The snapshot of the vault and the coin supply is taken at liquidation. Rounding is down, and the remainder stays in the vault.',
+        'Once liquidation has started, a holder can burn coins for floor(snapshot vault Ã— coins burned Ã· snapshot supply) quote tokens. The snapshot of the vault and the coin supply is taken at liquidation. Rounding is down, and the remainder stays in the vault.',
       now: redeemNow,
       enforcedBy: [
         { instruction: 'redeem', error: 'NotLiquidating', rule: 'refused before liquidation' },
-        { instruction: 'redeem', error: null, rule: 'the payout is snapshot_vault × amount ÷ snapshot_supply, rounded down, paid from the vault after the coins are burned' },
+        { instruction: 'redeem', error: null, rule: 'the payout is snapshot_vault Ã— amount Ã· snapshot_supply, rounded down, paid from the vault after the coins are burned' },
       ],
       absence: null,
     },
