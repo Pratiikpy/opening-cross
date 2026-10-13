@@ -1,4 +1,5 @@
 #!/bin/sh
+# Stages only files git tracks (the commit plus local edits to them), so a deploy matches the repository and cannot pick up untracked work.
 # Deploys apps/web to the Vercel project "opening-bell". The repository is not uploaded whole (it holds research clones and
 # program builds, far over Vercel's 15 000-file limit): this stages the pnpm workspace files the web build needs, links
 # the staging directory to the project, and runs `vercel deploy` there. The project's Root Directory is apps/web.
@@ -10,7 +11,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 cd "$ROOT"
-git ls-files -co --exclude-standard -z -- package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json packages services tests apps/web | tar --null -cf - -T - | tar -xf - -C "$STAGE"
+git ls-files -c -z -- package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json packages services tests apps/web | tar --null -cf - -T - | tar -xf - -C "$STAGE"
 mkdir -p "$STAGE/.vercel" && cp .vercel/project.json "$STAGE/.vercel/project.json"
 cd "$STAGE"
 vercel deploy --yes "$@"
