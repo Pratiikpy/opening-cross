@@ -1,0 +1,323 @@
+{
+ "at": 1791843943,
+ "sizes": [
+  100,
+  1000,
+  10000
+ ],
+ "dropped": [
+  {
+   "ticker": "AAOI",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "AAPL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ACN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "AMAT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "AMD",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "AMZN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ARM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ASML",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "AVGO",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BABA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BB",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BMNR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BOT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "BX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CBRS",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "COIN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRCL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRWD",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CRWV",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "CVX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DELL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DKNG",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "DRAM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWJ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "EWZ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GEV",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GLW",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GME",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "GOOGL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "HIMS",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "HOOD",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "IBM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "INTC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "IREN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "KORU",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LITE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LLY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LRCX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "LYTE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "META",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MRNA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MRVL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MSFT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MSTR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "MU",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NBIS",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NET",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NFLX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NOW",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "NVDA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ORCL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "PLTR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "QCOM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "QNT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RDDT",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RIVN",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "RKLB",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SHAZ",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SKHY",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SMH",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SNDK",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SNXX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SOXL",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "SPCX",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "STRC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TSLA",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TSM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "TWST",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "URNM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "USAR",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "WDC",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "XBI",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "XLE",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  },
+  {
+   "ticker": "ZM",
+   "reason": "quote failed: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+  }
+ ],
+ "observations": []
+}

@@ -143,7 +143,7 @@ Found by looking at the deployed site and its API as a stranger, then fixed and 
 
 ### Not covered in this pass
 
-- Devnet: the faucet and every public alternative are exhausted and the operator wallet holds under 0.01 SOL, so the Meteora features added on 2026-10-13 (DAMM v2 lock, vesting and compounding; DLMM conviction ladder; fee-sharing vault) were proven on Meteora's real binaries in LiteSVM only, and the live site was not driven with a real wallet placing an order.
+- Devnet: once the operator wallet was funded (10 SOL, 2026-10-13) the Meteora features added that day (DAMM v2 lock, vesting and compounding; DLMM conviction ladder; fee-sharing vault) were also proven on devnet against the live Meteora programs: `D1-damm-lock-compounding-devnet.md`, `D5-dlmm-conviction-ladder-devnet.md`, `D7-fee-sharing-vault-devnet.md`, all PASS, each with Meteora's own refusal read from the logs. Not covered by those runs: the `flat` and `wall` ladder shapes on devnet, and a compounding pool's claimable-fee split on devnet (both are covered in LiteSVM only).
 - The premium monitor's Jupiter quotes are rate limited from the server (the latest rounds often price few tickers); the page says how many quotes failed.
 - Programs were not changed or rebuilt; the five deployed programs still equal the repository builds.
 

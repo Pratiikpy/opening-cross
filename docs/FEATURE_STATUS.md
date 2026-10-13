@@ -48,15 +48,15 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | X13, R2, V-D Meteora full lifecycle | PARTIAL | DBC, DAMM v2 and DLMM adapters; Presale Vault proved on devnet (`DP11-presale-vault.md`); volatility-aware fee parameters (`DP-volatility-fee.md`) | Alpha Vault, Met Lock, Dynamic Fee Sharing and Zap are not built; the Presale Vault is proved but not integrated |
 | D3, V-D design (d) | PARTIAL, wording differs | Start price exactly P*, transfer hook installed, mint authority handed to the cross, optional dynamic fee; `A1` 18 steps PASS | Two resumable steps, not one transaction. Mint authority is revoked at `finalize`, not in the same transaction as allocation. The curve is issuer-chosen (`sqrtPriceMultiples`), not demand-calibrated segments. Migration uses `MET_DAMM_V2` with a fixed fee, not Compounding, and no vesting. No proceeds routing to treasury, locked liquidity or greenshoe. Not verified on devnet: migration of an adapter-opened pool, an allowlist-mode gate on it, more than one winning bidder |
 | D2 post-cross depth | PARTIAL | DBC curve above P* | No DLMM conviction or limit-order pools |
-| D1, X17 DAMM v2 Compounding graduation | PARTIAL | Full-range pool at exactly P* (`A2`); permanent liquidity lock, vesting schedule and compounding fee mode through Meteora's own instructions, proven on the real cp-amm binary in LiteSVM (`D1-damm-lock-compounding.md`, ADR-0022) | Not run on devnet (no SOL); no market-cap scheduler or reward slots |
+| D1, X17 DAMM v2 Compounding graduation | PARTIAL | Full-range pool at exactly P* (`A2`); permanent liquidity lock, vesting schedule and compounding fee mode through Meteora's own instructions, proven on the real cp-amm binary in LiteSVM (`D1-damm-lock-compounding.md`, ADR-0022) and on devnet, 22 steps PASS, with Meteora's own refusals read from the logs (`D1-damm-lock-compounding-devnet.md`) | No market-cap scheduler or reward slots |
 | D10, Z0 graduation by holder vote | NOT BUILT | none | No governance program (ADR-0013 covers admin only) |
 | D4, VM8, X18 greenshoe | NOT BUILT | none | |
-| D5 DLMM conviction pool | PARTIAL | `open_dlmm_pair` opens the pair at P*; `buildDlmmConvictionLadder` commits unsold base tokens as one-sided depth above P* through Meteora's own instructions, proven on the real lb_clmm binary in LiteSVM (`D5-dlmm-conviction-ladder.md`, ADR-0023) | Not run on devnet (no SOL); only the `taper` shape was swapped through; limit-order variant not built |
+| D5 DLMM conviction pool | PARTIAL | `open_dlmm_pair` opens the pair at P*; `buildDlmmConvictionLadder` commits unsold base tokens as one-sided depth above P* through Meteora's own instructions, proven on the real lb_clmm binary in LiteSVM (`D5-dlmm-conviction-ladder.md`, ADR-0023) and on devnet with two real buys (`D5-dlmm-conviction-ladder-devnet.md`) | Only the `taper` shape was swapped through; limit-order variant not built |
 | F4, VM4, B15 batch-opened graduation | NOT BUILT | none | |
 | W10 pool pause and rebalance | NOT BUILT | none | |
 | X12, C1 stock-quoted pools | PARTIAL | Adapters accept any quote mint; mint properties read (`DP14.md`) | No badge check, no stock quote mint run on devnet, no Alpha Vault entry (Token Badge: H9) |
 | X14, R1 Meteora volume engine | NOT BUILT | none | |
-| D7 fee sharing routing | PARTIAL | Meteora Dynamic Fee Sharing vault: create (1 to 5 recipients), fund, claim, and the DAMM v2 bridge (the position goes to the vault, its trading fees are pulled in and split), proven on the real program binaries in LiteSVM (`D7-fee-sharing-vault.md`, ADR-0024) | The DBC fee bridges are not built; not run on devnet (no SOL) |
+| D7 fee sharing routing | PARTIAL | Meteora Dynamic Fee Sharing vault: create (1 to 5 recipients), fund, claim, and the DAMM v2 bridge (the position goes to the vault, its trading fees are pulled in and split), proven on the real program binaries in LiteSVM (`D7-fee-sharing-vault.md`, ADR-0024) and on devnet end to end, from a real swap to both claims (`D7-fee-sharing-vault-devnet.md`) | The DBC fee bridges are not built |
 | R4 multi-asset pairing | NOT BUILT | none | |
 | B4 Presale Vault fixed-price mode | PARTIAL | Devnet proof only | Not integrated into a cross or the app |
 | D6, D8, D9, R3 | NOT BUILT | none | OS or later |
@@ -88,7 +88,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | Z1 open-execution router | PARTIAL | `packages/router`: a cross quote against a live Jupiter route at the same moment (`D6-router.md`) | No API route or UI use; no weekend pools, no execution |
-| Y2 execution-quality metric | PARTIAL | The best-execution report schema | No aggregate metric |
+| Y2 execution-quality metric | BUILT | `GET /v1/metrics/execution` over every Finalized cross that printed: fill rate, price improvement of each filled bid against its own limit (median, 10th percentile, in bps and quote atoms), refund share, close-to-cleared and close-to-finalized times, each with its sample size and a method line; shown on `/accuracy` and the home page. Open-order limit prices are recovered from the `commit_order` instruction data by the indexer (`services/indexer/src/order-terms.ts`); bids whose terms are not yet recovered are reported as `unaccounted`, never guessed. Figures recomputed independently from the live API and equal (24 of 24) | Bids only, not asks; the sample is our own devnet test traffic and the page says so |
 | X8, C4, K5 | NOT BUILT | none | |
 
 ## 9. Liquidity
@@ -102,7 +102,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 
 | ID | Status | What exists | Gap |
 |---|---|---|---|
-| F1 fairness report | PARTIAL | The proof carries price, matched volume, rationed side and the book | No cluster share with a confidence interval, identity count or method line |
+| F1 fairness report | BUILT | `GET /v1/metrics/fairness`: per cross and in aggregate, distinct bidding wallets, the share of filled volume taken by the largest 1, 5 and 10 wallets, a Wilson interval over crosses for the share where the top buyer exceeds a threshold, and a method line; additive `fairness` field on a finalized cross | The identity count is wallets, not people (no gate on most crosses); top-5 and top-10 shares read no data because crosses have at most 3 bidders |
 | F7 impersonation protection | PARTIAL | `packages/authenticity` (1,774 issuer-listed mints), `/v1/tokens/:mint/authenticity`, cross-page panel, issuer-console check; ADR-0016, `T-trust-e2e.md` | Mainnet and listed issuers only; no duplicate-ticker warning for arbitrary tokens; republication of the lists awaits H15 |
 | S12 launch replay | PARTIAL | Per-cross events, orders, book, proof | No 30-day view |
 | S2, F2, F3, F5, F6, F8, F9, V5, X10, J3 | NOT BUILT | none | The signed-promise track record (`/accuracy`) is a different thing from V5 |
@@ -128,12 +128,12 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | X7, M9 mobile app | PARTIAL | `apps/mobile` (Expo, Mobile Wallet Adapter), ADR-0020: strict typecheck, 26 tests, Android export | Not run on a device (H19); no onramp or embedded wallet |
 | Y9, M6 holdings and portfolio | PARTIAL | `/orders` page and the cross-page "Your orders"; mobile Orders screen | No positions, rights, votes, distributions or P&L |
 | Z6, M5 post-trade | PARTIAL | Fill report, claim and refund buttons | No notifications, onramp or claim center |
-| T2 calendar | PARTIAL | "Opens soon" state; `cross_calendar` | No calendar view, waitlists or reminders |
-| M1 discovery | PARTIAL | `/crosses` newest first | No filters |
-| M2, S3 asset page | PARTIAL | Price, book, signed band, identity panel, proof | No three-number hero, Token Facts card or tabs |
-| M3 timeline | PARTIAL | Phases, countdown, UTC close | No four-stage timeline or worked example |
-| M4 request, preview, confirm | PARTIAL | Escrow preview and grid validation | No best and worst fill, ownership share or price impact |
-| S1 price-discovery view | PARTIAL | Book chart, WebSocket updates, indicative price | No coarse final window; no marker for the user's bid |
+| T2 calendar | PARTIAL | `/calendar` groups crosses by their real windows (open now, opening soon, closed) by local day with UTC beside each, and an Add to calendar control downloads a valid RFC 5545 file; `cross_calendar` | No waitlists or reminders; the add-to-calendar download was tested against a local mock because the live site has no open or upcoming cross |
+| M1 discovery | BUILT | `/crosses` filters by state, bid disclosure and supply mode, free-text search on address or mint, four sorts, state in the URL, empty state, live result count (counts equal the API for every case tried) | Disclosure and supply-mode filters read each cross's detail lazily (about 60 to 90 s for 57 crosses the first time); adding the two fields to the list endpoint would remove that |
+| M2, S3 asset page | BUILT | Three-number hero (live: indicative price, offered versus wanted, countdown; settled: price, matched, fills), Token Facts card with mints, decimals, supply mode, fees, gate, oracle guard, creator and the authenticity verdict, and keyboard-navigable Overview, Book, Orders and Proof tabs with deep links | Verified on real priced, no-print, sealed and gated crosses; the Live phases were exercised with the real detail and a rewritten state because no cross was open |
+| M3 timeline | BUILT | Four-stage timeline from the real window times with the current stage marked, and a worked example computed from the cross's own clearing (matches the indexer's order record); a no-print cross says why | The API serves no timestamps for Cleared and Finalized, and the page says so |
+| M4 request, preview, confirm | BUILT | Before signing: escrow, best and worst case, share of the offered supply and price impact against the indicative price, from a TypeScript port of the clearing rule tested against the verifier's reference on 400 random books; sealed crosses show only escrow and share | The impact is shown only when it reproduces the API's own indicative price |
+| S1 price-discovery view | PARTIAL | Book chart, WebSocket updates, indicative price, and a marker with legend for the connected wallet's own orders (never drawn for unrevealed sealed orders) | No coarse final window; an order's limit price is only known for orders placed in this browser (the API does not serve it for open orders), others are listed as not placeable |
 | M10, M11 consumer standard | PARTIAL | Light and dark, 42 contrast pairs at AA, axe clean on every route (`W1-W2-web-landing.md`) | Addresses and mint names are visible; no risk-acknowledgment screen. Axe covers WCAG 2.1 AA, the target says 2.2 |
 | I1 to I3, I8 | PARTIAL | Browse without a wallet; Wallet Standard connect; non-custodial escrow, free cancel | No KYC step, embedded wallet or readiness checklist |
 | T1, M7, I4 to I6, S14, S11, S10, S4, S7, S5, M8, M12, I7, R6, N1, N2 | NOT BUILT | none | |
@@ -156,7 +156,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | W14, L3 SDK and UI kit | PARTIAL | `@opening-cross/sdk`, `opening-cross-cpi`, `examples/ts-quickstart` (run in CI), `D4-sdk-and-cpi.md`; `@opening-cross/client` (typed API client, exact unit maths, order validation, signing pipeline; 17 tests), `@opening-cross/react` (hooks and components; 34 tests) and `@opening-cross/cli` (read, place, cancel, reveal, claim, settle, verify; 20 tests) | None of the three has been run against a live cluster or published to a registry (H12); the cross-language parity test against a Rust SDK was dropped because that crate is not in the repository |
 | W15 reference integrations | PARTIAL | Design (d), router comparison, `examples/venue` | No reopen, halt, tender or block-sale adapters; the Genesis composition is not run on devnet |
 | L4, X16 data and agents | PARTIAL | `/v1/stream`, `services/mcp` (12 reads, 5 drafts, 9 tests; ADR-0019) | No gRPC stream, backtester or agent skill file |
-| L7, J4 docs for humans and AI | PARTIAL | MCP server; `/developers`; `docs/CONFIGURATION.md` | No llms.txt or docs MCP |
+| L7, J4 docs for humans and AI | PARTIAL | MCP server; `/developers`; `docs/CONFIGURATION.md`; `/llms.txt` and `/llms-full.txt`, with a test that every documented route exists in the server and every server route is documented | No docs MCP |
 | L2, X15, L5, J1, J5, L1 | NOT BUILT | none | |
 
 ## 16. Business model
@@ -164,7 +164,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | W4, W6 fees | PARTIAL | Fees live in `cross_core` (ADR-0010): the protocol fee is the smaller of the schedule and a quarter of the integrator fee, snapshotted per cross, charged to the sell side, never on bids, cancels or refunds; schedule 30, 5, 15 and 30 bps | There is no separate `cross_fees` program. The figures are proposed; `docs/economics/FEE_MODEL.md` and `packages/fees` (fee schedule, fee model, revenue ledger, scorecard, referral shares, rate cards and signed statements; 57 tests) model them in exact arithmetic off chain. The 10% referrer share exists in that accounting only, not in the program |
-| Z4, Y7 external-flow scorecard | PARTIAL | `/v1/stats` | Counts all wallets; no exclusion of team or market-maker flow |
+| Z4, Y7 external-flow scorecard | PARTIAL | `GET /v1/metrics/external-flow` excludes each cross's creator, integrator, proceeds and fee recipient and a configurable `OWN_WALLETS` list, and reports external against own wallets with the sample size; verdict worded as an upper bound on outside users | `OWN_WALLETS` is not yet passed through `deploy/docker-compose.yml`, so production uses the per-cross exclusions only; no market-maker flow exists to exclude |
 | Y8, X11, P1, P2, P3 to P5 | NOT BUILT | none | |
 
 ## 17. Engineering architecture and quality bars
@@ -175,7 +175,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | Q1 open source | PARTIAL | Apache-2.0 (ADR-0002); Meteora called through deployed programs | The repository is private (H21) |
 | Q2 testing | PARTIAL | LiteSVM suites, property tests (10,000 cases), randomized end-to-end runs | No Mollusk, Surfpool or cargo-fuzz; no adversarial simulator |
 | Q3 audits, builds | PARTIAL | Verifiable build; all five programs match on devnet (`L4-verifiable-build.md`) | No audit (H6), bug bounty or monitoring with auto-pause |
-| Q5 disclosure of third-party powers | PARTIAL | `token-safety`, `DP14.md` | Not shown in the UI |
+| Q5 disclosure of third-party powers | BUILT | `/status` section "Who holds power" reads the upgrade authority of each deployed program and the protocol admin, guardian and fee recipient live from devnet, and states what each external program (Meteora, Pyth, Jupiter, Token-2022) can do to a cross; it says plainly that one key can upgrade all five programs today | Reads the public devnet RPC, which can answer 429 under heavy shared use (retried) |
 | X19 devnet proofs | PARTIAL | DP1 to DP6, DP8, DP10 to DP12, DP14 done | DP7, DP9, DP13 (latency target) and DP15 (pull proof) open |
 | Q4, R10, R11, R12, R15, O2, O3 | NOT BUILT | none | |
 | O1 public dashboard | PARTIAL | `/status`, `/accuracy`, landing totals | Devnet figures only |

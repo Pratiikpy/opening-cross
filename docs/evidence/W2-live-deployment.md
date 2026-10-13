@@ -73,3 +73,11 @@ Screenshots of the lifecycle: `docs/evidence/screens/w2-live/`.
 ## Cost
 
 Azure `Standard_B2s` (2 vCPU, 4 GiB) in centralindia: about 35 USD per month, plus 64 GiB StandardSSD (about 5) and a static IP (about 4): roughly 45 USD per month, against the student credit. Vercel Hobby: 0. The same sizing on AWS (`t3.medium`) is about 35 USD per month. Memory use of the stack was not measured, so 4 GiB is a safe guess, not a measured minimum (NOT VERIFIED); a 2 GiB size was not tried.
+
+## Final verification after the last deploy (2026-10-13)
+
+Backend redeployed to the AWS host and the web app to Vercel from the final tree. Then, against the real URLs:
+
+- `live-smoke.mjs`: 48 page views (every route, including `/calendar`, light and dark, desktop and phone): no console error, page error, failed request or overflow.
+- `live-devnet.mjs` with a real devnet wallet signing through Wallet Standard in the deployed page (issuer `DTB3Jtxb6dy7GvocUbypiJb548ZLGRzVdPrNNCWAKEdC`, a fresh buyer, fresh Token-2022 mints): cross `AmvmUHVhmnsrawhT8LfwVePW1ZjuZTNTtSuxbUmZDkVd` opened from the console, 780 quote escrowed (read from chain), signed band shown on the cross page, the keeper cleared and finalized it at 1.20 with 600 matched, the buyer received 600 tokens on chain, and the band was graded SCORED. All 11 functional checks PASS. Screenshots: `screens/w2-live-final/`.
+- The one red line in that run was the issuer page counting an HTTP 429 from the public devnet RPC (`getSignatureStatuses`) as an error. The app retries 429 and the transaction confirmed: an external rate-limit flake, not a product defect. An earlier run of the same flow had failed in the harness (a click before hydration, and request cancellations on reload counted as failures); both were harness faults and are fixed in the script.
