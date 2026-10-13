@@ -98,6 +98,17 @@ Registered with one call, `registerW2A(app, deps, process.env)` from `services/a
 | | `OPS_KEYPAIR` | no | unset | Keypair file that signs the audit-log head (documents only, no funds). |
 | | `OPS_PORT`, `OPS_HOST` | no | `8792`, `127.0.0.1` | Listen address. Not exposed through Caddy by default. |
 
+## Rules, treasury and settlement layer (workstream W3A)
+
+The off-chain layer under the Wave 2D programs. Nothing in it needs a new variable except the one below; the programs it builds for are not deployed on devnet until the operator funding step H27 (`docs/HUMAN_TASKS.md`), and every route says so where it matters. Reference for the screens built on it: [`docs/api/W3A-rules-treasury-settle.md`](api/W3A-rules-treasury-settle.md) (SDK builders, every route with its request and response, the indexer tables, the verifier). Decisions: ADR-0500 to ADR-0505. Evidence: `docs/evidence/W3A-offchain-layer.md`, `docs/evidence/W3A-builders-devnet.md`.
+
+| Process | Variable | Required | Default | Meaning |
+|---|---|---|---|---|
+| `services/indexer` | `SETTLE_PROGRAMS` | no | the deployed `cross_settle` | Comma separated `cross_settle` program ids to follow, each with its own cursor (`rpc:<program>`). The devnet Raydium variant is a second program with the same events. |
+| `services/indexer` | migrations `016_cross_rules.sql`, `017_treasury_ext.sql`, `018_settle.sql` | applied on start | | Additive and idempotent: they add tables and columns only, so the indexer can be upgraded before the programs are. A cross or treasury of the deployed programs has no row in them and reconciles as before. |
+| `services/api` | (none) | | | Registers `registerRulesTx`, `registerRulesRead`, `registerTreasuryTx`, `registerSettleTx`. `registerRulesTx` also installs a hook that runs every request inside a chain reader (`src/chain-context.ts`), which the builders behind `POST /v1/tx/settle` and `/v1/tx/finalize` use to read a cross's rules tail. `@opening-cross/adapters` (Meteora's SDK) is loaded on the first use of a `cross_settle` route, not at start. |
+| `packages/verifier` | `conformance/generate_v3.py` | | | `python packages/verifier/conformance/generate_v3.py` rewrites `conformance/v3.json`. Its values are computed with Python integers from the specification and the program source, not by running the Rust code. |
+
 ## Web app (`apps/web`)
 
 These are inlined at build time: change one and rebuild.
