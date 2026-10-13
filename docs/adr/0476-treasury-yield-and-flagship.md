@@ -1,0 +1,11 @@
+# ADR-0476: governed treasury yield (K4) is not built; the flagship offering (V6/R8) is a configuration plus human steps
+
+Status: accepted (2026-10-13) · PRODUCT_FEATURES K4 (OS tag), V6/R8
+
+## K4: not doing in this version
+
+A governed yield hook would let a vote move vault funds into a lending market. That conflicts with three things the treasury promises: the vault is always liquid enough for NAV redemption and liquidation to pay in full (ENGINEERING_PRINCIPLES 1.2, funds first); the only program with custody of the vault is small enough to review (the treasury makes no CPI into any other program today); and the whole extension is unaudited. A yield strategy would add a CPI surface into a lender, a withdrawal-queue risk exactly when holders want out, and a new attack class (a passed vote that parks funds in a strategy that cannot return them). No stub is left behind: the code has no yield instruction. The row stays NOT BUILT, tagged OS in the specification. Revisit after the external audit, with a specific lender, a hard cap on the share of the vault that may be deployed, and a rule that the deployed share is recalled automatically when NAV mode opens or a liquidation is triggered. The orchestrator decides whether this counts as SUPERSEDED or stays on the list.
+
+## V6/R8: what a flagship offering needs from the program
+
+Everything the program can do is built and parameterised by `init_ext`: the assignment gate (ADR-0475), the disclosure feed (ADR-0475), revenue rounds with a missed-round exit (ADR-0472), NAV and holder votes (ADR-0471), milestone team tokens with a lockup (ADR-0473) and a wind-down window (ADR-0474). A real company and a Reg CF or Reg S offering still need what only people can supply: incorporation (H1), counsel's opinion on the coin, the gate presets and the rights card (H2), a funding portal or placement partner (H8), a KYC provider writing attestations (HI1 to HI3), a payment-processor reader that writes revenue attestations (HT3), and the issuer's own choice of parameters. `flagshipExtParams` in `packages/treasury-client/src/flagship.ts` produces the parameter set a flagship treasury would start from, for counsel to review. It is a proposal, not legal advice, and no company has agreed to anything.

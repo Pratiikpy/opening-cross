@@ -1,0 +1,90 @@
+{
+ "at": "2026-10-13T17:34:00.368Z",
+ "base": "http://localhost:3414",
+ "axeTags": [
+  "wcag2a",
+  "wcag2aa",
+  "wcag21a",
+  "wcag21aa",
+  "wcag22aa",
+  "best-practice"
+ ],
+ "routes": [
+  "/accuracy",
+  "/export"
+ ],
+ "results": [
+  {
+   "route": "/accuracy",
+   "width": 1440,
+   "theme": "light",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/export",
+   "width": 1440,
+   "theme": "light",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/accuracy",
+   "width": 1440,
+   "theme": "dark",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/export",
+   "width": 1440,
+   "theme": "dark",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/accuracy",
+   "width": 390,
+   "theme": "light",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/export",
+   "width": 390,
+   "theme": "light",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/accuracy",
+   "width": 390,
+   "theme": "dark",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  },
+  {
+   "route": "/export",
+   "width": 390,
+   "theme": "dark",
+   "status": 200,
+   "violations": [],
+   "problems": [],
+   "rateLimited": 0
+  }
+ ]
+}

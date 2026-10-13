@@ -1,0 +1,9 @@
+# W2D-Z3: pegged-to-open orders, corporate actions, composite reference (Z3, C5, C6)
+
+Outcome: **BUILT-LOCAL**. Design: ADR-0462 (Z3, C6), ADR-0455 and ADR-0459 (C5).
+
+- Z3: no new order type is needed; a buy at the top of the grid or a sell at the bottom fills at the clearing price and the buyer pays only that price. `peggedOrder` computes the order (with an optional slippage bound). `rules-stocks.test.ts` places pegged orders in a scheduled reopen and checks the buyer escrowed for the top of the grid and paid only the open.
+- C5: a corporate action halts crosses that opt in (`set_corporate_action`, ADR-0455) and a changed Token-2022 scaled-UI multiplier voids the print (`FLAG_GUARD_SCALED_UI`, ADR-0459; `rules-oracle.test.ts`: unchanged prints, changed before the clear refunds everyone, changed after the clear does not void it, a mint without the extension is refused). Not covered: pegging the grid to a new multiplier (the cross refuses to print instead); a tokenizer's announcement feed.
+- C6: `compositeReference` (weighted mean of the quote mid, a fresh trade and a fresh valuation, renormalised over the sources that qualify, never outside their range). It feeds `reference_price` or the anchor; the chain checks the print and never trusts it alone. 11 unit tests in `packages/cross-core-client/test/stocks.test.ts` with the calendar and pegged helpers.
+
+FEATURE_STATUS.md row wanted: `| Z3, C5, C6 | BUILT-LOCAL | Pegged-to-open orders as grid-edge limits with exact escrow (`peggedOrder`), halt and corporate-action flag, a guard for a changed scaled-UI multiplier, a composite reference helper (`W2D-Z3.md`, ADR-0455, ADR-0459, ADR-0462) | No tokenizer announcement feed; the grid is not re-pegged after a split (the cross does not print); the composite reference is a library, not an on-chain input; devnet proof pending funding; not audited |`

@@ -266,7 +266,7 @@ All enumerations are Borsh enums: one byte, the variant index.
 - `CrossKind`: 0 `Launch`, 1 `Reopen`, 2 `Tender`, 3 `Recurring`
 - `CrossState`: 0 `Live`, 1 `Cleared`, 2 `NoPrint`, 3 `Finalized`
 - `Disclosure`: 0 `Sealed`, 1 `Open`
-- `NoPrintReason`: 0 `NoCross`, 1 `BelowMinimumVolume`, 2 `ImbalanceTooHigh`, 3 `SettlementExpired`, 4 `OracleDivergence`, 5 `OracleUnavailable`
+- `NoPrintReason`: 0 `NoCross`, 1 `BelowMinimumVolume`, 2 `ImbalanceTooHigh`, 3 `SettlementExpired`, 4 `OracleDivergence`, 5 `OracleUnavailable`, 6 `BelowMinimumRaise`, 7 `FloatTooLow`, 8 `FdvTooHigh`, 9 `PriceMoved`, 10 `Halted`, 11 `CorporateAction`, 12 `IssuerPaused`, 13 `OracleDisagreement`
 - `OrderSide`: 0 `Buy`, 1 `Sell`
 - `OrderState`: 0 `Committed`, 1 `Revealed`
 - `SupplyMode`: 0 `Escrow`, 1 `Mint`, 2 `DeferredMint`
@@ -280,15 +280,29 @@ Every account type in the program IDLs, with its 8-byte discriminator (hex) and 
 
 | Program | Account | Discriminator | Allocated size |
 |---|---|---|---|
+| `cross_core` | `Applicant` | `a6619f2e3df1f3ce` | 82 |
+| `cross_core` | `ArbiterRegistry` | `f691e769d530611b` | 41 |
+| `cross_core` | `Challenge` | `77faa179775116d0` | 166 |
+| `cross_core` | `ClassBook` | `adeecf34b4089b7a` | 9256 |
 | `cross_core` | `Cross` | `57d37eb097cdabeb` | 668 |
+| `cross_core` | `HaltState` | `ae3fb2c449962b40` | 244 |
 | `cross_core` | `Levels` | `e870eec7afa7bfa7` | 6192 |
+| `cross_core` | `Lockup` | `012d202039515843` | 113 |
 | `cross_core` | `Order` | `86addfb94d561c33` | 143 |
+| `cross_core` | `PrintFeed` | `7127297f81d184da` | 322 |
 | `cross_core` | `Protocol` | `2d27652b73488328` | 147 |
+| `cross_core` | `Series` | `f06108b78b4dfaa2` | 1087 |
 | `cross_gate` | `GateConfig` | `a1c80a3db9785c15` | 172 |
 | `cross_gate` | `Lock` | `08ff24cad2163989` | 89 |
 | `cross_gate` | `Pass` | `28f78c71380e392c` | 73 |
+| `cross_settle` | `Greenshoe` | `43ca1a80e5cfa525` | 387 |
 | `cross_calendar` | `Calendar` | `9df0ba39d593972e` | 2683 |
+| `treasury` | `Grant` | `a1a60bcdcc87cd36` | 195 |
+| `treasury` | `Position` | `aabc8fe47a40f7d0` | 105 |
+| `treasury` | `Proposal` | `1a5ebdbb74883521` | 203 |
+| `treasury` | `RoundRecord` | `9305a94e8ad04cc1` | 67 |
 | `treasury` | `Treasury` | `eeef7bee5901a8fd` | 237 |
+| `treasury` | `VoteRecord` | `70097ba5ea099da7` | 89 |
 
 The size column counts every `Option` as present. A decoder MUST decode a Borsh account sequentially. Because `Option::None` occupies one byte but the account is allocated for `Some`, the byte offset of a field that follows an `Option` field is not fixed. The offsets in the field tables below are the offsets when every preceding `Option` is present; they are given to show structure, not as fixed positions. The bytes after the encoded value up to the allocated size are not specified.
 
@@ -536,20 +550,45 @@ Every instruction of the four normative programs and of `treasury`, with its 8-b
 | `cross_core` | `accept_admin` | `702a2d5a74b50daa` | Anchor default |
 | `cross_core` | `bind_base_mint` | `ec6386e535b395e7` | Anchor default |
 | `cross_core` | `cancel_order` | `5f81edf00831df84` | Anchor default |
+| `cross_core` | `challenge_insider` | `32b38b720dc2e17c` | Anchor default |
 | `cross_core` | `claim` | `3ec6d6c1d59f6cd2` | Anchor default |
 | `cross_core` | `clear` | `fa271cd57ba38505` | Anchor default |
+| `cross_core` | `close_applicant` | `75bbd9c14c6e709d` | Anchor default |
 | `cross_core` | `commit_order` | `6aa7bdba4a718be8` | Anchor default |
+| `cross_core` | `commit_order_ext` | `1b5f4b78ee474af0` | Anchor default |
 | `cross_core` | `create_cross` | `b127363de7b3e902` | Anchor default |
+| `cross_core` | `create_series` | `b5093478c5dd2a8e` | Anchor default |
+| `cross_core` | `draw_begin` | `ecbed0feadfdbd2b` | Anchor default |
+| `cross_core` | `draw_finish` | `2491c96ecf6a982d` | Anchor default |
+| `cross_core` | `expire_challenge` | `495214e3d8423a29` | Anchor default |
 | `cross_core` | `finalize` | `ab3dda387f730cd9` | Anchor default |
+| `cross_core` | `init_class_book` | `b50a1b7331ebae38` | Anchor default |
+| `cross_core` | `init_halt_state` | `7d63fab7602ea61a` | Anchor default |
+| `cross_core` | `init_lock_vault` | `201d07bdffc742ab` | Anchor default |
+| `cross_core` | `init_print_feed` | `51deb4f1731f7377` | Anchor default |
 | `cross_core` | `init_protocol` | `03bc8dede1e2e8d2` | Anchor default |
 | `cross_core` | `init_shard` | `342b84d080698727` | Anchor default |
+| `cross_core` | `log_ext` | `a3ce08799f8a6221` | Anchor default |
 | `cross_core` | `merge_shard` | `4aeceb6409b301a8` | Anchor default |
 | `cross_core` | `migrate_protocol` | `b6fefddc0090eafa` | Anchor default |
+| `cross_core` | `observe_price` | `93b204150ed5519f` | Anchor default |
 | `cross_core` | `propose_admin` | `79d6c7d4572775ea` | Anchor default |
+| `cross_core` | `push_refunds` | `e3083d1aaddec719` | Anchor default |
+| `cross_core` | `release_locked` | `43af87ee17bf823c` | Anchor default |
+| `cross_core` | `resolve_challenge` | `51bf7c7783f89d6d` | Anchor default |
 | `cross_core` | `reveal_order` | `19f42adb119cd34a` | Anchor default |
+| `cross_core` | `series_withdraw` | `72f66ca6d0f0aaae` | Anchor default |
+| `cross_core` | `set_arbiter` | `0fcdc2b4acd571d3` | Anchor default |
+| `cross_core` | `set_corporate_action` | `5c0a689a2b30c45a` | Anchor default |
+| `cross_core` | `set_feed_publishers` | `776f91d3490f9d9a` | Anchor default |
 | `cross_core` | `set_guardian` | `93f332799aa4321e` | Anchor default |
+| `cross_core` | `set_halt` | `d4c0b3421749c50f` | Anchor default |
 | `cross_core` | `set_paused` | `5b3c7dc0b0e1a6da` | Anchor default |
 | `cross_core` | `set_protocol_fees` | `318fbd1238ce9ee2` | Anchor default |
+| `cross_core` | `set_rules` | `4294c42be8d2aea9` | Anchor default |
+| `cross_core` | `set_series_active` | `2fa403c9b1d49fdf` | Anchor default |
+| `cross_core` | `spawn_next` | `00547321e4e0416d` | Anchor default |
+| `cross_core` | `sync_pause` | `4064d0cc9b84312a` | Anchor default |
 | `cross_gate` | `can_freeze_permissionless` | `d68d6d4bf8012d1d` | explicit |
 | `cross_gate` | `can_thaw_permissionless` | `08afa981894a3df1` | explicit |
 | `cross_gate` | `claim_pass` | `8ef8bc42ea65c6d3` | Anchor default |
@@ -568,22 +607,55 @@ Every instruction of the four normative programs and of `treasury`, with its 8-b
 | `cross_gate` | `set_mode` | `9f2f93f7553554e6` | Anchor default |
 | `cross_gate` | `set_sas_requirement` | `88a313cf52a69bb7` | Anchor default |
 | `cross_settle` | `bind_dbc_mint` | `5c4c468431421010` | Anchor default |
+| `cross_settle` | `claim_partner_fee` | `61ce27695e5e7e94` | Anchor default |
+| `cross_settle` | `claim_partner_pool_creation_fee` | `faee1a048b0a65f8` | Anchor default |
+| `cross_settle` | `claim_pol_fees` | `7faa7893edb79ff6` | Anchor default |
+| `cross_settle` | `create_greenshoe` | `790ab1f3b0c3a708` | Anchor default |
+| `cross_settle` | `deploy_greenshoe_bid` | `1666e52b2a274335` | Anchor default |
+| `cross_settle` | `finish_greenshoe` | `ed749332903fdcf5` | Anchor default |
 | `cross_settle` | `open_dbc_pool` | `440e79b574c1e1b2` | Anchor default |
+| `cross_settle` | `open_dbc_pool_locked` | `c2efeac9304df95f` | Anchor default |
 | `cross_settle` | `open_dlmm_pair` | `a6c2b662acb01d14` | Anchor default |
+| `cross_settle` | `open_dlmm_pair_badged` | `834af8a9ba4f1d29` | Anchor default |
+| `cross_settle` | `open_dlmm_pair_batched` | `7f59563ad0861265` | Anchor default |
 | `cross_settle` | `seed_damm_v2` | `0a846137cc3c4955` | Anchor default |
+| `cross_settle` | `seed_damm_v2_batched` | `b45c59900119f2e8` | Anchor default |
 | `cross_settle` | `seed_raydium_cpmm` | `f9bcc67f97d40e68` | Anchor default |
+| `cross_settle` | `settle_greenshoe_level` | `61e14a2e76ff1701` | Anchor default |
+| `cross_settle` | `withdraw_partner_migration_fee` | `e799311760c1c129` | Anchor default |
+| `cross_settle` | `withdraw_partner_surplus` | `20d5762ec37a0dc9` | Anchor default |
 | `cross_calendar` | `apply_admin` | `44df4e336b449dea` | Anchor default |
 | `cross_calendar` | `apply_update` | `4ca614936c76ae26` | Anchor default |
 | `cross_calendar` | `cancel_update` | `4ce563c37e8a44f7` | Anchor default |
 | `cross_calendar` | `create_calendar` | `8c4601637b2442a1` | Anchor default |
 | `cross_calendar` | `propose_admin` | `79d6c7d4572775ea` | Anchor default |
 | `cross_calendar` | `propose_update` | `a1df56cc50c7c6cf` | Anchor default |
+| `treasury` | `claim_distribution` | `cc9c5e55027de8b4` | Anchor default |
+| `treasury` | `create_grant` | `1377b0df2d8ee19c` | Anchor default |
 | `treasury` | `create_treasury` | `fe62d93319588c2d` | Anchor default |
+| `treasury` | `deposit_distribution` | `60577900a9ccd99e` | Anchor default |
+| `treasury` | `execute_proposal` | `ba3c74856c806f1c` | Anchor default |
+| `treasury` | `expire_grant` | `4f669056fd469ac5` | Anchor default |
+| `treasury` | `init_ext` | `40434371dbca3db0` | Anchor default |
+| `treasury` | `mark_missed` | `8f547ec039a8e31a` | Anchor default |
+| `treasury` | `nav_redeem` | `42dca951c52bed62` | Anchor default |
+| `treasury` | `pay_round` | `586dc42ec7de5a62` | Anchor default |
+| `treasury` | `post_disclosure` | `382c801bb566c77f` | Anchor default |
+| `treasury` | `propose` | `5dfd52a87621665a` | Anchor default |
+| `treasury` | `reclaim_vote` | `36f9f7895d5f865b` | Anchor default |
+| `treasury` | `record_assignment` | `e95b9de44afbd6ea` | Anchor default |
 | `treasury` | `record_attested` | `d8aec36025b0c3c3` | Anchor default |
 | `treasury` | `record_lapse` | `13c7c7b47d022562` | Anchor default |
 | `treasury` | `redeem` | `b80c569546c461e1` | Anchor default |
+| `treasury` | `release_milestone` | `3802c7a4b86ca7de` | Anchor default |
+| `treasury` | `release_tranche` | `9c899f05502685e3` | Anchor default |
+| `treasury` | `request_disclosure` | `6c32fb157b45f414` | Anchor default |
 | `treasury` | `spend` | `f2cdff5765d9f539` | Anchor default |
+| `treasury` | `stake` | `ceb0ca12c8d1b36c` | Anchor default |
+| `treasury` | `sweep_unclaimed` | `40a8dde02ad88a90` | Anchor default |
 | `treasury` | `trigger_liquidation` | `ec5fb877c54394e5` | Anchor default |
+| `treasury` | `unstake` | `5a5f6b2acd7c32e1` | Anchor default |
+| `treasury` | `vote` | `e36e9b17887eac19` | Anchor default |
 
 ### 4.2 Account tables
 
@@ -1146,7 +1218,7 @@ The result is `P*`. Step 5 is the choice ADR-0003 records for its open decision 
 
 The program does not evaluate every grid price. Because `D` and `S` are constant between consecutive order prices, it evaluates each order price, the reference price, and in each gap between consecutive order prices the single grid price that can win there (the grid price nearest the reference, or the lowest grid price in the gap when there is no reference). The independent TypeScript implementation (`packages/verifier/src/reference.ts`) evaluates every grid price. Both reproduce all 525 conformance vectors (§16). The exhaustive procedure above is the specification; the shortcut is an implementation detail. The result depends on the grid: a price in a gap between two order prices can clear (see E3a and E3b in §7.9).
 
-The rule is the standard opening-auction rule (maximum volume, minimum imbalance, reference price) with a deterministic final tie-break. Whether it makes truthful bidding a best response is NOT VERIFIED: the repository contains no proof or simulation of incentive compatibility, and pro-rata rationing at the margin weakens it (ADR-0003).
+The rule is the standard opening-auction rule (maximum volume, minimum imbalance, reference price) with a deterministic final tie-break. Truthful bidding is NOT a best response for a buyer with more than one unit of demand: a counterexample is hand-checkable (a book on which shading earns 2,900 against 500, `docs/evidence/W2A-Q2-adversarial.md`), as is usual for uniform-price auctions. For a single small order in a deep market the search found no gain, which is not a proof. Pro-rata rationing at the margin weakens it further (ADR-0003).
 
 ### 7.4 The clearing summary
 
@@ -1665,6 +1737,330 @@ Events: `DammV2Seeded`, `DlmmPairOpened`, `RaydiumCpmmSeeded`. Errors: §12.2. T
 
 `sqrt_price_q64(price, scale) = floor(sqrt(floor(price · 2^128 / scale)))`. When this section was written the three `sqrtPriceQ64` values and the five `depositMatchesPrice` results were also produced by the program's own `sqrt_price_q64` and `deposit_matches_price` functions, compiled from `programs/cross_settle/src/lib.rs` unchanged.
 
+### 9.5 Adapters and instructions added by revision 2
+
+Every other instruction of `cross_settle`, with its accounts and arguments. The adapters' behaviour is described in ADR-0006 to ADR-0010, ADR-0021 to ADR-0024 and ADR-0480 onwards; each checks that the cross is `Cleared` at the price it opens a market at, that the signer is the creator or the documented authority, and that the mints are the cross's.
+
+<!-- ocip-gen:ix-cross_settle -->
+#### `claim_partner_fee`
+
+Claims the DBC partner's trading fees (the settler PDA is the partner) to an account owned by the cross's protocol fee recipient. Permissionless: nobody chooses the destination (ADR-0480).
+
+<!-- ocip:ix cross_settle claim_partner_fee -->
+Discriminator `61ce27695e5e7e94`. Arguments: `max_base: u64`, `max_quote: u64`, `hook: TransferHookAccountsInfo`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `settler` | – | PDA ["settler", cross] |
+| 3 | `dbc_pool_authority` | – |  |
+| 4 | `dbc_config` | – | PDA ["dbc_config", cross] |
+| 5 | `pool` | W |  |
+| 6 | `base_destination` | W |  |
+| 7 | `quote_destination` | W |  |
+| 8 | `base_vault` | W |  |
+| 9 | `quote_vault` | W |  |
+| 10 | `base_mint` | – |  |
+| 11 | `quote_mint` | – |  |
+| 12 | `dbc_event_authority` | – |  |
+| 13 | `dbc_program` | – | address `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+| 14 | `base_token_program` | – |  |
+| 15 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `claim_partner_pool_creation_fee`
+
+Claims the pool-creation fee the partner is owed, in lamports, to the fee recipient's wallet.
+
+<!-- ocip:ix cross_settle claim_partner_pool_creation_fee -->
+Discriminator `faee1a048b0a65f8`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `settler` | – | PDA ["settler", cross] |
+| 3 | `dbc_config` | – | PDA ["dbc_config", cross] |
+| 4 | `pool` | W |  |
+| 5 | `fee_receiver` | W |  |
+| 6 | `dbc_event_authority` | – |  |
+| 7 | `dbc_program` | – | address `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+<!-- /ocip:ix -->
+
+#### `claim_pol_fees`
+
+Claims the fees of the protocol-owned DAMM v2 position a DBC migration leaves with the settler, to accounts owned by the cross's `proceeds_to` (ADR-0482).
+
+<!-- ocip:ix cross_settle claim_pol_fees -->
+Discriminator `7faa7893edb79ff6`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `settler` | – | PDA ["settler", cross] |
+| 3 | `damm_pool_authority` | – |  |
+| 4 | `pool` | – |  |
+| 5 | `position` | W |  |
+| 6 | `token_a_destination` | W |  |
+| 7 | `token_b_destination` | W |  |
+| 8 | `token_a_vault` | W |  |
+| 9 | `token_b_vault` | W |  |
+| 10 | `token_a_mint` | – |  |
+| 11 | `token_b_mint` | – |  |
+| 12 | `position_nft_account` | – |  |
+| 13 | `damm_event_authority` | – |  |
+| 14 | `damm_program` | – | address `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` |
+| 15 | `token_a_program` | – |  |
+| 16 | `token_b_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `create_greenshoe`
+
+Commits a budget (at least 10% of what the cross raised) to standing bids under P* for a week (ADR-0487).
+
+<!-- ocip:ix cross_settle create_greenshoe -->
+Discriminator `790ab1f3b0c3a708`. Arguments: `budget: u64`, `start_ts: i64`, `period_secs: i64`, `period_cap: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `greenshoe` | W | PDA ["greenshoe", cross] |
+| 4 | `vault` | W | PDA ["greenshoe_vault", greenshoe] |
+| 5 | `base_account` | W | PDA ["greenshoe_base", greenshoe] |
+| 6 | `base_mint` | – |  |
+| 7 | `quote_mint` | – |  |
+| 8 | `creator_quote` | W |  |
+| 9 | `lb_pair` | – |  |
+| 10 | `base_token_program` | – |  |
+| 11 | `quote_token_program` | – |  |
+| 12 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `deploy_greenshoe_bid`
+
+Places one level of the greenshoe as a DLMM limit order owned by the program. Permissionless.
+
+<!-- ocip:ix cross_settle deploy_greenshoe_bid -->
+Discriminator `1666e52b2a274335`. Arguments: `level: u8`, `bin_id: i32`, `amount: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `payer` | WS |  |
+| 2 | `greenshoe` | W | PDA ["greenshoe", greenshoe.cross] |
+| 3 | `vault` | W | PDA ["greenshoe_vault", greenshoe] |
+| 4 | `lb_pair` | W |  |
+| 5 | `bin_array_bitmap_extension` | WO |  |
+| 6 | `reserve_y` | W |  |
+| 7 | `quote_mint` | – |  |
+| 8 | `limit_order` | WS |  |
+| 9 | `dlmm_event_authority` | – |  |
+| 10 | `dlmm_program` | – | address `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| 11 | `quote_token_program` | – |  |
+| 12 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `finish_greenshoe`
+
+Burns everything the bids bought and returns the unspent budget to the issuer's proceeds. Permissionless.
+
+<!-- ocip:ix cross_settle finish_greenshoe -->
+Discriminator `ed749332903fdcf5`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `greenshoe` | W | PDA ["greenshoe", cross] |
+| 3 | `vault` | W | PDA ["greenshoe_vault", greenshoe] |
+| 4 | `base_account` | W | PDA ["greenshoe_base", greenshoe] |
+| 5 | `base_mint` | W |  |
+| 6 | `quote_mint` | – |  |
+| 7 | `proceeds_quote` | W |  |
+| 8 | `base_token_program` | – |  |
+| 9 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `open_dbc_pool_locked`
+
+`open_dbc_pool` for the fair-launch design (ADR-0482): the same curve, but the program refuses a config under which anyone could withdraw the opening liquidity, or whose migrated pool is not compounding. Everything `open_dbc_pool` checks is checked here too. `args` is the Borsh encoding of `open_dbc_pool`'s two arguments, `config_parameters` then `pool`, one after the other, so `open_dbc_pool`'s own argument types stay what they were.
+
+<!-- ocip:ix cross_settle open_dbc_pool_locked -->
+Discriminator `c2efeac9304df95f`. Arguments: `args: bytes`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `settler` | – | PDA ["settler", cross] |
+| 4 | `dbc_config` | W | PDA ["dbc_config", cross] |
+| 5 | `base_mint` | W | PDA ["base_mint", cross] |
+| 6 | `quote_mint` | – |  |
+| 7 | `leftover_receiver` | – |  |
+| 8 | `pool` | W |  |
+| 9 | `base_vault` | W |  |
+| 10 | `quote_vault` | W |  |
+| 11 | `dbc_pool_authority` | – |  |
+| 12 | `dbc_event_authority` | – |  |
+| 13 | `dbc_program` | – | address `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+| 14 | `cross_gate_program` | – | address `2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr` |
+| 15 | `quote_token_program` | – |  |
+| 16 | `token_2022_program` | – | address `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` |
+| 17 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `open_dlmm_pair_badged`
+
+`open_dlmm_pair` for a pair whose mints need a Meteora Token Badge (ADR-0485): tokenized stocks carry Token-2022 extensions (a pausable mint, a permanent delegate) that DLMM refuses without a badge. The two badge accounts follow the usual accounts, in order base then quote, each either the mint's `TokenBadge` PDA or the DLMM program id when that mint needs none. A batch window of zero opens the pair at once; any other window applies the rules of `open_dlmm_pair_batched`. `params` is the Borsh encoding of `open_dlmm_pair`'s argument.
+
+<!-- ocip:ix cross_settle open_dlmm_pair_badged -->
+Discriminator `834af8a9ba4f1d29`. Arguments: `params: bytes`, `window_secs: i64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `lb_pair` | W |  |
+| 4 | `base_mint` | – |  |
+| 5 | `quote_mint` | – |  |
+| 6 | `reserve_x` | W |  |
+| 7 | `reserve_y` | W |  |
+| 8 | `oracle` | W |  |
+| 9 | `creator_base` | – |  |
+| 10 | `creator_quote` | – |  |
+| 11 | `dlmm_event_authority` | – |  |
+| 12 | `dlmm_program` | – | address `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| 13 | `base_token_program` | – |  |
+| 14 | `quote_token_program` | – |  |
+| 15 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `open_dlmm_pair_batched`
+
+`open_dlmm_pair` for a batch-opened market (ADR-0483): the pair is created with a timestamp start at least `window_secs` away, so it cannot trade until the crosses of the window have run (or, with `has_alpha_vault`, only an Alpha Vault can buy before then), and the pair's creator can pause it. `params` is the Borsh encoding of `open_dlmm_pair`'s argument.
+
+<!-- ocip:ix cross_settle open_dlmm_pair_batched -->
+Discriminator `7f59563ad0861265`. Arguments: `params: bytes`, `window_secs: i64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `lb_pair` | W |  |
+| 4 | `base_mint` | – |  |
+| 5 | `quote_mint` | – |  |
+| 6 | `reserve_x` | W |  |
+| 7 | `reserve_y` | W |  |
+| 8 | `oracle` | W |  |
+| 9 | `creator_base` | – |  |
+| 10 | `creator_quote` | – |  |
+| 11 | `dlmm_event_authority` | – |  |
+| 12 | `dlmm_program` | – | address `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| 13 | `base_token_program` | – |  |
+| 14 | `quote_token_program` | – |  |
+| 15 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `seed_damm_v2_batched`
+
+`seed_damm_v2` for a batch-opened market (ADR-0483): the pool refuses every swap until a start the program checks is at least `window_secs` away, its fee decays from a higher opening fee, and its fees compound back into the pool. During the window the market clears as a series of short crosses instead of trading against the AMM; afterwards the pool opens at the price the last cross printed. `params` is the Borsh encoding of `seed_damm_v2`'s argument.
+
+<!-- ocip:ix cross_settle seed_damm_v2_batched -->
+Discriminator `b45c59900119f2e8`. Arguments: `params: bytes`, `window_secs: i64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `position_nft_mint` | W | PDA ["damm_position", cross] |
+| 4 | `position_nft_account` | W |  |
+| 5 | `pool` | W |  |
+| 6 | `position` | W |  |
+| 7 | `base_mint` | – |  |
+| 8 | `quote_mint` | – |  |
+| 9 | `token_a_vault` | W |  |
+| 10 | `token_b_vault` | W |  |
+| 11 | `creator_base` | W |  |
+| 12 | `creator_quote` | W |  |
+| 13 | `damm_pool_authority` | – |  |
+| 14 | `damm_event_authority` | – |  |
+| 15 | `damm_program` | – | address `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` |
+| 16 | `base_token_program` | – |  |
+| 17 | `quote_token_program` | – |  |
+| 18 | `token_2022_program` | – | address `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` |
+| 19 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `settle_greenshoe_level`
+
+After the week: cancels a placed level, taking back the unspent quote and the base it bought. Permissionless.
+
+<!-- ocip:ix cross_settle settle_greenshoe_level -->
+Discriminator `61e14a2e76ff1701`. Arguments: `level: u8`, `hook: RemainingAccountsInfo`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `rent_receiver` | W |  |
+| 2 | `greenshoe` | W | PDA ["greenshoe", greenshoe.cross] |
+| 3 | `vault` | W | PDA ["greenshoe_vault", greenshoe] |
+| 4 | `base_account` | W | PDA ["greenshoe_base", greenshoe] |
+| 5 | `lb_pair` | W |  |
+| 6 | `bin_array_bitmap_extension` | WO |  |
+| 7 | `reserve_x` | W |  |
+| 8 | `reserve_y` | W |  |
+| 9 | `base_mint` | – |  |
+| 10 | `quote_mint` | – |  |
+| 11 | `limit_order` | W |  |
+| 12 | `memo_program` | – |  |
+| 13 | `dlmm_event_authority` | – |  |
+| 14 | `dlmm_program` | – | address `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| 15 | `base_token_program` | – |  |
+| 16 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `withdraw_partner_migration_fee`
+
+Withdraws the partner's slice of the DBC migration fee to an account owned by the fee recipient.
+
+<!-- ocip:ix cross_settle withdraw_partner_migration_fee -->
+Discriminator `e799311760c1c129`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `settler` | – | PDA ["settler", cross] |
+| 3 | `dbc_pool_authority` | – |  |
+| 4 | `dbc_config` | – | PDA ["dbc_config", cross] |
+| 5 | `pool` | W |  |
+| 6 | `destination` | W |  |
+| 7 | `quote_vault` | W |  |
+| 8 | `quote_mint` | – |  |
+| 9 | `dbc_event_authority` | – |  |
+| 10 | `dbc_program` | – | address `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+| 11 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `withdraw_partner_surplus`
+
+Withdraws the partner's share of the surplus quote above the migration threshold to an account owned by the cross's `proceeds_to` (the issuer's capital, ADR-0481).
+
+<!-- ocip:ix cross_settle withdraw_partner_surplus -->
+Discriminator `20d5762ec37a0dc9`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `settler` | – | PDA ["settler", cross] |
+| 3 | `dbc_pool_authority` | – |  |
+| 4 | `dbc_config` | – | PDA ["dbc_config", cross] |
+| 5 | `pool` | W |  |
+| 6 | `destination` | W |  |
+| 7 | `quote_vault` | W |  |
+| 8 | `quote_mint` | – |  |
+| 9 | `dbc_event_authority` | – |  |
+| 10 | `dbc_program` | – | address `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+| 11 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+<!-- /ocip-gen:ix-cross_settle -->
+
 ## 10. The gate (`cross_gate`)
 
 `cross_gate` keeps one set of passes and locks for a mint and enforces them in two ways: as the Token-2022 transfer hook of the mint (`execute`), and as the Token ACL gate for mints that start every account frozen (`can_thaw_permissionless`, `can_freeze_permissionless`; sRFC-37). `cross_core` uses it for one purpose only: the order-entry check of §10.5.
@@ -1790,14 +2186,29 @@ Events are emitted with Anchor `emit!`: the program writes a log line `Program d
 | `AdminChanged` | `e8221fe23e121372` | `previous: Pubkey`, `admin: Pubkey` |
 | `AdminProposed` | `81f9e2e3c7526ef3` | `admin: Pubkey`, `proposed: Option<Pubkey>` |
 | `BaseMintBound` | `8653fa971e80a762` | `cross: Pubkey`, `base_mint: Pubkey` |
+| `ChallengeExpired` | `08af094000307c78` | `cross: Pubkey`, `id: u32` |
+| `ChallengeResolved` | `6499267bacfaa669` | `cross: Pubkey`, `id: u32`, `upheld: bool`, `slash: u64` |
 | `CrossCleared` | `a939302f8660df4b` | `cross: Pubkey`, `printed: bool`, `clearing: Option<ClearingSummary>`, `no_print_reason: Option<NoPrintReason>` |
 | `CrossCreated` | `a8ab6c6897e596c9` | `cross: Pubkey`, `creator: Pubkey`, `kind: CrossKind`, `supply_mode: SupplyMode`, `disclosure: Disclosure`, `base_mint: Pubkey`, `quote_mint: Pubkey`, `open_ts: i64`, `close_ts: i64`, `reveal_end_ts: i64`, `protocol_fee_bps: u16`, `integrator_fee_bps: u16` |
+| `CrossExtSnapshot` | `9e406e0a0b2b839e` | `cross: Pubkey`, `ext: CrossExt` |
 | `CrossFinalized` | `c08163b3bd876185` | `cross: Pubkey`, `protocol_fee: u64`, `integrator_fee: u64`, `proceeds_quote: u64`, `dust_base: u64` |
+| `DrawFinished` | `3d122684b04333d2` | `cross: Pubkey`, `purpose: u8`, `epoch: u8`, `begun_slot: u64`, `sampled_slots: [u64; 4]`, `seed: [u8; 32]`, `end_bucket: u8`, `close_ts: i64` |
+| `DrawStarted` | `65b8f1a5dd4f137a` | `cross: Pubkey`, `slot: u64`, `purpose: u8` |
+| `ExtensionPending` | `2759d39dcda30197` | `cross: Pubkey`, `reason: NoPrintReason` |
+| `HaltChanged` | `987611417d9c2980` | `base_mint: Pubkey`, `halted: bool`, `reason: HaltReason` |
+| `InsiderChallenged` | `615cf8ee65c690ba` | `cross: Pubkey`, `id: u32`, `challenger: Pubkey`, `subject: Pubkey`, `evidence: [u8; 32]` |
+| `LockCreated` | `f4d83b4d532f3dc4` | `cross: Pubkey`, `owner: Pubkey`, `amount: u64`, `start_ts: i64`, `cliff_secs: u32`, `vest_secs: u32` |
+| `LockReleased` | `bcf00fa9dbb81a6f` | `cross: Pubkey`, `owner: Pubkey`, `amount: u64`, `remaining: u64` |
 | `OrderCancelled` | `6c388044a871a8ef` | `cross: Pubkey`, `order: Pubkey`, `owner: Pubkey` |
 | `OrderClaimed` | `d8ba83260e8ab6f8` | `cross: Pubkey`, `order: Pubkey`, `owner: Pubkey`, `side: OrderSide`, `fill: u64`, `quote_out: u64`, `base_out: u64`, `fee: u64` |
 | `OrderCommitted` | `7873435283d70d53` | `cross: Pubkey`, `order: Pubkey`, `owner: Pubkey`, `side: OrderSide`, `escrow: u64`, `index: u32`, `sealed: bool` |
+| `OrderPlacement` | `f8fc336f71b7ce85` | `cross: Pubkey`, `order: Pubkey`, `ext: OrderExt` |
 | `OrderRevealed` | `f154caad00306c5b` | `cross: Pubkey`, `order: Pubkey`, `side: OrderSide`, `price: u64`, `quantity: u64` |
 | `PauseChanged` | `eebcd54e86d1b2da` | `paused: bool` |
+| `PrintFed` | `96b667292bccc51a` | `base_mint: Pubkey`, `cross: Pubkey`, `price: u64`, `matched: u64` |
+| `RulesSet` | `ca68d7b017476a48` | `cross: Pubkey`, `flags: u16`, `guards: GuardRules`, `ending: EndingRules`, `identity: IdentityRules`, `alloc: AllocationRules`, `insiders: u8`, `bond_quote: u64` |
+| `SeriesCreated` | `02a4362618b5e9b4` | `series: Pubkey`, `authority: Pubkey` |
+| `SeriesSpawned` | `d428b5cc763bdc26` | `series: Pubkey`, `cross: Pubkey`, `index: u64`, `close_ts: i64` |
 <!-- /ocip:events -->
 
 <!-- ocip:events cross_settle -->
@@ -1809,6 +2220,15 @@ Events are emitted with Anchor `emit!`: the program writes a log line `Program d
 | `DbcMintBound` | `4bf31afb9699aca4` | `cross: Pubkey`, `base_mint: Pubkey` |
 | `DbcPoolOpened` | `8e5a9cbbc1cde1a5` | `cross: Pubkey`, `config: Pubkey`, `pool: Pubkey`, `base_mint: Pubkey`, `clearing_price: u64`, `sqrt_start_price: u128` |
 | `DlmmPairOpened` | `5a40693cb67e82a1` | `cross: Pubkey`, `lb_pair: Pubkey`, `clearing_price: u64`, `active_id: i32`, `bin_step: u16` |
+| `GreenshoeBidPlaced` | `d57fbf83c6d80c43` | `greenshoe: Pubkey`, `level: u8`, `bin_id: i32`, `amount: u64`, `limit_order: Pubkey` |
+| `GreenshoeCreated` | `34b23f8d46f46b24` | `cross: Pubkey`, `greenshoe: Pubkey`, `budget: u64`, `start_ts: i64`, `expires_ts: i64` |
+| `GreenshoeFinished` | `759dde893480c5a9` | `greenshoe: Pubkey`, `burned: u64`, `returned: u64` |
+| `GreenshoeLevelSettled` | `6a97e0e0cd439a62` | `greenshoe: Pubkey`, `level: u8` |
+| `PartnerFeeClaimed` | `548f2d9fae4d1118` | `cross: Pubkey`, `pool: Pubkey`, `base: u64`, `quote: u64`, `recipient: Pubkey` |
+| `PartnerMigrationFeeWithdrawn` | `34a9f6ca58ec5494` | `cross: Pubkey`, `pool: Pubkey`, `amount: u64`, `recipient: Pubkey` |
+| `PartnerPoolCreationFeeClaimed` | `ef052232ecc48d88` | `cross: Pubkey`, `pool: Pubkey`, `lamports: u64`, `recipient: Pubkey` |
+| `PartnerSurplusWithdrawn` | `8490a192af01479e` | `cross: Pubkey`, `pool: Pubkey`, `amount: u64`, `recipient: Pubkey` |
+| `PolFeesClaimed` | `d141fa038d863a52` | `cross: Pubkey`, `pool: Pubkey`, `position: Pubkey`, `token_a: u64`, `token_b: u64`, `recipient: Pubkey` |
 | `RaydiumCpmmSeeded` | `4165cddf51a6bd1b` | `cross: Pubkey`, `pool: Pubkey`, `clearing_price: u64`, `base_amount: u64`, `quote_amount: u64` |
 <!-- /ocip:events -->
 
@@ -1888,6 +2308,35 @@ Custom error codes start at 6000 in declaration order.
 | 6035 | `FeedNotApproved` | The oracle feed is not approved by the calendar |
 | 6036 | `BaseDustAccountsMissing` | This cross holds base dust: base_vault, base_mint and proceeds_base are required |
 | 6037 | `SettlementDeadlinePassed` | The settlement deadline has passed |
+| 6038 | `LegacyCross` | This cross was created before the extension tail existed and cannot take rules |
+| 6039 | `RulesLocked` | Rules can only be set by the creator, in the creating slot, before any order |
+| 6040 | `HaltMismatch` | The halt state does not belong to this cross's base mint |
+| 6041 | `FeedMismatch` | The lender print feed does not belong to this cross's base mint |
+| 6042 | `GridPolicy` | The price grid does not follow the standard policy |
+| 6043 | `OracleUnavailable` | A fresh, fully verified oracle update for the registered feed is required |
+| 6044 | `CancelClosed` | Orders can no longer be cancelled |
+| 6045 | `DrawRequired` | The draw for this cross has not been finished |
+| 6046 | `BucketExcluded` | That ending bucket falls after the drawn end and never counts |
+| 6047 | `ExtensionPending` | The extension is waiting for its draw |
+| 6048 | `DrawPending` | A draw is already in flight |
+| 6049 | `NothingToDraw` | There is nothing to draw now |
+| 6050 | `DrawExpired` | The block hashes needed for the draw are no longer available; begin the draw again |
+| 6051 | `ApplicantMismatch` | The applicant record is missing or does not match |
+| 6052 | `IdentityLimit` | This identity has reached its order or escrow limit |
+| 6053 | `ClassBookMissing` | The class book is missing or does not match |
+| 6054 | `ClassNotAllowed` | The order does not qualify for the class it asked for |
+| 6055 | `LotSize` | A lottery order must be exactly one lot |
+| 6056 | `LockupMismatch` | The lock vault or lockup record is missing or does not match |
+| 6057 | `NothingToRelease` | Nothing has vested yet |
+| 6058 | `ChallengeWindowClosed` | The challenge window has closed |
+| 6059 | `ChallengeMismatch` | The challenge record does not match |
+| 6060 | `ChallengesOutstanding` | Insider challenges are still open, or their window has not passed |
+| 6061 | `SeriesInactive` | The series is paused or has spawned all its crosses |
+| 6062 | `SeriesPreviousMissing` | The previous cross of the series is missing or has not resolved |
+| 6063 | `SpawnTooEarly` | The next cross is not due yet |
+| 6064 | `NoSessionAhead` | The calendar has no session ahead |
+| 6065 | `ReferralAccountMissing` | The referrer's quote token account is missing or does not match |
+| 6066 | `NotRefundOnly` | This order has a fill; claim it instead |
 <!-- /ocip:errors -->
 
 <!-- ocip:errors cross_settle -->
@@ -1905,6 +2354,25 @@ Custom error codes start at 6000 in declaration order.
 | 6007 | `StartPriceNotClearingPrice` | DBC start price must equal the clearing price |
 | 6008 | `PoolNotOpened` | DBC pool has not been opened for this cross |
 | 6009 | `Overflow` | Arithmetic overflow |
+| 6010 | `WrongDestination` | The destination does not belong to the account the cross names for this payout |
+| 6011 | `DesignMigration` | The locked design requires migration into DAMM v2 |
+| 6012 | `DesignNotCompounding` | The locked design requires a compounding migrated pool with a compounding fee |
+| 6013 | `DesignUnlockedLiquidity` | The locked design leaves liquidity withdrawable at migration |
+| 6014 | `DesignPartnerVesting` | The settler cannot vest liquidity: partner liquidity may only be locked permanently |
+| 6015 | `DesignLockTooLow` | The locked design requires at least 20% of the liquidity locked permanently |
+| 6016 | `WrongPair` | Not a DLMM pair of this cross's mints that is open for trading |
+| 6017 | `GreenshoeBudget` | The greenshoe budget is below 10% of what the cross raised, above a level's share, or exceeds the budget |
+| 6018 | `GreenshoeWindow` | Bids are only accepted inside the greenshoe week, and the period and window parameters must be sane |
+| 6019 | `GreenshoeLevel` | That greenshoe level is invalid, already placed, not placed, or already settled |
+| 6020 | `GreenshoeBin` | The bid must sit in the bin nearest its level, strictly below the active bin |
+| 6021 | `GreenshoeRateLimit` | This period's greenshoe deployment cap is used up |
+| 6022 | `GreenshoeNotExpired` | The greenshoe week has not ended |
+| 6023 | `BadArgs` | The argument bytes are not the Borsh encoding of the expected parameters |
+| 6024 | `BadgeAccounts` | Pass exactly two badge accounts: base then quote, or the DLMM program id for none |
+| 6025 | `BatchWindow` | A batch window must be between 30 seconds and 7 days |
+| 6026 | `BatchActivation` | A batch-opened pool needs a timestamp start at least the window away |
+| 6027 | `BatchNotCompounding` | A batch-opened DAMM v2 pool must compound its fees |
+| 6028 | `BatchFeeNotDecaying` | A batch-opened DAMM v2 pool must open with a fee that decays over time |
 <!-- /ocip:errors -->
 
 <!-- ocip:errors cross_gate -->
@@ -2314,7 +2782,7 @@ This section states what the protocol is designed to guarantee, what it does not
 - **No external audit** has been done. One is required before any mainnet value (`docs/security/AUDIT_PACKAGE.md`, `docs/HUMAN_TASKS.md` H6).
 - **Single-key upgrade authority** on devnet. Moving it behind a multisig with a timelock is rehearsed on LiteSVM, not done (ADR-0013). Until then the code of every program can be replaced by one key.
 - The invariants below are enforced in code and exercised by tests and property tests (`docs/security/INVARIANTS.md`, 13 invariants; `docs/security/THREAT_MODEL.md`, 23 threats and the open gaps). They are not formally verified.
-- Incentive compatibility of the rule is NOT VERIFIED (§7.3).
+- Incentive compatibility of the rule is refuted for multi-unit buyers and not proven for single-unit buyers (§7.3).
 
 ### 17.2 Properties the code is designed to provide
 
@@ -2358,6 +2826,1072 @@ There is no bug-bounty programme in the repository. Vulnerability reporting inst
 - **Consumers** MUST ignore unknown event discriminators (§14.2), SHOULD tolerate unknown enumeration variants by reporting them as unknown, and MUST NOT assume an account is exactly its current size (§3.5).
 - **Vectors.** `v1.json` is immutable. A correction to an expected value in it is a breaking change to the standard and needs the process in sRFC-0001.
 - **Known gaps between the specification and the product** are tracked row by row in `docs/FEATURE_STATUS.md`; this document does not repeat them.
+
+## 19. The rules extension (revision 2)
+
+Revision 2 adds rules to a cross without changing a revision 1 account or instruction. Everything in this section is in `programs/cross_core/src` (`ext.rs`, `rules.rs`, `orders.rs`, `draw.rs`, `identity.rs`, `lock.rs`, `neutral.rs`, `halt.rs`, `feed.rs`, `series.rs`, `refunds.rs`, `classbook.rs`, `create.rs`) and is decided in ADR-0450 to ADR-0462.
+
+### 19.1 Compatibility
+
+A cross created by revision 1 has no extension tail and behaves exactly as §5 to §7 say. An implementation of revision 2 MUST read such a cross as having every rule off, MUST NOT give it rules, and MUST settle it with the revision 2 instructions without any migration. The clearing rule of §7 is unchanged by every rule below except the supply cap (rule 1 of §19.5) and the marginal split by allocation class (rule 5 of §19.5), and both of those only change which orders are filled and by how much at the margin; the clearing price and the matched volume are still those of §7.3, computed on the capped supply. New `NoPrintReason` values and new errors are appended, so every revision 1 value keeps its meaning.
+
+### 19.2 The extension tail
+
+A cross created by revision 2 is allocated `8 + Cross::INIT_SPACE + CrossExt::INIT_SPACE` bytes: the `Cross` account of §3.7 and, immediately after its maximum encoded size, a Borsh-encoded `CrossExt` (§19.8) padded with zero bytes. The tail starts at byte offset `8 + Cross::INIT_SPACE` (the account index of §3.5 gives the size of the struct part). Its first byte is the version, `1`. A decoder MUST decode the tail only if the account is longer than the struct, the version byte is `1` and `rules_set` is true; otherwise the cross has no rules. The `Cross` struct is decoded as in §3.7, ignoring the tail; both Anchor's decoder and the generated clients do.
+
+An `Order` account of a cross whose rules need a per-order record carries an `OrderExt` after its struct in the same way (version `1`). A cross without such rules creates orders of revision 1 size.
+
+### 19.3 Setting the rules
+
+`set_rules` (§19.9) writes the tail once. It MUST fail unless: the signer is `cross.creator` (`Unauthorized`); the cross has a tail (`LegacyCross`); the cluster slot equals `created_slot`, the slot in which `create_cross` ran, no order exists, the cross is `Live` and the rules were not set before (`RulesLocked`); and every field is consistent (`InvalidParams`, `GridPolicy`, `HaltMismatch`, `FeedMismatch`, `Unauthorized`, `WrongMint`, `CalendarMismatch`, `FeedNotApproved`). A client sends `create_cross` and `set_rules` in one transaction. A bidder reads the rules before its first order, and they cannot change afterwards.
+
+### 19.4 Remaining accounts
+
+The accounts a rule needs beyond an instruction's own list are passed as remaining accounts, in the order below. Each is checked against the stored rules; a missing or wrong one fails the instruction (`ApplicantMismatch`, `ClassBookMissing`, `LockupMismatch`, `HaltMismatch`, `WrongMint`, `FeedMismatch`, `OracleAccountMissing`, `CalendarMismatch`, `ReferralAccountMissing`) and never skips the rule.
+
+| Instruction | Remaining accounts, in order |
+|---|---|
+| `set_rules` | the halt state (`FLAG_RESUMES_HALT`); the lender feed (`FLAG_FEEDS_LENDERS`); the creator's quote account, the quote vault, the quote mint and the quote token program (a bond); the base mint (`FLAG_GUARD_SCALED_UI`); the calendar (extra oracle feeds on a cross with a calendar) |
+| `commit_order`, `commit_order_ext` | the applicant record (identity rules); the class book (classes or insiders); the priority pass (class 3 outside the early window) |
+| `cancel_order` | the applicant record (identity rules); the class book (a revealed buy on a cross with a class book) |
+| `reveal_order` | the class book (a buy on a cross with a class book) |
+| `merge_shard` | none; auxiliary shards (index 32 to 47) are passed as the shard |
+| `clear` | the halt state (`halt_source`); the base mint (`halt_source`, a supply to read, or `FLAG_GUARD_SCALED_UI`); the class book; the lender feed (`FLAG_FEEDS_LENDERS`); one account per extra oracle feed; the calendar (`off_hours_widen_bps > 0`) |
+| `claim` | the lock vault and the lockup record, only for a fill that is locked |
+| `finalize` | the referrer's quote token account (`referral.share_bps > 0` and a non-zero protocol fee) |
+| `spawn_next` | the lender feed, the rules' other accounts as for `set_rules` |
+
+### 19.5 The rules
+
+1. **Print guards** (ADR-0451). In this order, a cleared cross does not print and every order is refunded when: the counted volume is below `min_matched` (`BelowMinimumVolume`); the imbalance exceeds the cap (`ImbalanceTooHigh`); `floor(counted · P* / price_scale) < min_raise_quote` (`BelowMinimumRaise`); `counted · 10,000 < min_float_bps · total_supply` (`FloatTooLow`); `total_supply · 100 > max_fdv_x100 · counted` (`FdvTooHigh`); `|P* − anchor| · 10,000 > move_bps · anchor` (`PriceMoved`). `counted` is the matched volume less the upper bound on declared insiders' allocation (rule 6 of §19.5). `total_supply` is declared, or the base mint's supply at the clear. A zero value switches a guard off. A positive `max_matched` caps the supply: `S(p)` and `S⁻(p)` of §7.2 become `min(·, max_matched)`. `FLAG_STANDARD_GRID` requires `2 · min_price ≥ grid_estimate`, `100 · tick ≤ grid_estimate` and the estimate on the grid (`GridPolicy`).
+2. **Ending** (ADR-0452). With `ending_secs > 0` the last `ending_secs` before `close_ts` is cut into `buckets` equal windows; an order is placed in the bucket of the instant it lands and writes to shard `32 + bucket`. With `random_end`, a draw picks the last counted bucket, buckets after it are never merged (`BucketExcluded`) and their orders are refunded at claim. `cancel_order` fails (`CancelClosed`) from `close_ts − ending_secs − cancel_cutoff_secs`, and always for an order placed in an ending bucket or an extension. The draw is `draw_begin`, then `draw_finish` at least 20 slots later: the seed is `sha256("opening-cross/draw/v1" ‖ cross ‖ epoch ‖ purpose ‖ h1 ‖ h2 ‖ h3 ‖ h4)` of the `SlotHashes` entries for the first recorded slots at or after `begin + 4`, `+ 8`, `+ 12`, `+ 16`, each within 32 slots of its target; the end bucket is the first eight seed bytes, little-endian, modulo `buckets`. The draw is not a verifiable random function. With `extension_max_secs > 0`, a cross that fails any guard sets `ext_pending` instead of failing once; a second draw sets a new close `extension_min_secs + (seed[8..16] mod (extension_max_secs − extension_min_secs + 1))` seconds after the draw, orders placed then write to shards `40 + j` and cannot be cancelled, and the next clear is final. An extension nobody draws lets the cross clear as it stands three days after the reveal window.
+3. **Identity** (ADR-0453). `identity.max_orders` and `identity.cap_quote` bound, per wallet holding the gate pass, the live orders and the quote escrowed in live buy orders. They require a gate on the cross.
+4. **Locks** (ADR-0454). A fill with a cliff or a vesting length is paid to the lock vault and recorded in a `Lockup` of the order's nonce; `release_locked` pays `vested − released`, where `vested` is `0` before `start_ts + cliff_secs`, `amount` from then on if `vest_secs = 0`, and `floor(amount · (now − unlock) / vest_secs)` capped at `amount` otherwise.
+5. **Allocation classes** (ADR-0453). The volume `R` of a rationed marginal buy tick is shared as in `clearing_core::alloc`: class 1 receives `reserve_bps[0]` of `R` (a lottery of whole lots when `lottery_unit > 0`, pro rata otherwise), classes 2 and 3 each receive `min(Q_c, R · reserve_bps / 10,000)` pro rata within the class, and the remainder is shared pro rata over everyone's remaining quantity. The lottery window starts at `seed[16..24] mod tickets`.
+6. **Insiders** (ADR-0454). Declared insiders' buys are flagged, locked, and their allocation, bounded above, is left out of `counted`. A bond posted at `set_rules` is held in the quote vault for `challenge_secs` after the clear; the arbiter named by `set_arbiter` may slash it on a challenge; a challenge unanswered for 14 days expires (`expire_challenge`); `finalize` waits for the window and for no open challenge.
+7. **Halt** (ADR-0455). A cross naming a halt state does not print while it is halted or flagged for a corporate action, nor while the mint is paused; only a printing cross created by the halt state's authority or venue signer with `FLAG_RESUMES_HALT` lifts a halt. A print by a publisher's cross with at least the feed's minimum volume updates the lender feed.
+8. **Oracles** (ADR-0459). The reference is the median of the usable prices of the cross's guard and its extra feeds; the guard needs `quorum` usable prices and (if `max_spread_bps > 0`) their spread within it; the divergence bound is widened by `off_hours_widen_bps` while no session of the cross's calendar is open. `FLAG_GUARD_SCALED_UI` voids a print if the base mint's effective scaled-UI multiplier differs from the one recorded at `set_rules`.
+9. **Referral** (ADR-0460). `finalize` pays `floor(protocol_fee · share_bps / 10,000)` to the referrer's quote account and the rest of the protocol fee to the fee recipient.
+10. **Pushed refunds** (ADR-0457). `push_refunds` returns up to twelve orders whose settlement is a refund only, to their owners' token accounts for the escrowed mint, and fails for an order with a fill (`NotRefundOnly`).
+11. **Series** (ADR-0456). `spawn_next` creates the next cross of a `Series` when due, with the series address as creator, the close computed from the interval or the calendar, and the series' rules.
+
+### 19.6 Enumerations introduced by revision 2
+
+<!-- ocip-gen:enums -->
+- `ChallengeStatus`: 0 `Open`, 1 `Upheld`, 2 `Rejected`
+- `HaltReason`: 0 `None`, 1 `IssuerPause`, 2 `VenueHalt`, 3 `CircuitBreaker`, 4 `CorporateAction`
+- `ProposalKind`: 0 `Spend`, 1 `OpenNav`, 2 `CloseNav`
+<!-- /ocip-gen:enums -->
+
+### 19.7 Accounts introduced by revision 2
+
+<!-- ocip-gen:accounts -->
+#### `Applicant` (`cross_core`)
+
+<!-- ocip:account Applicant -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `cross` | `Pubkey` | 32 | 8 |
+| 2 | `owner` | `Pubkey` | 32 | 40 |
+| 3 | `orders` | `u8` | 1 | 72 |
+| 4 | `escrow` | `u64` | 8 | 73 |
+| 5 | `bump` | `u8` | 1 | 81 |
+<!-- /ocip:account -->
+
+#### `ArbiterRegistry` (`cross_core`)
+
+<!-- ocip:account ArbiterRegistry -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `arbiter` | `Pubkey` | 32 | 8 |
+| 2 | `bump` | `u8` | 1 | 40 |
+<!-- /ocip:account -->
+
+#### `Challenge` (`cross_core`)
+
+<!-- ocip:account Challenge -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `cross` | `Pubkey` | 32 | 8 |
+| 2 | `id` | `u32` | 4 | 40 |
+| 3 | `challenger` | `Pubkey` | 32 | 44 |
+| 4 | `subject` | `Pubkey` | 32 | 76 |
+| 5 | `evidence` | `[u8; 32]` | 32 | 108 |
+| 6 | `deposit` | `u64` | 8 | 140 |
+| 7 | `filed_ts` | `i64` | 8 | 148 |
+| 8 | `status` | `ChallengeStatus` | 1 | 156 |
+| 9 | `slashed` | `u64` | 8 | 157 |
+| 10 | `bump` | `u8` | 1 | 165 |
+<!-- /ocip:account -->
+
+#### `ClassBook` (`cross_core`)
+
+<!-- ocip:account ClassBook -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `cross` | `Pubkey` | 32 | 8 |
+| 2 | `qty` | `[[u64; 256]; 3]` | 6144 | 40 |
+| 3 | `tickets` | `[u32; 256]` | 1024 | 6184 |
+| 4 | `insider_qty` | `[u64; 256]` | 2048 | 7208 |
+<!-- /ocip:account -->
+
+#### `HaltState` (`cross_core`)
+
+<!-- ocip:account HaltState -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `base_mint` | `Pubkey` | 32 | 8 |
+| 2 | `authority` | `Pubkey` | 32 | 40 |
+| 3 | `venue_signer` | `Option<Pubkey>` | 33 | 72 |
+| 4 | `halted` | `bool` | 1 | 105 |
+| 5 | `reason` | `HaltReason` | 1 | 106 |
+| 6 | `corporate_action` | `bool` | 1 | 107 |
+| 7 | `since_ts` | `i64` | 8 | 108 |
+| 8 | `since_slot` | `u64` | 8 | 116 |
+| 9 | `issuer_unpaused` | `bool` | 1 | 124 |
+| 10 | `breaker` | `Option<Breaker>` | 69 | 125 |
+| 11 | `last_resume_cross` | `Option<Pubkey>` | 33 | 194 |
+| 12 | `last_resume_price` | `u64` | 8 | 227 |
+| 13 | `last_resume_ts` | `i64` | 8 | 235 |
+| 14 | `bump` | `u8` | 1 | 243 |
+<!-- /ocip:account -->
+
+#### `Lockup` (`cross_core`)
+
+<!-- ocip:account Lockup -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `cross` | `Pubkey` | 32 | 8 |
+| 2 | `owner` | `Pubkey` | 32 | 40 |
+| 3 | `nonce` | `u64` | 8 | 72 |
+| 4 | `amount` | `u64` | 8 | 80 |
+| 5 | `released` | `u64` | 8 | 88 |
+| 6 | `start_ts` | `i64` | 8 | 96 |
+| 7 | `cliff_secs` | `u32` | 4 | 104 |
+| 8 | `vest_secs` | `u32` | 4 | 108 |
+| 9 | `bump` | `u8` | 1 | 112 |
+<!-- /ocip:account -->
+
+#### `PrintFeed` (`cross_core`)
+
+<!-- ocip:account PrintFeed -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `base_mint` | `Pubkey` | 32 | 8 |
+| 2 | `quote_mint` | `Pubkey` | 32 | 40 |
+| 3 | `authority` | `Pubkey` | 32 | 72 |
+| 4 | `publishers` | `[Pubkey; 4]` | 128 | 104 |
+| 5 | `publisher_count` | `u8` | 1 | 232 |
+| 6 | `min_matched` | `u64` | 8 | 233 |
+| 7 | `price` | `u64` | 8 | 241 |
+| 8 | `price_scale` | `u64` | 8 | 249 |
+| 9 | `matched` | `u64` | 8 | 257 |
+| 10 | `cross` | `Pubkey` | 32 | 265 |
+| 11 | `ts` | `i64` | 8 | 297 |
+| 12 | `slot` | `u64` | 8 | 305 |
+| 13 | `prints` | `u64` | 8 | 313 |
+| 14 | `bump` | `u8` | 1 | 321 |
+<!-- /ocip:account -->
+
+#### `Series` (`cross_core`)
+
+<!-- ocip:account Series -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `authority` | `Pubkey` | 32 | 8 |
+| 2 | `series_id` | `u64` | 8 | 40 |
+| 3 | `base_mint` | `Pubkey` | 32 | 48 |
+| 4 | `quote_mint` | `Pubkey` | 32 | 80 |
+| 5 | `base_token_program` | `Pubkey` | 32 | 112 |
+| 6 | `quote_token_program` | `Pubkey` | 32 | 144 |
+| 7 | `config` | `SeriesConfig` | 852 | 176 |
+| 8 | `next_index` | `u64` | 8 | 1028 |
+| 9 | `last_cross` | `Option<Pubkey>` | 33 | 1036 |
+| 10 | `last_close_ts` | `i64` | 8 | 1069 |
+| 11 | `last_price` | `u64` | 8 | 1077 |
+| 12 | `active` | `bool` | 1 | 1085 |
+| 13 | `bump` | `u8` | 1 | 1086 |
+<!-- /ocip:account -->
+
+#### `Grant` (`treasury`)
+
+<!-- ocip:account Grant -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `treasury` | `Pubkey` | 32 | 8 |
+| 2 | `id` | `u64` | 8 | 40 |
+| 3 | `beneficiary` | `Pubkey` | 32 | 48 |
+| 4 | `total` | `u64` | 8 | 80 |
+| 5 | `released` | `u64` | 8 | 88 |
+| 6 | `lockup_end` | `i64` | 8 | 96 |
+| 7 | `expiry_ts` | `i64` | 8 | 104 |
+| 8 | `milestones` | `[Milestone; 4]` | 16 | 112 |
+| 9 | `milestone_count` | `u8` | 1 | 128 |
+| 10 | `credential` | `Pubkey` | 32 | 129 |
+| 11 | `schema` | `Pubkey` | 32 | 161 |
+| 12 | `burned` | `bool` | 1 | 193 |
+| 13 | `bump` | `u8` | 1 | 194 |
+<!-- /ocip:account -->
+
+#### `Position` (`treasury`)
+
+<!-- ocip:account Position -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `treasury` | `Pubkey` | 32 | 8 |
+| 2 | `owner` | `Pubkey` | 32 | 40 |
+| 3 | `amount` | `u64` | 8 | 72 |
+| 4 | `debt` | `u128` | 16 | 80 |
+| 5 | `pending` | `u64` | 8 | 96 |
+| 6 | `bump` | `u8` | 1 | 104 |
+<!-- /ocip:account -->
+
+#### `Proposal` (`treasury`)
+
+<!-- ocip:account Proposal -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `treasury` | `Pubkey` | 32 | 8 |
+| 2 | `id` | `u64` | 8 | 40 |
+| 3 | `proposer` | `Pubkey` | 32 | 48 |
+| 4 | `kind` | `ProposalKind` | 1 | 80 |
+| 5 | `amount` | `u64` | 8 | 81 |
+| 6 | `destination` | `Pubkey` | 32 | 89 |
+| 7 | `desc_hash` | `[u8; 32]` | 32 | 121 |
+| 8 | `created_ts` | `i64` | 8 | 153 |
+| 9 | `vote_end_ts` | `i64` | 8 | 161 |
+| 10 | `executable_ts` | `i64` | 8 | 169 |
+| 11 | `expires_ts` | `i64` | 8 | 177 |
+| 12 | `yes` | `u64` | 8 | 185 |
+| 13 | `no` | `u64` | 8 | 193 |
+| 14 | `executed` | `bool` | 1 | 201 |
+| 15 | `bump` | `u8` | 1 | 202 |
+<!-- /ocip:account -->
+
+#### `RoundRecord` (`treasury`)
+
+<!-- ocip:account RoundRecord -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `treasury` | `Pubkey` | 32 | 8 |
+| 2 | `round` | `u64` | 8 | 40 |
+| 3 | `revenue` | `u64` | 8 | 48 |
+| 4 | `due` | `u64` | 8 | 56 |
+| 5 | `missed` | `bool` | 1 | 64 |
+| 6 | `tranche_released` | `bool` | 1 | 65 |
+| 7 | `bump` | `u8` | 1 | 66 |
+<!-- /ocip:account -->
+
+#### `VoteRecord` (`treasury`)
+
+<!-- ocip:account VoteRecord -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `proposal` | `Pubkey` | 32 | 8 |
+| 2 | `voter` | `Pubkey` | 32 | 40 |
+| 3 | `yes` | `u64` | 8 | 72 |
+| 4 | `no` | `u64` | 8 | 80 |
+| 5 | `bump` | `u8` | 1 | 88 |
+<!-- /ocip:account -->
+<!-- /ocip-gen:accounts -->
+
+### 19.8 Nested types
+
+<!-- ocip-gen:structs -->
+<!-- ocip:struct AllocationRules -->
+**`AllocationRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `reserve_bps` | `[u16; 3]` |
+| `small_cap_quote` | `u64` |
+| `lottery_unit` | `u64` |
+| `min_lock_secs` | `u32` |
+| `lock_vest_secs` | `u32` |
+| `early_until_ts` | `i64` |
+| `priority_gate` | `Option<Pubkey>` |
+| `class1_cliff_secs` | `u32` |
+| `class1_vest_secs` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct Breaker -->
+**`Breaker`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `feed_id` | `[u8; 32]` |
+| `window_slots` | `u32` |
+| `move_bps` | `u32` |
+| `last_price` | `i64` |
+| `last_exponent` | `i32` |
+| `last_slot` | `u64` |
+| `last_publish_ts` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct BreakerSetup -->
+**`BreakerSetup`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `feed_id` | `[u8; 32]` |
+| `window_slots` | `u32` |
+| `move_bps` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct ClearingExt -->
+**`ClearingExt`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `class_qty` | `[u64; 3]` |
+| `tickets` | `u32` |
+| `rho` | `u32` |
+| `cleared_ts` | `i64` |
+| `insider_ub` | `u64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct CommitOrderExtArgs -->
+**`CommitOrderExtArgs`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `nonce` | `u64` |
+| `side` | `OrderSide` |
+| `escrow` | `u64` |
+| `commitment` | `[u8; 32]` |
+| `price` | `u64` |
+| `quantity` | `u64` |
+| `order_bump` | `u8` |
+| `class` | `u8` |
+| `lock_secs` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct CompactRules -->
+**`CompactRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `flags` | `u16` |
+| `guards` | `GuardRules` |
+| `ending` | `EndingRules` |
+| `identity` | `IdentityRules` |
+| `alloc` | `AllocationRules` |
+| `neutrality` | `NeutralityInput` |
+| `referral` | `ReferralRules` |
+| `oracle_set` | `OracleSetInput` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct CrossExt -->
+**`CrossExt`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `version` | `u8` |
+| `rules_set` | `bool` |
+| `created_slot` | `u64` |
+| `flags` | `u16` |
+| `guards` | `GuardRules` |
+| `ending` | `EndingRules` |
+| `draw` | `DrawState` |
+| `identity` | `IdentityRules` |
+| `alloc` | `AllocationRules` |
+| `neutrality` | `NeutralityRules` |
+| `neutral_state` | `NeutralityState` |
+| `clearing` | `ClearingExt` |
+| `referral` | `ReferralRules` |
+| `oracle_set` | `OracleSet` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct DrawState -->
+**`DrawState`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `epoch` | `u8` |
+| `pending_slot` | `u64` |
+| `pending_purpose` | `u8` |
+| `seed` | `[u8; 32]` |
+| `seed_epoch` | `u8` |
+| `seed_ready` | `bool` |
+| `end_bucket` | `u8` |
+| `ext_pending` | `bool` |
+| `extension_used` | `bool` |
+| `aux_merged` | `u64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct EndingRules -->
+**`EndingRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `ending_secs` | `u32` |
+| `buckets` | `u8` |
+| `cancel_cutoff_secs` | `u32` |
+| `random_end` | `bool` |
+| `extension_min_secs` | `u32` |
+| `extension_max_secs` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct GuardRules -->
+**`GuardRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `min_raise_quote` | `u64` |
+| `max_matched` | `u64` |
+| `total_supply` | `u64` |
+| `min_float_bps` | `u16` |
+| `max_fdv_x100` | `u32` |
+| `anchor_price` | `u64` |
+| `move_bps` | `u16` |
+| `grid_estimate` | `u64` |
+| `halt_source` | `Option<Pubkey>` |
+| `multiplier_bits` | `u64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct IdentityRules -->
+**`IdentityRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `cap_quote` | `u64` |
+| `max_orders` | `u8` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct NeutralityInput -->
+**`NeutralityInput`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `insiders` | `Vec<Pubkey>` |
+| `insider_cliff_secs` | `u32` |
+| `insider_vest_secs` | `u32` |
+| `bond_quote` | `u64` |
+| `challenge_secs` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct NeutralityRules -->
+**`NeutralityRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `insiders` | `[Pubkey; 8]` |
+| `insider_count` | `u8` |
+| `insider_cliff_secs` | `u32` |
+| `insider_vest_secs` | `u32` |
+| `bond_quote` | `u64` |
+| `challenge_secs` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct NeutralityState -->
+**`NeutralityState`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `bond_held` | `u64` |
+| `slashed` | `u64` |
+| `open_challenges` | `u16` |
+| `challenges` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct OracleSet -->
+**`OracleSet`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `extra_feeds` | `[[u8; 32]; 2]` |
+| `extra_count` | `u8` |
+| `quorum` | `u8` |
+| `max_spread_bps` | `u32` |
+| `off_hours_widen_bps` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct OracleSetInput -->
+**`OracleSetInput`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `extra_feeds` | `Vec<[u8; 32]>` |
+| `quorum` | `u8` |
+| `max_spread_bps` | `u32` |
+| `off_hours_widen_bps` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct OrderExt -->
+**`OrderExt`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `version` | `u8` |
+| `epoch` | `u8` |
+| `bucket` | `u8` |
+| `class` | `u8` |
+| `flags` | `u8` |
+| `lock_cliff` | `u32` |
+| `lock_vest` | `u32` |
+| `placed_ts` | `i64` |
+| `ticket` | `u32` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct ReferralRules -->
+**`ReferralRules`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `referrer` | `Pubkey` |
+| `share_bps` | `u16` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct RulesInput -->
+**`RulesInput`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `flags` | `u16` |
+| `guards` | `GuardRules` |
+| `ending` | `EndingRules` |
+| `identity` | `IdentityRules` |
+| `alloc` | `AllocationRules` |
+| `neutrality` | `NeutralityRules` |
+| `referral` | `ReferralRules` |
+| `oracle_set` | `OracleSet` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct SeriesConfig -->
+**`SeriesConfig`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `kind` | `CrossKind` |
+| `disclosure` | `Disclosure` |
+| `price_scale` | `u64` |
+| `grid` | `SeriesGrid` |
+| `start_ts` | `i64` |
+| `interval_secs` | `i64` |
+| `calendar` | `Option<Pubkey>` |
+| `call_secs` | `i64` |
+| `reveal_secs` | `i64` |
+| `min_matched` | `u64` |
+| `max_imbalance_bps` | `Option<u32>` |
+| `integrator_fee_bps` | `u16` |
+| `integrator` | `Pubkey` |
+| `gate_mint` | `Option<Pubkey>` |
+| `shards` | `u8` |
+| `max_orders` | `u32` |
+| `proceeds_to` | `Pubkey` |
+| `oracle` | `Option<OracleGuard>` |
+| `max_crosses` | `u64` |
+| `rules` | `RulesInput` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct SeriesGrid -->
+**`SeriesGrid`** (`cross_core`)
+
+| Field | Type |
+|---|---|
+| `relative` | `bool` |
+| `min_price` | `u64` |
+| `tick` | `u64` |
+| `ticks` | `u16` |
+| `tick_bps` | `u16` |
+| `center` | `u64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct SasRequirement -->
+**`SasRequirement`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `credential` | `Pubkey` |
+| `schema` | `Pubkey` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct PendingAdmin -->
+**`PendingAdmin`** (`cross_calendar`)
+
+| Field | Type |
+|---|---|
+| `admin` | `Pubkey` |
+| `eta` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct PendingUpdate -->
+**`PendingUpdate`** (`cross_calendar`)
+
+| Field | Type |
+|---|---|
+| `sessions` | `Vec<Session>` |
+| `feeds` | `Vec<[u8; 32]>` |
+| `eta` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct Session -->
+**`Session`** (`cross_calendar`)
+
+| Field | Type |
+|---|---|
+| `start_ts` | `i64` |
+| `end_ts` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct ExtParams -->
+**`ExtParams`** (`treasury`)
+
+| Field | Type |
+|---|---|
+| `vote_period_secs` | `i64` |
+| `timelock_secs` | `i64` |
+| `quorum_bps` | `u16` |
+| `threshold_bps` | `u16` |
+| `max_proposal_bps` | `u16` |
+| `proposer_min_bps` | `u16` |
+| `min_lockup_secs` | `i64` |
+| `nav_period_secs` | `i64` |
+| `nav_cap_bps` | `u16` |
+| `insiders` | `[Pubkey; 4]` |
+| `stream_secs` | `i64` |
+| `rev_share_bps` | `u16` |
+| `rev_credential` | `Pubkey` |
+| `rev_schema` | `Pubkey` |
+| `round_secs` | `i64` |
+| `rev_start` | `i64` |
+| `pay_grace_secs` | `i64` |
+| `tranche_min_revenue` | `u64` |
+| `tranche_amount` | `u64` |
+| `disclosure_period_secs` | `i64` |
+| `request_min_bps` | `u16` |
+| `assign_required` | `bool` |
+| `assign_credential` | `Pubkey` |
+| `assign_schema` | `Pubkey` |
+| `window_secs` | `i64` |
+| `recovery` | `Pubkey` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct GrantParams -->
+**`GrantParams`** (`treasury`)
+
+| Field | Type |
+|---|---|
+| `beneficiary` | `Pubkey` |
+| `total` | `u64` |
+| `lockup_end` | `i64` |
+| `expiry_ts` | `i64` |
+| `milestones` | `[Milestone; 4]` |
+| `milestone_count` | `u8` |
+| `credential` | `Pubkey` |
+| `schema` | `Pubkey` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct Milestone -->
+**`Milestone`** (`treasury`)
+
+| Field | Type |
+|---|---|
+| `bps` | `u16` |
+| `requires_attestation` | `bool` |
+| `released` | `bool` |
+<!-- /ocip:struct -->
+<!-- /ocip-gen:structs -->
+
+### 19.9 Instructions introduced by revision 2
+
+<!-- ocip-gen:ix-cross_core -->
+#### `challenge_insider`
+
+Alleges that `subject` was an undeclared insider; posts a deposit (ADR-0454).
+
+<!-- ocip:ix cross_core challenge_insider -->
+Discriminator `32b38b720dc2e17c`. Arguments: `subject: Pubkey`, `evidence: [u8; 32]`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `challenger` | WS |  |
+| 2 | `cross` | W |  |
+| 3 | `challenge` | W |  |
+| 4 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `close_applicant`
+
+Returns an applicant record's rent to its owner once the cross is finalized.
+
+<!-- ocip:ix cross_core close_applicant -->
+Discriminator `75bbd9c14c6e709d`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `owner` | W |  |
+| 3 | `applicant` | W |  |
+<!-- /ocip:ix -->
+
+#### `commit_order_ext`
+
+`commit_order` with an allocation class and a lock (ADR-0453, ADR-0454).
+
+<!-- ocip:ix cross_core commit_order_ext -->
+Discriminator `1b5f4b78ee474af0`. Arguments: `args: CommitOrderExtArgs`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `owner` | WS |  |
+| 2 | `protocol` | – | PDA ["protocol"] |
+| 3 | `cross` | W |  |
+| 4 | `order` | W |  |
+| 5 | `shard` | WO |  |
+| 6 | `pass` | O |  |
+| 7 | `escrow_mint` | – |  |
+| 8 | `escrow_vault` | W |  |
+| 9 | `owner_escrow` | W |  |
+| 10 | `escrow_token_program` | – |  |
+| 11 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `create_series`
+
+Creates a recurring series of escrow crosses (ADR-0456).
+
+<!-- ocip:ix cross_core create_series -->
+Discriminator `b5093478c5dd2a8e`. Arguments: `series_id: u64`, `config: SeriesConfig`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | WS |  |
+| 2 | `series` | W | PDA ["series", authority, series_id] |
+| 3 | `base_mint` | – |  |
+| 4 | `quote_mint` | – |  |
+| 5 | `base_token_program` | – |  |
+| 6 | `quote_token_program` | – |  |
+| 7 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `draw_begin`
+
+Starts the draw that closes an epoch or sets the extension length (ADR-0452). Anyone may call it once the call, and any reveal window, is over.
+
+<!-- ocip:ix cross_core draw_begin -->
+Discriminator `ecbed0feadfdbd2b`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | W |  |
+<!-- /ocip:ix -->
+
+#### `draw_finish`
+
+Finishes a draw from the block hashes that followed `draw_begin`, and applies it.
+
+<!-- ocip:ix cross_core draw_finish -->
+Discriminator `2491c96ecf6a982d`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | W |  |
+| 2 | `slot_hashes` | – | address `SysvarS1otHashes111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `expire_challenge`
+
+Anyone closes an insider challenge the arbiter has not ruled on within fourteen days; the challenger's deposit returns and the bond is untouched.
+
+<!-- ocip:ix cross_core expire_challenge -->
+Discriminator `495214e3d8423a29`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | W |  |
+| 2 | `challenge` | W |  |
+| 3 | `challenger` | W |  |
+<!-- /ocip:ix -->
+
+#### `init_class_book`
+
+Creates the class book a cross with allocation classes or declared insiders needs.
+
+<!-- ocip:ix cross_core init_class_book -->
+Discriminator `b50a1b7331ebae38`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `payer` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `class_book` | W | PDA ["classes", cross] |
+| 4 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `init_halt_state`
+
+Registers the halt state of a base mint (ADR-0455). Signed by the mint authority or the protocol admin.
+
+<!-- ocip:ix cross_core init_halt_state -->
+Discriminator `7d63fab7602ea61a`. Arguments: `venue_signer: Option<Pubkey>`, `breaker: Option<BreakerSetup>`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | WS |  |
+| 2 | `base_mint` | – |  |
+| 3 | `protocol` | – | PDA ["protocol"] |
+| 4 | `halt` | W | PDA ["halt", base_mint] |
+| 5 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `init_lock_vault`
+
+Creates the vault that holds the cross's locked tokens.
+
+<!-- ocip:ix cross_core init_lock_vault -->
+Discriminator `201d07bdffc742ab`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `payer` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `base_mint` | – |  |
+| 4 | `lock_vault` | W | PDA ["lock_vault", cross] |
+| 5 | `base_token_program` | – |  |
+| 6 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `init_print_feed`
+
+Registers the lender price feed of a base mint (ADR-0451).
+
+<!-- ocip:ix cross_core init_print_feed -->
+Discriminator `51deb4f1731f7377`. Arguments: `publishers: Vec<Pubkey>`, `min_matched: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | WS |  |
+| 2 | `base_mint` | – |  |
+| 3 | `quote_mint` | – |  |
+| 4 | `protocol` | – | PDA ["protocol"] |
+| 5 | `feed` | W | PDA ["print_feed", base_mint] |
+| 6 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `log_ext`
+
+Emits the cross's extension tail as an event (permissionless, read-only).
+
+<!-- ocip:ix cross_core log_ext -->
+Discriminator `a3ce08799f8a6221`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+<!-- /ocip:ix -->
+
+#### `observe_price`
+
+Anyone feeds a verified oracle update to the asset's circuit breaker.
+
+<!-- ocip:ix cross_core observe_price -->
+Discriminator `93b204150ed5519f`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `halt` | W |  |
+| 2 | `price_update` | – |  |
+<!-- /ocip:ix -->
+
+#### `push_refunds`
+
+Refunds up to twelve orders that are owed nothing but their escrow (a cross that did not print, or orders that were not filled) in one transaction, to their owners' own token accounts. Anyone may call it.
+
+<!-- ocip:ix cross_core push_refunds -->
+Discriminator `e3083d1aaddec719`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | W |  |
+| 2 | `quote_mint` | – |  |
+| 3 | `quote_vault` | W | PDA ["quote_vault", cross] |
+| 4 | `base_mint` | O |  |
+| 5 | `base_vault` | WO | PDA ["base_vault", cross] |
+| 6 | `quote_token_program` | – |  |
+| 7 | `base_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `release_locked`
+
+Pays the vested part of a lockup to its owner. Anyone may call it.
+
+<!-- ocip:ix cross_core release_locked -->
+Discriminator `43af87ee17bf823c`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `cross` | – |  |
+| 2 | `owner` | W |  |
+| 3 | `lockup` | W |  |
+| 4 | `lock_vault` | W | PDA ["lock_vault", cross] |
+| 5 | `base_mint` | – |  |
+| 6 | `owner_base` | W |  |
+| 7 | `base_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `resolve_challenge`
+
+The arbiter rules on a challenge, slashing part of the bond when it is upheld.
+
+<!-- ocip:ix cross_core resolve_challenge -->
+Discriminator `51bf7c7783f89d6d`. Arguments: `upheld: bool`, `slash: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `arbiter` | S |  |
+| 2 | `registry` | – | PDA ["arbiter"] |
+| 3 | `cross` | W |  |
+| 4 | `challenge` | W |  |
+| 5 | `challenger` | W |  |
+| 6 | `fee_recipient` | W |  |
+| 7 | `quote_mint` | – |  |
+| 8 | `quote_vault` | W | PDA ["quote_vault", cross] |
+| 9 | `challenger_quote` | W |  |
+| 10 | `fee_recipient_quote` | W |  |
+| 11 | `quote_token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `series_withdraw`
+
+The series' authority withdraws tokens the series holds.
+
+<!-- ocip:ix cross_core series_withdraw -->
+Discriminator `72f66ca6d0f0aaae`. Arguments: `amount: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | S |  |
+| 2 | `series` | – |  |
+| 3 | `mint` | – |  |
+| 4 | `from` | W |  |
+| 5 | `to` | W |  |
+| 6 | `token_program` | – |  |
+<!-- /ocip:ix -->
+
+#### `set_arbiter`
+
+The protocol admin names the arbiter that rules on insider challenges.
+
+<!-- ocip:ix cross_core set_arbiter -->
+Discriminator `0fcdc2b4acd571d3`. Arguments: `arbiter: Pubkey`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `admin` | WS |  |
+| 2 | `protocol` | – | PDA ["protocol"] |
+| 3 | `registry` | W | PDA ["arbiter"] |
+| 4 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `set_corporate_action`
+
+The issuer authority flags or unflags a corporate action.
+
+<!-- ocip:ix cross_core set_corporate_action -->
+Discriminator `5c0a689a2b30c45a`. Arguments: `flag: bool`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `signer` | S |  |
+| 2 | `halt` | W |  |
+<!-- /ocip:ix -->
+
+#### `set_feed_publishers`
+
+Changes who may publish to a lender price feed, and the minimum print size.
+
+<!-- ocip:ix cross_core set_feed_publishers -->
+Discriminator `776f91d3490f9d9a`. Arguments: `publishers: Vec<Pubkey>`, `min_matched: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | S |  |
+| 2 | `feed` | W |  |
+<!-- /ocip:ix -->
+
+#### `set_halt`
+
+The issuer authority or the venue signer halts the asset. Only a printing resume cross lifts the halt.
+
+<!-- ocip:ix cross_core set_halt -->
+Discriminator `d4c0b3421749c50f`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `signer` | S |  |
+| 2 | `halt` | W |  |
+<!-- /ocip:ix -->
+
+#### `set_rules`
+
+Fixes the rules of a cross (ADR-0450): the creator, in the slot the cross was created in, before any order exists. Remaining accounts: the lender print feed when the cross feeds it.
+
+<!-- ocip:ix cross_core set_rules -->
+Discriminator `4294c42be8d2aea9`. Arguments: `input: CompactRules`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | W |  |
+<!-- /ocip:ix -->
+
+#### `set_series_active`
+
+The series' authority pauses or resumes spawning.
+
+<!-- ocip:ix cross_core set_series_active -->
+Discriminator `2fa403c9b1d49fdf`. Arguments: `active: bool`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `authority` | S |  |
+| 2 | `series` | W |  |
+<!-- /ocip:ix -->
+
+#### `spawn_next`
+
+Spawns the next cross of a series when it is due. Permissionless. Remaining accounts: the lender print feed, when the series' rules feed it.
+
+<!-- ocip:ix cross_core spawn_next -->
+Discriminator `00547321e4e0416d`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `payer` | WS |  |
+| 2 | `protocol` | – | PDA ["protocol"] |
+| 3 | `series` | W |  |
+| 4 | `cross` | W | PDA ["cross", series, series.next_index] |
+| 5 | `book` | W | PDA ["book", cross] |
+| 6 | `base_mint` | – |  |
+| 7 | `quote_mint` | – |  |
+| 8 | `quote_vault` | W | PDA ["quote_vault", cross] |
+| 9 | `base_vault` | W | PDA ["base_vault", cross] |
+| 10 | `series_quote` | W |  |
+| 11 | `previous` | O |  |
+| 12 | `calendar_account` | O |  |
+| 13 | `base_token_program` | – |  |
+| 14 | `quote_token_program` | – |  |
+| 15 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `sync_pause`
+
+Anyone copies the mint's pause state into its halt state.
+
+<!-- ocip:ix cross_core sync_pause -->
+Discriminator `4064d0cc9b84312a`. Arguments: none.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `halt` | W |  |
+| 2 | `base_mint` | – |  |
+<!-- /ocip:ix -->
+<!-- /ocip-gen:ix-cross_core -->
+
+### 19.10 Conformance
+
+`packages/verifier/conformance/v2.json` (`opening-cross/conformance/v2`) covers rules 1 and 5 and the insider bound of rule 6: a case gives the grid, the orders with their classes, the rules and the expected price, volume, fills or refusal. It is generated by `cargo run -p clearing-core --example conformance_vectors_v2` from the code that runs on chain, and `packages/verifier` reproduces every case with an independent implementation (`packages/verifier/src/reference2.ts`). A fairness proof of a cross with rules has schema `opening-cross/fairness-proof/v2` and adds the rules, the draw and the allocation figures to the fields of §13.3.
 
 ## Appendix A. Public read API (non-normative)
 
@@ -2476,11 +4010,31 @@ Discriminator `fe62d93319588c2d`. Arguments: `params: TreasuryParams`.
 
 | Event | Discriminator | Fields |
 |---|---|---|
+| `AssignmentRecorded` | `56c29651a825b231` | `treasury: Pubkey` |
 | `AttestationLapsed` | `e9c73fc36bfe0d20` | `treasury: Pubkey`, `at: i64` |
+| `DisclosurePosted` | `1b63e722d7227259` | `treasury: Pubkey`, `hash: [u8; 32]`, `at: i64`, `count: u32` |
+| `DisclosureRequested` | `38fc5dce86d233ba` | `treasury: Pubkey`, `holder: Pubkey`, `open_since: i64` |
+| `DistributionClaimed` | `1ce06237f0d7d104` | `treasury: Pubkey`, `owner: Pubkey`, `amount: u64` |
+| `DistributionDeposited` | `d6c6b7cd38c41ba2` | `treasury: Pubkey`, `from: Pubkey`, `amount: u64`, `total_staked: u64` |
+| `GrantCreated` | `a2fe833841d65506` | `treasury: Pubkey`, `grant: Pubkey`, `id: u64`, `beneficiary: Pubkey`, `total: u64`, `lockup_end: i64`, `expiry_ts: i64` |
+| `GrantExpired` | `fd4def49d91e6ab0` | `grant: Pubkey`, `burned: u64` |
 | `LiquidationStarted` | `d19e3e17b2c408f1` | `treasury: Pubkey`, `vault: u64`, `supply: u64` |
+| `MilestoneReleased` | `31e15bdf22a56db5` | `grant: Pubkey`, `index: u8`, `amount: u64` |
+| `NavRedeemed` | `e5c6e8fd3e11b189` | `treasury: Pubkey`, `holder: Pubkey`, `burned: u64`, `paid: u64`, `period_burned: u64` |
+| `ProposalCreated` | `ba08a06c510d33ce` | `treasury: Pubkey`, `proposal: Pubkey`, `id: u64`, `proposer: Pubkey`, `kind: ProposalKind`, `amount: u64`, `destination: Pubkey`, `vote_end_ts: i64` |
+| `ProposalExecuted` | `5cd5bdc965536f53` | `proposal: Pubkey`, `kind: ProposalKind`, `amount: u64` |
 | `Redeemed` | `0e1db7471fa56b26` | `treasury: Pubkey`, `holder: Pubkey`, `burned: u64`, `paid: u64` |
+| `RoundMissed` | `8781a64fb432eb24` | `treasury: Pubkey`, `round: u64`, `nav_open: bool` |
+| `RoundPaid` | `e1dcd21394157f9a` | `treasury: Pubkey`, `round: u64`, `revenue: u64`, `due: u64`, `payer: Pubkey` |
 | `Spent` | `2b33a464bff4ae62` | `treasury: Pubkey`, `amount: u64`, `to: Pubkey`, `spent_in_period: u64` |
+| `Staked` | `0b922dcde63ad5f0` | `treasury: Pubkey`, `owner: Pubkey`, `amount: u64`, `total_staked: u64` |
+| `TrancheReleased` | `e11925f6e0b7c1f9` | `treasury: Pubkey`, `round: u64`, `amount: u64` |
 | `TreasuryCreated` | `be3b3a694cea15c7` | `treasury: Pubkey`, `coin_mint: Pubkey`, `authority: Pubkey`, `allowance: u64`, `period_secs: i64` |
+| `TreasuryExtended` | `e2de244e6e9ad167` | `treasury: Pubkey`, `governance: bool`, `nav: bool`, `revenue: bool`, `disclosure: bool`, `assignment_required: bool`, `wind_down: bool` |
+| `UnclaimedSwept` | `145c13ed8767ffa8` | `treasury: Pubkey`, `amount: u64`, `to: Pubkey` |
+| `Unstaked` | `1bb39cd72f47c307` | `treasury: Pubkey`, `owner: Pubkey`, `amount: u64`, `total_staked: u64` |
+| `Voted` | `bd4a657f6dd65f82` | `proposal: Pubkey`, `voter: Pubkey`, `support: bool`, `amount: u64`, `yes: u64`, `no: u64` |
+| `VoteReclaimed` | `3ac621fe6d26f87f` | `proposal: Pubkey`, `voter: Pubkey`, `amount: u64` |
 <!-- /ocip:events -->
 
 <!-- ocip:errors treasury -->
@@ -2500,6 +4054,45 @@ Discriminator `fe62d93319588c2d`. Arguments: `params: TreasuryParams`.
 | 6009 | `NoLapse` | No lapse has been recorded |
 | 6010 | `GraceNotOver` | The grace period after the lapse has not ended |
 | 6011 | `Overflow` | Arithmetic overflow |
+| 6012 | `NotExtended` | This treasury has no extension: call init_ext first |
+| 6013 | `AlreadyExtended` | This treasury is already extended |
+| 6014 | `Disabled` | This feature is not enabled for the treasury |
+| 6015 | `NavMode` | NAV mode is on: team spending is frozen while holders can redeem |
+| 6016 | `AssignmentRequired` | The IP and asset assignment has not been recorded |
+| 6017 | `AlreadyAssigned` | The assignment is already recorded |
+| 6018 | `DisclosureOverdue` | A holder's disclosure request is overdue |
+| 6019 | `NotHolder` | Only a holder of enough coins may do this |
+| 6020 | `WrongProposalId` | The id must be the next one |
+| 6021 | `WrongProposal` | That account does not belong to this proposal or treasury |
+| 6022 | `VotingClosed` | Voting on this proposal is closed |
+| 6023 | `VotingOpen` | Voting on this proposal is still open |
+| 6024 | `TimelockPending` | The timelock after the vote has not ended |
+| 6025 | `ProposalExpired` | The proposal expired before it was executed |
+| 6026 | `ProposalFailed` | The proposal did not reach quorum and a majority |
+| 6027 | `AlreadyExecuted` | The proposal was already executed |
+| 6028 | `OverProposalCap` | The spend exceeds the share of the vault one proposal may move |
+| 6029 | `WrongDestination` | The destination is not the one the proposal names |
+| 6030 | `NavClosed` | The NAV window is not open |
+| 6031 | `NavLimit` | This period's NAV redemption limit is used up |
+| 6032 | `InsiderExcluded` | Insiders cannot redeem at NAV |
+| 6033 | `ZeroPayout` | The redemption would pay nothing |
+| 6034 | `NothingToClaim` | There is nothing to claim |
+| 6035 | `RoundOpen` | The round has not ended yet |
+| 6036 | `RoundClosed` | The payment window for this round has closed |
+| 6037 | `RoundNotLate` | The payment window for this round has not closed |
+| 6038 | `BadRevenueData` | The attestation's data is not a revenue figure |
+| 6039 | `TrancheNotEligible` | This round is not eligible for a tranche |
+| 6040 | `GrantInvalid` | The grant terms are invalid |
+| 6041 | `LockupTooShort` | The grant lockup is shorter than the treasury's minimum |
+| 6042 | `MilestoneNotReady` | The lockup has not ended |
+| 6043 | `AlreadyReleased` | The milestone was already released |
+| 6044 | `GrantExpired` | The grant has expired or was burned |
+| 6045 | `GrantNotExpired` | The grant has not expired |
+| 6046 | `WrongBeneficiary` | The coin account is not the grant's beneficiary |
+| 6047 | `WindowOpen` | The withdraw-only window is still open |
+| 6048 | `AlreadySwept` | The leftover was already swept |
+| 6049 | `WrongRecovery` | The recovery account does not match |
+| 6050 | `WoundDown` | The treasury was wound down and swept |
 <!-- /ocip:errors -->
 
 ## Appendix C. Changelog
@@ -2507,6 +4100,7 @@ Discriminator `fe62d93319588c2d`. Arguments: `params: TreasuryParams`.
 | Revision | Date | Change |
 |---|---|---|
 | 1 | 2026-10-13 | First draft. Written from the program sources, IDLs, `clearing-core`, `packages/verifier`, `packages/promises` and `services/api` at the commit that adds this file. Includes the worked examples, hash vectors, promise vector and sample fairness proof of §7.9, §8.4, §15.7 and §13.3 |
+| 2 | 2026-10-13 | Revision 2: the rules extension of `cross_core` (§19): an extension tail on `Cross` and `Order`, `set_rules`, print guards, a hard-to-game ending with a draw, identity limits and allocation classes, locks and issuer neutrality, halt states and a lender feed, recurring series, pushed refunds, several oracles, a referral share. Revision 1 crosses are unchanged. The instruction, account, event, error and enumeration tables are produced from the IDLs by `scripts/ocip-sync.mjs` |
 
 ## Appendix D. References
 

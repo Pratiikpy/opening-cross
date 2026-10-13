@@ -2,6 +2,16 @@
 
 Newest first. Every entry names what was done, the evidence, what is not verified, and what is next.
 
+## 2026-10-14 (wave 2D, on-chain)
+- **cross_core rules, treasury extension and cross_settle Meteora rows** were built and proved on LiteSVM against the real program and Meteora binaries: 112 rules tests, 45 treasury tests, 20 settle tests, the rules suites of `tests/core` (323 of 324 outside the database-backed files; the one failure is the router test reaching live Jupiter), `cargo clippy -D warnings` and `cargo test --workspace --release` clean outside `crates/clearing-wasm`. A drawn-ending run passed 4 of 4 on a local validator with real SlotHashes (`W2D-core-local-validator.md`). A real defect was found by it: `create_cross` plus `set_rules` was 1,251 bytes against the 1,232 limit, which LiteSVM does not enforce; fixed and pinned by `rules-tx-size.test.ts`. Evidence: `docs/evidence/W2D-*`, ADRs 0450 to 0499.
+- **Not deployed.** The three upgrades need about 11.1 SOL (`cross_settle` 5.55, `treasury` 6.42, `cross_core` 8.55 held at the moment of each upgrade; 6.86 SOL of it is permanent extension rent); the operator key held 3.52 SOL. H27 names the funding, and `scripts/deploy-batch-2.sh` is the single command after it.
+- **Not verified:** the Docker verifiable build of the new programs; any devnet run of the new instructions; the database-backed `tests/core` files; an address-lookup-table case for a cross with 8 insiders, 2 extra feeds and a bond.
+- **Decisions awaiting the founder:** W12/B3, K4 and D6 (see `FEATURE_STATUS.md`).
+
+## 2026-10-14 (waves 2A to 2C)
+- **Off-chain services, issuer web and holder web and mobile** were built by three workstreams and are recorded row by row in [`FEATURE_STATUS.md`](FEATURE_STATUS.md); evidence is in `docs/evidence/W2A-*`, `W2B-*` and `W2C-*`. The hosted devnet deployment is DONE in the ROADMAP (W7).
+- **Not verified:** none of the wave 2A to 2C routes or pages is on the live site until the next deploy; browser runs used local builds against the live index. On-chain rows from wave 2D are built and tested locally and wait on devnet funding (H27).
+
 ## 2026-10-12 (final audit)
 - **Completeness and quality audit** of the whole repository: the specification against the code, the docs against the evidence, every published command run as a stranger would, and every page of the web app in light and dark at 1440 and 390 px. The full list of what was checked, every defect and its fix, and what was not covered is [`docs/evidence/Z-final-audit.md`](evidence/Z-final-audit.md).
 - **PRODUCT_FEATURES.md reconciled.** Every row now has a status (built, partial, not built) in the new [`docs/FEATURE_STATUS.md`](FEATURE_STATUS.md), and the rows that contradicted the code were corrected: the programs are Anchor and not Pinocchio, fees live in `cross_core` with no `cross_fees` program, unrevealed sealed bids are refunded rather than revealed by default, design (d) is two resumable steps, VM6 is decided, and the Presale Vault and Genesis items are no longer open.
