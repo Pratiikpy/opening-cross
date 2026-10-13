@@ -7,7 +7,7 @@ const API = process.env.API_URL ?? 'https://98-87-59-136.sslip.io';
 const crosses = (await (await fetch(`${API}/v1/crosses?limit=200`)).json()).crosses;
 const settled = crosses.find((c) => c.state === 'Finalized' && c.clearing_price);
 const closed = crosses.find((c) => c.state === 'Live');
-const pages = ['/', '/crosses', '/accuracy', '/premium', '/developers', '/status', '/calendar', '/live', '/replay', '/gates', '/export', '/treasury', '/issuer', '/issuer/simulator', '/portfolio', '/markets', '/alerts', '/rights', '/practice', '/support', '/orders', '/issue', '/no-such-page', `/crosses/${settled.address}`, ...(closed ? [`/crosses/${closed.address}`] : [])];
+const pages = ['/', '/crosses', '/accuracy', '/premium', '/developers', '/status', '/calendar', '/live', '/replay', '/gates', '/export', '/treasury', '/issuer', '/issuer/simulator', '/issuer/settle', '/portfolio', '/markets', '/alerts', '/rights', '/practice', '/support', '/orders', '/issue', '/no-such-page', `/crosses/${settled.address}`, ...(closed ? [`/crosses/${closed.address}`] : [])];
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const problems = [];
 let n = 0;
