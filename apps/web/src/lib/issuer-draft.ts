@@ -3,6 +3,7 @@
 // checked field by field; one that does not fit is dropped, never half-applied.
 import type { ListingTypeId } from '@opening-cross/presets/launch';
 import { LISTING_TYPES } from '@opening-cross/presets/launch';
+import { EMPTY_RULES_FORM, type RulesForm, cloneRulesForm } from '@opening-cross/presets/rules';
 import type { OracleDraft } from './issuer-guards';
 
 export type Draft = {
@@ -31,6 +32,8 @@ export type Draft = {
   /** Rules the issuer commits to (B13): a minimum float in percent and a fully diluted value ceiling in quote tokens. Empty = none. */
   minFloatPct: string;
   maxFdv: string;
+  /** The rules step: every cross_core rule, in the units a person types. All empty = a cross created without the rules extension. */
+  rules: RulesForm;
 };
 
 export const DRAFT_KEY = 'opening-bell:issuer-draft:v1';
@@ -62,12 +65,31 @@ export function newDraft(now: Date): Draft {
     oracle: { enabled: false, feedId: '', maxDivergencePct: '', maxStalenessSecs: 60 },
     minFloatPct: '',
     maxFdv: '',
+    rules: cloneRulesForm(EMPTY_RULES_FORM),
   };
 }
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 const oneOf = <T extends string>(v: unknown, set: readonly T[]): v is T => isStr(v) && (set as readonly string[]).includes(v);
+
+/** The rules form from stored data; a draft written before the rules step existed, or a field of the wrong type, gives the empty form field by field. */
+export function parseRulesForm(raw: unknown): RulesForm {
+  const out = cloneRulesForm(EMPTY_RULES_FORM);
+  if (!raw || typeof raw !== 'object') return out;
+  const o = raw as Record<string, unknown>;
+  const target = out as Record<string, unknown>;
+  for (const k of Object.keys(EMPTY_RULES_FORM) as (keyof RulesForm)[]) {
+    const def = EMPTY_RULES_FORM[k];
+    const v = o[k];
+    if (Array.isArray(def)) {
+      if (Array.isArray(v) && v.every(isStr)) target[k] = [...v];
+    } else if (typeof def === 'boolean') {
+      if (typeof v === 'boolean') target[k] = v;
+    } else if (isStr(v)) target[k] = v;
+  }
+  return out;
+}
 
 /** A draft from stored text, or null if it is not exactly a draft this version wrote. Integers that were NaN are stored as null and come back as defaults. */
 export function parseDraft(text: string | null, fallback: Draft): Draft | null {
@@ -114,6 +136,7 @@ export function parseDraft(text: string | null, fallback: Draft): Draft | null {
     oracle: { enabled: oracle.enabled, feedId: oracle.feedId, maxDivergencePct: oracle.maxDivergencePct, maxStalenessSecs: num(oracle.maxStalenessSecs, 60) },
     minFloatPct: o.minFloatPct as string,
     maxFdv: o.maxFdv as string,
+    rules: parseRulesForm(o.rules),
   };
 }
 

@@ -6,6 +6,7 @@ import { type Market, formatAtoms, formatDuration, formatPrice } from '@/lib/uni
 import type { OrderRecord } from './order-record';
 import { finalWindow } from './final-window';
 import { coarseRange, imbalance } from './holder-coarse';
+import { type EndingNow, type IndicativeRead, imbalanceText } from '@/lib/holder-rules';
 import type { Phase } from './timeline';
 
 function Stat({ label, children, sub, testId }: { label: string; children: React.ReactNode; sub?: string; testId?: string }) {
@@ -27,18 +28,20 @@ const RATIONED: Record<string, string> = {
 };
 
 /** The three numbers that matter most, by stage: price, size and time while live; price, volume and fills once settled. */
-export function Hero(props: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market }) {
+export function Hero(props: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market; ending: EndingNow; indicative: IndicativeRead | null }) {
   return props.cross.state !== 'Live' ? <Settled cross={props.cross} orders={props.orders} market={props.market} /> : <LiveHero {...props} />;
 }
 
-function LiveHero({ cross, book, phase, now, market: m }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market }) {
+function LiveHero({ cross, book, phase, now, market: m, ending, indicative }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market; ending: EndingNow; indicative: IndicativeRead | null }) {
   const sealed = cross.disclosure === 'sealed';
   const offered = (book?.levels ?? []).reduce((s, l) => s + BigInt(l.sell), 0n);
   const wanted = (book?.levels ?? []).reduce((s, l) => s + BigInt(l.buy), 0n);
   const nextTs = phase === 'upcoming' ? cross.window.openTs : phase === 'open' ? cross.window.closeTs : phase === 'reveal' ? cross.window.revealEndTs : null;
   const timeLabel = phase === 'upcoming' ? 'Opens in' : phase === 'open' ? 'Closes in' : phase === 'reveal' ? 'Reveal ends in' : 'Call status';
   const hasBook = book !== null && book.levels.length > 0;
-  const fin = phase === 'open' ? finalWindow(cross.window.openTs, cross.window.closeTs, now) : null;
+  // A cross with an ending period has its own, real one: the coarse figures come from /indicative and the generic last-minutes notice is not shown.
+  const inEnding = ending.kind === 'ending' && phase === 'open';
+  const fin = phase === 'open' && !inEnding ? finalWindow(cross.window.openTs, cross.window.closeTs, now) : null;
   // In the final minutes the page leads with a price range and a demand bucket; the exact figures are one press away.
   const [exact, setExact] = useState(false);
   const coarse = Boolean(fin?.active) && !exact && !sealed && book !== null;
@@ -46,6 +49,11 @@ function LiveHero({ cross, book, phase, now, market: m }: { cross: CrossDetail; 
   const bucket = coarse ? imbalance(wanted, offered) : null;
   return (
     <>
+    {inEnding && ending.kind === 'ending' ? (
+      <p className="mb-4 rounded-[var(--radius-card)] border border-accent px-4 py-3 text-sm" data-testid="ending-notice">
+        <span className="font-medium">Ending period, window {ending.bucket + 1} of {ending.buckets}.</span> {formatDuration(BigInt(cross.window.closeTs) - now > 0n ? BigInt(cross.window.closeTs) - now : 0n)} left. The price below is shown to the nearest of eight bands and the balance of demand only as a direction, so this page does not give away where the price is going. That is a display rule of this app, not secrecy: the order accounts are public on chain. The Rules tab says when orders can no longer be cancelled.
+      </p>
+    ) : null}
     {fin?.active ? (
       <p className="mb-4 rounded-[var(--radius-card)] border border-accent px-4 py-3 text-sm" data-testid="final-window">
         <span className="font-medium">Final minutes.</span> {formatDuration(fin.remaining)} left to place or cancel an order. Orders and cancellations still change the indicative price until the countdown ends. {exact ? 'Showing exact figures.' : 'The price and the balance of demand are rounded here so this page does not flicker with every order.'} This is a display choice only: the program has no hidden or coarse final window, the book is public and exact, and every order is treated alike.{' '}
@@ -59,21 +67,31 @@ function LiveHero({ cross, book, phase, now, market: m }: { cross: CrossDetail; 
         label={phase === 'awaiting-settlement' ? 'Price once it settles' : 'Indicative price'}
         testId="price"
         sub={
-          book?.indicative
+          inEnding
+            ? 'Nearest of eight price bands during the ending period. The exact price returns when the call closes.'
+            : book?.indicative
             ? `${formatAtoms(BigInt(book.indicative.matched), m.baseDecimals)} tokens would trade. ${phase === 'upcoming' || phase === 'open' ? 'Indicative until the call closes.' : 'Settling the cross fixes the final price.'}`
             : sealed
               ? 'Sealed: prices stay hidden until bids are revealed.'
               : 'No crossing orders yet.'
         }
       >
-        {range ? <span data-testid="coarse-price" className="text-[26px] sm:text-[32px]">about {formatPrice(range.low, m)} to {formatPrice(range.high, m)}</span> : book?.indicative ? formatPrice(BigInt(book.indicative.price), m) : sealed ? 'Sealed' : 'No price yet'}
+        {inEnding ? (
+          indicative === null ? (
+            '…'
+          ) : indicative.indicative?.price ? (
+            <span data-testid="coarse-price" className="text-[26px] sm:text-[32px]">about {formatPrice(BigInt(indicative.indicative.price), m)}</span>
+          ) : (
+            'No price yet'
+          )
+        ) : range ? <span data-testid="coarse-price" className="text-[26px] sm:text-[32px]">about {formatPrice(range.low, m)} to {formatPrice(range.high, m)}</span> : book?.indicative ? formatPrice(BigInt(book.indicative.price), m) : sealed ? 'Sealed' : 'No price yet'}
       </Stat>
       <Stat
-        label="Tokens offered"
+        label={inEnding ? 'Balance of demand' : 'Tokens offered'}
         testId="offered"
-        sub={book === null ? 'Loading the book…' : sealed ? (hasBook ? `${formatAtoms(wanted, m.baseDecimals)} wanted so far. Only revealed bids are counted.` : 'Bids stay sealed until the reveal.') : bucket ? `Demand: ${bucket.label}.` : `${formatAtoms(wanted, m.baseDecimals)} wanted by buyers`}
+        sub={inEnding ? 'Shown as a direction only during the ending period.' : book === null ? 'Loading the book…' : sealed ? (hasBook ? `${formatAtoms(wanted, m.baseDecimals)} wanted so far. Only revealed bids are counted.` : 'Bids stay sealed until the reveal.') : bucket ? `Demand: ${bucket.label}.` : `${formatAtoms(wanted, m.baseDecimals)} wanted by buyers`}
       >
-        {book === null ? '…' : sealed && !hasBook ? 'Sealed' : formatAtoms(offered, m.baseDecimals)}
+        {inEnding ? <span className="text-[26px] sm:text-[32px]">{indicative?.indicative ? imbalanceText(indicative.indicative.imbalance) : '…'}</span> : book === null ? '…' : sealed && !hasBook ? 'Sealed' : formatAtoms(offered, m.baseDecimals)}
       </Stat>
       <Stat label={timeLabel} sub={nextTs ? 'Counting down to the next stage.' : 'The call is closed. Anyone can settle the cross.'}>
         {nextTs ? <span data-testid="countdown" className="font-mono text-[28px] sm:text-[34px]">{formatDuration(BigInt(nextTs) - now)}</span> : 'Closed'}

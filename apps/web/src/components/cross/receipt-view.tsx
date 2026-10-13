@@ -62,6 +62,37 @@ export function ReceiptView({ receipt, sha256, pagePath, imagePath, jsonPath, or
         </ul>
       </section>
 
+      {receipt.rules ? (
+        <section className="mt-8" aria-labelledby="rules-checks" data-testid="receipt-rules">
+          <h2 id="rules-checks" className="font-mono text-xs uppercase tracking-widest text-muted">Checks on this cross’s rules</h2>
+          {receipt.rules.checks.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">The proof ran no check beyond the clearing itself.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border border-y border-border text-sm">
+              {receipt.rules.checks.map((c) => (
+                <li key={c.name} className="py-2.5">
+                  <p className="font-medium">
+                    {c.name}{' '}
+                    <span className={c.ok === true ? 'text-positive' : c.ok === false ? 'text-accent-text' : 'text-muted'}>{c.ok === true ? 'reproduced' : c.ok === false ? 'did not reproduce' : 'not checked'}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">{c.detail}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {receipt.rules.limits.length > 0 ? (
+            <>
+              <h3 className="mt-5 text-sm font-medium">What the proof does not establish</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+                {receipt.rules.limits.map((l) => (
+                  <li key={l}>{l}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="mt-8" aria-labelledby="anchors">
         <h2 id="anchors" className="font-mono text-xs uppercase tracking-widest text-muted">Recorded on chain in</h2>
         {receipt.anchors.length === 0 ? (

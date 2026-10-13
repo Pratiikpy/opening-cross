@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { RightsReleaseNote } from '@/components/treasury/release-note';
 import { type HoldingsData, loadHoldings } from '@/lib/holder-portfolio-load';
 import { KIND_LABEL, type CardKind, type RightsCard } from '@/lib/treasury';
 import { formatAtoms, shortAddress } from '@/lib/units';
@@ -47,6 +48,7 @@ export function RightsView() {
   }
   return (
     <div className="mt-8 space-y-12">
+      <RightsReleaseNote />
       {withTreasury.map((r) => {
         const t = r.treasury!;
         return (

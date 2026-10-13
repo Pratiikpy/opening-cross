@@ -5,10 +5,14 @@
 // It is hash-bound, not signed: nothing here holds a key. The document has no clock and no randomness, so the same cross
 // always produces the same bytes; the SHA-256 of those bytes is the receipt's identity, and anyone can rebuild it from the
 // public API and compare. The receipt makes no claim beyond a recomputation: there is no zero-knowledge or multi-party proof.
+import { RULE_NO_PRINT } from './holder-rules';
 import { formatAtoms, formatPrice, shortAddress } from './units';
 
 export const RECEIPT_SCHEMA = 'opening-cross/receipt/v1';
 export const PROOF_SCHEMA_ID = 'opening-cross/fairness-proof/v1';
+/** The receipt of a cross that carries rules is built from a version-2 proof and says so (docs/adr/0601-receipt-v2-for-crosses-with-rules.md). */
+export const RECEIPT_SCHEMA_V2 = 'opening-cross/receipt/v2';
+export const PROOF_SCHEMA_V2_ID = 'opening-cross/fairness-proof/v2';
 
 const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'] as const;
 
@@ -23,6 +27,21 @@ export type ProofInput = {
   verified: boolean;
   [k: string]: unknown;
 };
+
+/** The `rules` block of a version-2 proof, as the receipt reads it. */
+type ProofRulesInput = ReceiptRules;
+
+/** What a version-2 proof adds, as the receipt restates it: the checks on the rules, the draw, the allocation figures and what the proof cannot establish. */
+export type ReceiptRules = {
+  checks: { name: string; ok: boolean | null; detail: string }[];
+  ending: { endingSecs: number; buckets: number; cancelCutoffSecs: number; randomEnd: boolean; startsAt: string | null; lastCountedBucket: number | null; extension: { minSecs: number; maxSecs: number; used: boolean; epoch: number } | null } | null;
+  draw: { epoch: number; seed: string | null; endBucket: number | null };
+  allocation: { classQty: string[]; tickets: number; rho: number; insiderUpperBound: string; counted: string } | null;
+  limits: string[];
+};
+
+/** A proof whose schema this page cannot restate faithfully: it is refused, never summarised as if it were version 1. */
+export class UnsupportedProofError extends Error {}
 
 export type MarketInput = { priceScale: string; decimals: { base: number; quote: number } };
 
@@ -45,7 +64,7 @@ export type OrderInput = {
 };
 
 export type Receipt = {
-  schema: typeof RECEIPT_SCHEMA;
+  schema: typeof RECEIPT_SCHEMA | typeof RECEIPT_SCHEMA_V2;
   network: string;
   program: string;
   cross: string;
@@ -55,6 +74,8 @@ export type Receipt = {
   orders: { total: number; filled: number } | null;
   anchors: { event: 'CrossCleared' | 'CrossFinalized'; signature: string; slot: string; time: string | null }[];
   wallet: null | { owner: string; orders: ReceiptOrder[] };
+  /** Version 2 only: the checks on the cross's rules. Absent from a version-1 receipt, so its bytes and hash are what they always were. */
+  rules?: ReceiptRules;
   limits: string[];
 };
 
@@ -71,6 +92,8 @@ export type ReceiptOrder = {
   quoteOut: string | null;
   fee: string | null;
 };
+
+export const METHOD_V2 = "A second implementation of the clearing rule recomputed the price, matched volume and rationed side from the cross's on-chain book and compared them with the result the program recorded. It also re-derived, from the cross account, which shards were merged, which ending window the draw fixed and which shards that requires, and checked them against the chain.";
 
 export const METHOD = 'A second implementation of the clearing rule recomputed the price, matched volume and rationed side from the cross\'s on-chain book and compared them with the result the program recorded.';
 
@@ -119,18 +142,22 @@ export class NoReceiptError extends Error {}
 /** Builds the receipt and its canonical bytes and hash. Throws NoReceiptError for a cross that has not settled: there is nothing to receipt. */
 export async function buildReceipt(i: ReceiptInputs): Promise<{ receipt: Receipt; canonical: string; sha256: string }> {
   const p = i.proof;
+  const v2 = p.schema === PROOF_SCHEMA_V2_ID;
+  if (!v2 && p.schema !== PROOF_SCHEMA_ID) throw new UnsupportedProofError(`This cross's proof uses the schema ${String(p.schema)}, which this page cannot restate, so no receipt is built from it.`);
   if (p.state === 'Live') throw new NoReceiptError('The cross has not settled yet, so there is no result to receipt.');
   const o = p.onchain;
   const reason = o.noPrintReason === null ? null : (NO_PRINT[o.noPrintReason] ?? `reason ${o.noPrintReason}`);
   const mine = i.owner ? (i.orders ?? []).filter((x) => x.owner === i.owner) : null;
+  const pr = v2 ? (p.rules as ProofRulesInput | undefined) : undefined;
+  if (v2 && !pr) throw new UnsupportedProofError("This cross's proof says it is version 2 but carries no rules block, so no receipt is built from it.");
   const receipt: Receipt = {
-    schema: RECEIPT_SCHEMA,
+    schema: v2 ? RECEIPT_SCHEMA_V2 : RECEIPT_SCHEMA,
     network: i.network,
     program: p.program,
     cross: p.cross,
     market: { priceScale: i.market.priceScale, baseDecimals: i.market.decimals.base, quoteDecimals: i.market.decimals.quote },
     result: { state: p.state, printed: o.printed, price: o.price, matched: o.matched, rationed: (o.rationed as 'none' | 'buy' | 'sell' | null) ?? null, noPrintReason: reason },
-    verification: { method: METHOD, recomputedMatchesChain: p.verified, proofSchema: p.schema, proofSha256: await sha256Hex(canonicalJson(p)) },
+    verification: { method: v2 ? METHOD_V2 : METHOD, recomputedMatchesChain: p.verified, proofSchema: p.schema, proofSha256: await sha256Hex(canonicalJson(p)) },
     orders: i.orders ? { total: i.orders.length, filled: i.orders.filter((x) => x.fill !== null && BigInt(x.fill) > 0n).length } : null,
     anchors: i.anchors
       .filter((a) => a.kind === 'cleared' || a.kind === 'finalized')
@@ -141,6 +168,7 @@ export async function buildReceipt(i: ReceiptInputs): Promise<{ receipt: Receipt
           orders: (mine ?? []).map((x) => ({ order: x.address, index: x.idx, side: x.side, escrow: x.escrow, limitPrice: x.price, quantity: x.quantity, status: x.status, fill: x.fill, baseOut: x.base_out, quoteOut: x.quote_out, fee: x.fee })),
         }
       : null,
+    ...(pr ? { rules: { checks: pr.checks, ending: pr.ending, draw: pr.draw, allocation: pr.allocation, limits: pr.limits } } : {}),
     limits: LIMITS,
   };
   const canonical = canonicalJson(receipt);
@@ -158,6 +186,18 @@ export type Card = {
   lines: CardLine[];
   wallet: { heading: string; lines: string[] } | null;
 };
+
+/** The words for a no-print code. A code this version does not know is shown as it is, never dropped. */
+const NO_PRINT_WORDS: Record<string, string> = {
+  NoCross: 'no buy order and sell order overlapped at any price',
+  BelowMinimumVolume: 'the volume that would have traded was below the issuer’s minimum',
+  ImbalanceTooHigh: 'buyers and sellers were too far apart for the issuer’s limit',
+  SettlementExpired: 'the token was not created before the settlement deadline',
+  OracleDivergence: 'the price strayed too far from the oracle price',
+  OracleUnavailable: 'the oracle price was missing, stale or unverified',
+  ...RULE_NO_PRINT,
+};
+export const noPrintWords = (code: string): string => NO_PRINT_WORDS[code] ?? code;
 
 const market = (r: Receipt) => ({ priceScale: BigInt(r.market.priceScale), baseDecimals: r.market.baseDecimals, quoteDecimals: r.market.quoteDecimals });
 
@@ -188,12 +228,18 @@ export function cardOf(r: Receipt): Card {
   const lines: CardLine[] = [];
   if (res.printed && res.matched !== null) lines.push({ label: 'Matched', value: `${formatAtoms(BigInt(res.matched), m.baseDecimals)} tokens${res.rationed && res.rationed !== 'none' ? `, ${res.rationed} side pro rata` : ''}` });
   if (r.orders) lines.push({ label: 'Orders filled', value: res.printed ? `${r.orders.filled} of ${r.orders.total}` : `0 of ${r.orders.total}, all refunded` });
+  if (r.rules) {
+    const reproduced = r.rules.checks.filter((c) => c.ok === true).length;
+    const failed = r.rules.checks.filter((c) => c.ok === false).length;
+    lines.push({ label: 'Checks on the rules', value: r.rules.checks.length === 0 ? 'none ran' : `${reproduced} of ${r.rules.checks.length} reproduced${failed > 0 ? `, ${failed} did not` : ''}` });
+    if (r.rules.draw.endBucket !== null) lines.push({ label: 'Drawn last window', value: String(r.rules.draw.endBucket + 1) });
+  }
   lines.push({ label: 'Cross', value: shortAddress(r.cross) });
   lines.push({ label: 'Network', value: r.network });
   return {
     title: r.wallet ? 'Order receipt' : 'Cross receipt',
     verdict,
-    headline: res.printed && res.price !== null ? { label: 'One clearing price', value: formatPrice(BigInt(res.price), m) } : { label: 'Result', value: `No print${res.noPrintReason ? `: ${res.noPrintReason}` : ''}` },
+    headline: res.printed && res.price !== null ? { label: 'One clearing price', value: formatPrice(BigInt(res.price), m) } : { label: 'Result', value: `No print${res.noPrintReason ? `: ${noPrintWords(res.noPrintReason)}` : ''}` },
     lines,
     wallet: r.wallet ? { heading: `Wallet ${shortAddress(r.wallet.owner)}`, lines: r.wallet.orders.length ? r.wallet.orders.map((o) => describeReceiptOrder(o, r)) : ['This wallet has no orders in this cross.'] } : null,
   };

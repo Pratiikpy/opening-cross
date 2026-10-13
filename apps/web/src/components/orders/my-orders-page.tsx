@@ -3,8 +3,10 @@
 import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { OutcomeNote } from '@/components/cross/outcome-note';
 import { useSigner } from '@/components/cross/use-signer';
 import { ClaimCenter } from '@/components/portfolio/claim-center';
+import { LockupsSection } from '@/components/portfolio/lockups-section';
 import { PortfolioView } from '@/components/portfolio/portfolio-view';
 import { StateBadge } from '@/components/state-badge';
 import { describeOrder } from '@/lib/orders';
@@ -89,6 +91,7 @@ function Orders({ account }: { account: UiWalletAccount }) {
   return (
     <div className="mt-10 space-y-10">
       <ClaimCenter claimable={portfolio.claimable} owner={owner} sign={sign} onChanged={reload} chainUnread={ready.chainUnread} checking={ready.chainState === 'pending'} />
+      <LockupsSection owner={owner} details={ready.details} sign={sign} onChanged={reload} version={version} />
       <PortfolioView portfolio={portfolio} />
       <OrderList data={ready} />
     </div>
@@ -132,6 +135,7 @@ function OrderList({ data }: { data: Loaded }) {
                 </div>
                 <StateBadge state={c.state} {...(phase ? { phase } : {})} />
               </div>
+              {o.status === 'claimed' ? <OutcomeNote o={o} clearing={c.clearing} market={m} /> : null}
               {o.status === 'claimed' ? (
                 <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
                   <Fact label="Filled" value={`${formatAtoms(BigInt(o.fill ?? '0'), m.baseDecimals)} tokens`} />

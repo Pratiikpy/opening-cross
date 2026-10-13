@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DisclosureBadge, NetworkTag, TreasuryStateBadge } from '@/components/treasury/badges';
+import { RightsReleaseNote } from '@/components/treasury/release-note';
 import { get } from '@/lib/api';
 import { type TreasuryList, duration, quote, utc } from '@/lib/treasury';
 import { shortAddress } from '@/lib/units';
@@ -25,6 +26,9 @@ export default async function Treasuries() {
       <p className="mt-2 max-w-2xl text-sm text-muted">
         Every treasury listed here is a test treasury on devnet. The treasury program is not audited and nothing is deployed to mainnet.
       </p>
+      <div className="mt-2 max-w-2xl [&>div]:mt-4">
+        <RightsReleaseNote what="Votes, redemption at NAV, distributions, revenue rounds, grants and disclosure requests" />
+      </div>
       {!res.ok ? (
         <p role="status" className="mt-10 text-sm text-muted">
           Treasuries are unavailable right now: {res.error}

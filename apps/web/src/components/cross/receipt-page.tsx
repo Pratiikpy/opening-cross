@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { NoReceiptError } from '@/lib/receipt';
+import { NoReceiptError, UnsupportedProofError } from '@/lib/receipt';
 import { ReceiptLoadError, loadReceipt } from '@/lib/receipt-load';
 import { isAddress } from '@/lib/receipt-routes';
 import { shortAddress } from '@/lib/units';
@@ -30,7 +30,7 @@ export async function ReceiptPage({ address, owner }: { address: string; owner?:
     loaded = await loadReceipt(address, owner);
   } catch (e) {
     if (e instanceof ReceiptLoadError && e.status === 404) notFound();
-    const message = e instanceof NoReceiptError ? e.message : e instanceof ReceiptLoadError ? `The API could not be read right now: ${e.message}.` : 'The receipt could not be built.';
+    const message = e instanceof NoReceiptError || e instanceof UnsupportedProofError ? e.message : e instanceof ReceiptLoadError ? `The API could not be read right now: ${e.message}.` : 'The receipt could not be built.';
     return (
       <div className="mx-auto max-w-[900px] px-4 py-14 sm:px-6">
         <h1 className="text-2xl font-semibold">Receipt for cross {shortAddress(address)}</h1>

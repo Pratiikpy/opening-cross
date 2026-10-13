@@ -97,6 +97,9 @@ function Treasury({ row }: { row: TreasuryRow }) {
         <Link href="/issuer/disclosures" className="inline-flex min-h-11 items-center rounded-full border border-border-strong px-4 py-2 text-sm hover:bg-surface">
           Post an update
         </Link>
+        <Link href={`/issuer/treasury/${row.address}`} className="inline-flex min-h-11 items-center rounded-full bg-accent-fill px-4 py-2 text-sm font-medium text-on-accent" data-testid={`console-${row.address}`}>
+          Open the console
+        </Link>
         <Link href={`/treasury/${row.address}`} className="inline-flex min-h-11 items-center rounded-full border border-border-strong px-4 py-2 text-sm hover:bg-surface">
           Open the holder page
         </Link>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { ActionError, build, signSendConfirm } from '../lib/tx';
+import { build, failureText, signSendConfirm } from '../lib/tx';
 import { useWallet } from '../lib/wallet';
 import { Button, Txt } from './components';
 
@@ -42,7 +42,7 @@ export function ActionButton({
             const sigs = await signSendConfirm(txs, wallet.sign, setStatus);
             onDone(sigs, extra);
           } catch (e) {
-            setError(e instanceof ActionError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
+            setError(failureText(e));
           } finally {
             setStatus(null);
           }

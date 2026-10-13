@@ -2,12 +2,27 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { API_URL } from '@/lib/api';
+import { buildReasoned, failureText } from '@/lib/holder-tx';
 import { type Portfolio, claimNote } from '@/lib/portfolio';
-import { ActionError, type Signer, build, signSendConfirm } from '@/lib/tx';
+import type { Signer } from '@/lib/tx';
+import { signSendConfirm } from '@/lib/tx';
 import { formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 
 type Claimable = Portfolio['claimable'][number];
-type Phase = { phase: 'idle' } | { phase: 'working'; text: string } | { phase: 'done' } | { phase: 'failed'; message: string };
+type Phase = { phase: 'idle' } | { phase: 'working'; text: string } | { phase: 'done'; note?: string } | { phase: 'failed'; message: string };
+
+/** True when the order's account is gone from the chain: it was paid out or refunded, possibly by someone else. Null when the chain could not be asked. */
+async function closedOnChain(order: string): Promise<boolean | null> {
+  try {
+    const r = await fetch(`${API_URL}/v1/orders?addresses=${order}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const { orders } = (await r.json()) as { orders: { found: boolean; open?: boolean }[] };
+    return orders[0] ? orders[0].found && orders[0].open === false : null;
+  } catch {
+    return null;
+  }
+}
 
 const KIND_LABEL = { cleared: 'Cleared, unclaimed', 'no-print': 'Did not print, refund due', unrevealed: 'Sealed bid never revealed, refund due' } as const;
 
@@ -26,13 +41,19 @@ export function ClaimCenter({ claimable, owner, sign, onChanged, chainUnread, ch
     const a = r.order.address;
     set(a, { phase: 'working', text: 'Preparing…' });
     try {
-      const built = await build('/v1/tx/claim', { cross: r.cross.address, owner, nonce: r.nonce, payer: owner });
+      const built = await buildReasoned('/v1/tx/claim', { cross: r.cross.address, owner, nonce: r.nonce, payer: owner });
       await signSendConfirm(built.txs, sign, (text) => set(a, { phase: 'working', text }));
       set(a, { phase: 'done' });
       setClaimed((c) => (c.some((x) => x.order.address === a) ? c : [...c, r]));
       return 'done';
     } catch (e) {
-      const message = e instanceof ActionError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`;
+      // A refund can be pushed by a keeper before this wallet claims it. Then the order is already paid out and the failure is not one.
+      if (await closedOnChain(a)) {
+        set(a, { phase: 'done', note: 'Already paid out on chain: a keeper refunded it before you claimed.' });
+        setClaimed((c) => (c.some((x) => x.order.address === a) ? c : [...c, r]));
+        return 'done';
+      }
+      const message = failureText(e);
       set(a, { phase: 'failed', message });
       return /declined/i.test(message) ? 'declined' : 'failed';
     }
@@ -121,11 +142,21 @@ export function ClaimCenter({ claimable, owner, sign, onChanged, chainUnread, ch
                     · {KIND_LABEL[r.claim]} · escrow {o.side === 'buy' ? `${formatAtoms(BigInt(o.escrow), m.quoteDecimals)} quote` : `${formatAtoms(BigInt(o.escrow), m.baseDecimals)} tokens`}
                   </p>
                   <p className="mt-1 text-xs text-muted">{claimNote(r.claim)}</p>
+                  {r.claim !== 'cleared' ? (
+                    <p className="mt-1 text-xs text-muted" data-testid="refund-only">
+                      Nothing of this order traded, so anyone can send its refund and it always goes to your wallet. A keeper may do that before you do; the row then moves to your history as paid out.
+                    </p>
+                  ) : null}
+                  {st.phase === 'done' && st.note ? (
+                    <p className="mt-1 text-xs text-positive" data-testid="pushed-refund">
+                      {st.note}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
                   {st.phase === 'done' ? (
                     <span className="text-positive" role="status">
-                      Claimed
+                      {st.note ? 'Paid out' : 'Claimed'}
                     </span>
                   ) : st.phase === 'working' ? (
                     <span className="text-muted" role="status">

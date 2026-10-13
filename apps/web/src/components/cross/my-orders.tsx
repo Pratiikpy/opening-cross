@@ -1,81 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { API_URL } from '@/lib/api';
-import { HOLDER_API_URL } from '@/lib/holder-api';
-import { type SealedBid, downloadBackup, importBids, loadBids, rememberedOrders } from '@/lib/sealed';
+import { type OrderView, loadOwnOrders } from '@/lib/holder-orders';
+import type { Programs } from '@/lib/holder-programs';
+import { type RulesRead, cancelDeadlineOf, clock } from '@/lib/holder-rules';
+import { type SealedBid, downloadBackup, importBids, loadBids } from '@/lib/sealed';
 import type { Signer } from '@/lib/tx';
-import type { CrossDetail, OwnerOrder } from '@/lib/types';
+import type { CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 import { ActionButton } from './action-button';
+import { ChallengePanel } from './challenge-panel';
 import type { Phase } from './cross-view';
-import { type OwnMarks, deriveMarks, indexedTerms, loadTerms } from './own-orders';
+import { LockupsPanel } from './lockups-panel';
+import { OutcomeNote } from './outcome-note';
+import { type OwnMarks, deriveMarks, loadTerms } from './own-orders';
 
-/** One order as the chain sees it now (open) or as the indexer recorded it (closed). */
-type OrderView = {
-  address: string;
-  open: boolean;
-  side: 'buy' | 'sell';
-  nonce: string | null;
-  revealed: boolean;
-  escrow: string;
-  price: string | null;
-  quantity: string | null;
-  status?: OwnerOrder['status'];
-  fill?: string | null;
-  quote_out?: string | null;
-  base_out?: string | null;
-  fee?: string | null;
-};
-
-async function loadOrders(cross: string, owner: string, sealed: boolean): Promise<OrderView[]> {
-  const indexed = await fetch(`${API_URL}/v1/owners/${owner}/orders`, { cache: 'no-store' })
-    .then((r) => (r.ok ? (r.json() as Promise<{ orders: OwnerOrder[] }>) : { orders: [] }))
-    .catch(() => ({ orders: [] as OwnerOrder[] }));
-  const addresses = new Set([...indexed.orders.filter((o) => o.cross_address === cross).map((o) => o.address), ...rememberedOrders(cross, owner)]);
-  if (addresses.size === 0) return [];
-  const res = await fetch(`${API_URL}/v1/orders?addresses=${[...addresses].join(',')}`, { cache: 'no-store' }).catch(() => null);
-  if (!res?.ok) return [];
-  const { orders } = (await res.json()) as { orders: (Record<string, unknown> & { address: string; found: boolean })[] };
-  // The chain says an open order is open but not at what price (the price sits in the merged book, unattributed). The index records the
-  // limit of an open (unsealed) order from its commit, and of a sealed one once revealed, so those are used when it has them; for any other
-  // order they stay null and the page falls back to what this browser saved when it placed it.
-  const terms = indexedTerms(indexed.orders);
-  const views = orders.map((o) =>
-    !o.found
-      ? null
-      : o.open
-        ? ({ address: o.address, open: true, side: o.side, nonce: String(o.nonce), revealed: Boolean(o.revealed), escrow: String(o.escrow), price: terms.get(o.address)?.price ?? null, quantity: terms.get(o.address)?.quantity ?? null } as OrderView)
-        : ({ ...(o as unknown as OwnerOrder), address: o.address, open: false, nonce: null, revealed: o.status !== 'committed' } as OrderView),
-  );
-  const found = views.filter((v): v is OrderView => v !== null);
-  // An order placed in the last minute has no price in the index yet. Its price is an argument of the transaction that placed it, so it
-  // is read from the chain (through the API) rather than left off the chart. A sealed order stays without one until it is revealed.
-  await Promise.all(
-    found
-      .filter((o) => o.open && o.price === null && !(o.revealed === false && sealed))
-      .slice(0, 8)
-      .map(async (o) => {
-        try {
-          const r = await fetch(`${HOLDER_API_URL}/v1/orders/${o.address}/terms`, { cache: 'no-store' });
-          const j = (await r.json()) as { terms?: { price: string; quantity: string } | null };
-          if (r.ok && j.terms) Object.assign(o, { price: j.terms.price, quantity: j.terms.quantity });
-        } catch {
-          // The chart then says plainly that this order's price is not known.
-        }
-      }),
-  );
-  return found;
-}
-
-export function MyOrders({ cross, phase, market: m, owner, sign, version, onChanged, onMarks }: { cross: CrossDetail; phase: Phase; market: Market; owner: string; sign: Signer; version: number; onChanged: () => void; onMarks?: (marks: OwnMarks) => void }) {
+export function MyOrders({ cross, phase, market: m, owner, sign, version, onChanged, onMarks, rules, now, programs }: { cross: CrossDetail; phase: Phase; market: Market; owner: string; sign: Signer; version: number; onChanged: () => void; onMarks?: (marks: OwnMarks) => void; rules?: RulesRead | null | undefined; now: bigint; programs: Programs | null | 'unavailable' }) {
   const [orders, setOrders] = useState<OrderView[] | null>(null);
   const [bids, setBids] = useState<SealedBid[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
-    void loadOrders(cross.address, owner, cross.disclosure === 'sealed').then((o) => live && setOrders(o));
+    void loadOwnOrders(cross.address, owner, cross.disclosure === 'sealed').then((o) => live && setOrders(o));
     setBids(loadBids(cross.address, owner));
     return () => {
       live = false;
@@ -83,6 +30,8 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
   }, [cross.address, owner, version]);
 
   const settled = cross.state === 'Cleared' || cross.state === 'NoPrint';
+  const deadline = cancelDeadlineOf(rules?.calls, BigInt(cross.window.closeTs));
+  const extended = (rules?.state?.draw.epoch ?? 0) > 0;
   const sealed = cross.disclosure === 'sealed';
 
   // When the wallet disconnects, the chart forgets these orders.
@@ -136,7 +85,7 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
                     {price ? ` at ${formatPrice(BigInt(price), m)}` : ''}
                   </span>
                   <span className="font-mono text-xs text-muted" data-testid="order-status">
-                    {o.open ? (o.revealed ? 'in the book' : 'sealed') : o.status === 'claimed' ? 'settled' : o.status === 'cancelled' ? 'cancelled' : 'settling…'}
+                    {o.open ? (o.revealed ? 'in the book' : 'sealed') : o.status === 'claimed' ? 'settled' : o.status === 'cancelled' ? 'cancelled' : 'paid out, amounts follow'}
                   </span>
                 </div>
                 <p className="mt-1 font-mono text-xs text-muted">{shortAddress(o.address)}</p>
@@ -166,10 +115,24 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
                     )}
                   </dl>
                 ) : null}
+                {!o.open && o.status === 'claimed' ? <OutcomeNote o={o} clearing={cross.clearing} market={m} maxMatched={rules?.rules?.guards.maxMatched ?? null} /> : null}
+                {!o.open && o.status !== 'claimed' && o.status !== 'cancelled' && settled ? (
+                  <p className="mt-2 text-xs text-muted" data-testid="order-paid-out">
+                    This order has been paid out on chain: the cross’s settlement refunded or filled it without waiting for you (anyone may send a refund for an order that has no fill). The amounts appear here once the index has recorded them.
+                  </p>
+                ) : null}
 
                 <div className="mt-3 space-y-2">
-                  {o.open && phase === 'open' && o.nonce ? (
-                    <ActionButton label="Cancel order" variant="secondary" path="/v1/tx/cancel" body={() => ({ cross: cross.address, owner, nonce: o.nonce })} sign={sign} onDone={onChanged} />
+                  {o.open && phase === 'open' && o.nonce && now < deadline && !extended ? (
+                    <ActionButton label="Cancel order" variant="secondary" path="/v1/tx/cancel" body={() => ({ cross: cross.address, owner, nonce: o.nonce })} sign={sign} onDone={onChanged} testId="cancel-order" />
+                  ) : null}
+                  {o.open && phase === 'open' && (now >= deadline || extended) ? (
+                    <p className="text-xs text-muted" data-testid="cancel-closed">
+                      {extended ? 'This order was placed in the extension of the call, which cannot be cancelled.' : `Cancellation closed at ${clock(deadline)}. This order stays until the cross is settled, and is refunded in full if the cross does not print${rules?.rules?.ending.randomEnd ? ' or its ending window is not counted' : ''}.`}
+                    </p>
+                  ) : null}
+                  {o.open && phase === 'open' && now < deadline && !extended && rules?.rules && (rules.rules.ending.endingSecs > 0 || rules.rules.ending.cancelCutoffSecs > 0) ? (
+                    <p className="text-xs text-muted">You can cancel this order until {clock(deadline)}.</p>
                   ) : null}
                   {o.open && !o.revealed && phase === 'reveal' && o.nonce && bid ? (
                     <ActionButton label="Reveal bid" path="/v1/tx/reveal" body={() => ({ cross: cross.address, owner, nonce: o.nonce, price: bid.price, quantity: bid.quantity, salt: bid.salt })} sign={sign} onDone={onChanged} />
@@ -181,7 +144,11 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
                       body={() => ({ cross: cross.address, owner, nonce: o.nonce, payer: owner })}
                       sign={sign}
                       onDone={onChanged}
+                      testId="claim-order"
                     />
+                  ) : null}
+                  {o.open && settled && o.nonce && (cross.state === 'NoPrint' || !cross.clearing || !o.fill) ? (
+                    <p className="text-xs text-muted">If nothing of this order traded, a keeper may refund it before you claim. It then shows here as paid out.</p>
                   ) : null}
                   {o.open && !o.revealed && phase === 'awaiting-settlement' && sealed ? (
                     <p className="text-xs text-muted">This bid was not revealed in time. It does not trade and is refunded in full at settlement.</p>
@@ -219,6 +186,9 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
           ) : null}
         </div>
       ) : null}
+      {rules?.rules && rules.calls?.lockVault && cross.state !== 'Live' ? <LockupsPanel cross={cross} owner={owner} market={m} sign={sign} version={version} onChanged={onChanged} /> : null}
+      {rules?.rules && rules.state && BigInt(rules.rules.neutrality.bondQuote) > 0n && cross.state !== 'Live' ? <ChallengePanel cross={cross} rules={rules} market={m} owner={owner} sign={sign} version={version} onChanged={onChanged} now={now} programs={programs} /> : null}
     </section>
   );
 }
+

@@ -4,6 +4,7 @@ import { API_URL } from '@/lib/api';
 import type { CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatPrice } from '@/lib/units';
 import { explainNoPrint } from './no-print';
+import { PROOF_V2, type ProofRules, RulesProof } from './proof-rules';
 
 type Result = { printed: boolean; price: string | null; matched: string | null; rationed: 'buy' | 'sell' | null; noPrintReason: string | number | null };
 
@@ -19,6 +20,8 @@ export type Proof = {
   recomputed: Result;
   verified: boolean;
   notes: string[];
+  /** Present in `opening-cross/fairness-proof/v2`, the proof of a cross that carries rules. */
+  rules?: ProofRules;
 };
 
 // The program stores the reason as an enum index; the recomputation reports its name.
@@ -39,6 +42,11 @@ export function ProofLink({ address, proof }: { address: string; proof: Proof | 
           {n}
         </p>
       ))}
+      {proof.rules?.checks.some((c) => c.ok === false) ? (
+        <p role="alert" className="mt-1 text-accent-text">
+          A check on this cross’s rules did not reproduce: {proof.rules.checks.filter((c) => c.ok === false).map((c) => c.name).join(', ')}. See the Proof tab.
+        </p>
+      ) : null}
       <a className="mt-3 inline-flex min-h-6 items-center text-accent-text underline" href={`${API_URL}/v1/crosses/${address}/proof`}>
         Download the fairness proof
       </a>
@@ -125,6 +133,12 @@ export function ProofTab({ cross, proof, loaded, market: m }: { cross: CrossDeta
           </dd>
         </div>
       </dl>
+      {proof.schema === PROOF_V2 && proof.rules ? <RulesProof rules={proof.rules} market={m} /> : null}
+      {proof.schema !== PROOF_V2 && proof.schema !== 'opening-cross/fairness-proof/v1' ? (
+        <p role="alert" className="text-sm text-accent-text" data-testid="proof-unknown-schema">
+          This proof uses a schema this page does not know ({proof.schema}). The result above is shown as the proof states it; read the file for the rest.
+        </p>
+      ) : null}
       <div>
         <h3 className="text-xs text-muted">The book it was computed from</h3>
         <div role="region" aria-label="Book the proof was computed from" tabIndex={0} className="mt-2 overflow-x-auto">

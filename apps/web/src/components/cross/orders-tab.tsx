@@ -11,7 +11,7 @@ function statusOf(o: OrderRecord, cross: CrossDetail): string {
 }
 
 /** Every order the indexer has recorded for this cross. Sealed orders stay out of the list until the reveal window ends. */
-export function OrdersTab({ cross, orders, loaded, phase, market: m, owner }: { cross: CrossDetail; orders: OrderRecord[] | null; loaded: boolean; phase: Phase; market: Market; owner: string | null }) {
+export function OrdersTab({ cross, orders, loaded, phase, market: m, owner, coarse = false }: { cross: CrossDetail; orders: OrderRecord[] | null; loaded: boolean; phase: Phase; market: Market; owner: string | null; coarse?: boolean }) {
   const head = (
     <h2 id="orders-h" className="font-mono text-xs uppercase tracking-widest text-muted">
       Orders in this cross
@@ -23,6 +23,16 @@ export function OrdersTab({ cross, orders, loaded, phase, market: m, owner }: { 
         {head}
         <p className="mt-3 text-sm text-muted" data-testid="orders-sealed">
           {cross.orders.total} order{cross.orders.total === 1 ? ' is' : 's are'} in this cross. Their sides and sizes stay hidden until the reveal window ends, so nobody can read the book before it closes. Your own orders are listed in the panel beside this one.
+        </p>
+      </section>
+    );
+  }
+  if (coarse) {
+    return (
+      <section aria-labelledby="orders-h">
+        {head}
+        <p className="mt-3 text-sm text-muted" data-testid="orders-coarse">
+          {cross.orders.total} order{cross.orders.total === 1 ? ' is' : 's are'} in this cross so far. The ending period is open, so the list of orders, with their sizes and escrow, is shown once the call closes. The order accounts are public on chain; this is a display rule of this app. Your own orders are listed in the panel beside this one.
         </p>
       </section>
     );

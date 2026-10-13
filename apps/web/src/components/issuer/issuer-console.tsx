@@ -5,8 +5,8 @@ import { isAddress } from '@solana/kit';
 import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActionButton } from '@/components/cross/action-button';
 import { useSigner } from '@/components/cross/use-signer';
+import { ActionButton } from '@/components/cross/action-button';
 import { GateField } from '@/components/gate/gate-field';
 import { AutofillPanel } from '@/components/issue-wizard/autofill-panel';
 import { Concierge } from '@/components/issue-wizard/concierge';
@@ -14,6 +14,9 @@ import { DemandSource } from '@/components/issue-wizard/demand-source';
 import { FeesPanel } from '@/components/issue-wizard/fees-panel';
 import { Fieldset, Num, Select, SmallButton, Text } from '@/components/issue-wizard/fields';
 import { GuardsPanel } from '@/components/issue-wizard/guards-panel';
+import { RulesPanel } from '@/components/issue-wizard/rules-panel';
+import { useRulesVerdict } from '@/components/issue-wizard/use-rules-verdict';
+import { IssuerAction } from '@/components/issuer/issuer-action';
 import { ListingPicker } from '@/components/issue-wizard/listing-picker';
 import { Readiness } from '@/components/issue-wizard/readiness';
 import { SimulatorPanel } from '@/components/issue-wizard/simulator-panel';
@@ -27,7 +30,9 @@ import { parseReferral } from '@/lib/issuer-growth';
 import { checkIssuerForm } from '@/lib/issuer';
 import { readFacts, readMintFull } from '@/lib/issuer-chain';
 import { applyPreset } from '@/lib/issuer-presets';
-import { type ChainFacts, type MintRead, TOKEN_2022, SPL_TOKEN, creationCost, dustBond, evaluateReadiness, ready as allReady, sol } from '@/lib/issuer-readiness';
+import { useRelease } from '@/lib/issuer-programs';
+import { buildRules, bidderView, rulesBodyPart, sizeStatement } from '@/lib/issuer-rules';
+import { type ChainFacts, type Check, type MintRead, TOKEN_2022, SPL_TOKEN, creationCost, dustBond, evaluateReadiness, ready as allReady, sol } from '@/lib/issuer-readiness';
 import { derive, okMint, ruleChecks, type Row } from '@/lib/issuer-wizard';
 import type { AuthenticityVerdict, VerdictClass } from '@/lib/trust-types';
 import { formatAtoms, shortAddress } from '@/lib/units';
@@ -101,7 +106,7 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
   const [saved, setSaved] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   // A create is several transactions; if the later ones fail, the cross exists on chain without all its shards and must be finished.
-  const [unfinished, setUnfinished] = useState<{ cross: string; landed: number; total: number } | null>(null);
+  const [unfinished, setUnfinished] = useState<{ cross: string; landed: number; total: number; resume: Record<string, unknown> | null } | null>(null);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
   const bump = () => setRev((r) => r + 1);
@@ -249,11 +254,58 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
   if (!oracle.ok) for (const [k, m] of Object.entries(oracle.errors)) extra[`oracle.${k}`] = m;
   const errors: Record<string, string | undefined> = { ...(checked && !checked.ok ? checked.errors : {}), ...extra };
 
+  // ---- the rules step: read the form, ask the API what it thinks, measure the creation
+  const crossCoreRelease = useRelease('crossCore');
+  const rulesBuild = useMemo(() => buildRules(d.rules, { baseDecimals: v.baseDecimals, quoteDecimals: v.quoteDecimals, market: v.market }), [d.rules, v.baseDecimals, v.quoteDecimals, v.market]);
+  const rulesLocalErrors = Object.keys(rulesBuild.errors).length > 0;
+  const bodyBase = (): Record<string, unknown> => (checked?.ok ? { ...checked.body, ...(oracle.ok && oracle.body ? { oracle: oracle.body } : {}), ...(gateSummary?.gateMint ? { gateMint: gateSummary.gateMint } : {}) } : {});
+  // Checking rules needs no wallet: the creator and the payout address do not change a rule's verdict, so the quote mint stands in for them until one is connected.
+  const checkBody = rulesBuild.active && checked?.ok && !rulesLocalErrors && !Object.keys(extra).length && isAddress(d.quoteMint.trim()) ? { ...bodyBase(), creator: walletAddress || d.quoteMint.trim(), proceedsTo: walletAddress || d.quoteMint.trim(), integrator: integrator || d.quoteMint.trim(), ...rulesBodyPart(rulesBuild) } : null;
+  const sizeBody = checkBody && account ? { ...checkBody, creator: walletAddress, proceedsTo: walletAddress, integrator: integrator || walletAddress } : null;
+  const verdict = useRulesVerdict(checkBody, sizeBody);
+  const rulesView = useMemo(() => bidderView(rulesBuild.json, { baseDecimals: v.baseDecimals, quoteDecimals: v.quoteDecimals, openMs: new Date(d.openAt).getTime() || null, closeMs: new Date(d.closeAt).getTime() || null }), [rulesBuild.json, v.baseDecimals, v.quoteDecimals, d.openAt, d.closeAt]);
+
   const rules = ruleChecks(d, v);
   const chainChecks = account
     ? evaluateReadiness({ wallet: account.address, supplyMode: d.supplyMode, baseMint: d.baseMint.trim(), quoteMint: d.quoteMint.trim(), shards: d.shards, openAt: new Date(d.openAt), closeAt: new Date(d.closeAt), form: checked }, facts, nowMs)
     : [{ id: 'wallet', label: 'Wallet', status: 'wait' as const, detail: 'Connect a wallet to check its authority over the token, its SOL for rent and fees, and its quote token balance.' }];
-  const checks = [...chainChecks, ...rules];
+  const ruleChecks2: Check[] = [];
+  if (rulesBuild.active) {
+    const refused = verdict.check.state === 'done' && verdict.check.result.ok ? verdict.check.result.issues : [];
+    ruleChecks2.push(
+      rulesLocalErrors
+        ? { id: 'rules-valid', label: 'Rules', status: 'fail', detail: `${Object.keys(rulesBuild.errors).length === 1 ? 'A rule field cannot' : 'Rule fields cannot'} be read yet: ${Object.values(rulesBuild.errors)[0]}` }
+        : !checkBody
+          ? { id: 'rules-valid', label: 'Rules', status: 'wait', detail: 'The rules are checked once both tokens are read and the grid, the window and the other fields are valid.' }
+          : verdict.check.state !== 'done'
+            ? { id: 'rules-valid', label: 'Rules', status: 'wait', detail: 'Checking the rules…' }
+            : !verdict.check.result.ok
+              ? { id: 'rules-valid', label: 'Rules', status: 'fail', detail: verdict.check.result.error }
+              : refused.length > 0
+                ? { id: 'rules-valid', label: 'Rules', status: 'fail', detail: `${refused.length === 1 ? 'The program would refuse this rule' : `The program would refuse ${refused.length} rules`}: ${refused[0]!.message}` }
+                : { id: 'rules-valid', label: 'Rules', status: 'pass', detail: 'Every check the program makes on the rules themselves passes.' },
+    );
+    const sz = verdict.size.state === 'done' ? verdict.size.result : null;
+    ruleChecks2.push(
+      !account
+        ? { id: 'rules-size', label: 'Rules fit the transaction', status: 'wait', detail: 'Connect a wallet to measure the creation transaction exactly.' }
+        : sz === null
+          ? { id: 'rules-size', label: 'Rules fit the transaction', status: 'wait', detail: 'Measured once the rules are accepted.' }
+          : sz.ok
+            ? { id: 'rules-size', label: 'Rules fit the transaction', status: 'pass', detail: sizeStatement(sz).text }
+            : { id: 'rules-size', label: 'Rules fit the transaction', status: 'fail', detail: sz.error },
+    );
+    ruleChecks2.push(
+      crossCoreRelease.loading
+        ? { id: 'rules-program', label: 'The network can create a cross with rules', status: 'wait', detail: 'Asking which release of cross_core this network runs…' }
+        : crossCoreRelease.release === 'extended'
+          ? { id: 'rules-program', label: 'The network can create a cross with rules', status: 'pass', detail: 'The deployed cross_core has the rules extension.' }
+          : crossCoreRelease.release === 'first-release'
+            ? { id: 'rules-program', label: 'The network can create a cross with rules', status: 'fail', detail: 'The cross_core deployed here is the first release, which has no rules: it would refuse this creation. Rules are proved on LiteSVM and a local validator and go live when the upgrade is funded (H27). Clear the rules to create a plain cross now.' }
+            : { id: 'rules-program', label: 'The network can create a cross with rules', status: 'warn', detail: 'Which release of cross_core this network runs could not be read. The creation is simulated on the cluster before your wallet is asked, and nothing is signed if the program refuses it.' },
+    );
+  }
+  const checks = [...chainChecks, ...rules, ...ruleChecks2];
   const gateReady = !gateSummary || gateSummary.complete;
   const type = d.listingType ? listingType(d.listingType) : undefined;
   const typeBlocked = type?.availability === 'needs-partner';
@@ -262,10 +314,7 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
   const cost = facts?.rent ? creationCost(facts.rent, d.shards, facts.quoteAccount?.exists ?? false) : null;
   const bond = checked?.ok ? dustBond(checked.body) : null;
 
-  const body = (): Record<string, unknown> => {
-    if (!checked?.ok) return {};
-    return { ...checked.body, ...(oracle.ok && oracle.body ? { oracle: oracle.body } : {}), ...(gateSummary?.gateMint ? { gateMint: gateSummary.gateMint } : {}) };
-  };
+  const body = (): Record<string, unknown> => ({ ...bodyBase(), ...rulesBodyPart(rulesBuild) });
 
   // ---- applying a type, a format, a suggestion
   const applyFormat = (id: string) => {
@@ -322,6 +371,8 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
     gridFilled: d.minPrice.trim() !== '' && d.tick.trim() !== '' && (d.supplyMode === 'escrow' || d.schedule.every((s) => s.price.trim() !== '' && s.quantity.trim() !== '')),
     minMatchedSet: (v.effectiveMinMatched ?? 0n) > 0n,
     guardsBlocked: rules.some((c) => c.status === 'fail'),
+    // Without a wallet the creation cannot be measured, so the step is judged on the rules themselves; with one it needs the size and the network too.
+    rules: !rulesBuild.active ? 'off' : ruleChecks2.some((c) => c.status === 'fail') ? 'invalid' : ruleChecks2.filter((c) => (account ? true : c.id === 'rules-valid')).every((c) => c.status === 'pass' || (c.id === 'rules-program' && c.status === 'warn')) ? 'valid' : 'pending',
     demandEntered: demandRows.some((r) => r.quantity.trim() !== '' && r.price.trim() !== ''),
     gate: gate.preset === 'open' ? 'none' : gateSummary?.complete ? 'complete' : 'incomplete',
     walletConnected: Boolean(account),
@@ -373,7 +424,7 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
   }
 
   if (unfinished && account) {
-    return <Unfinished cross={unfinished.cross} landed={unfinished.landed} total={unfinished.total} account={account} onDone={() => { setCreated(unfinished.cross); setUnfinished(null); }} />;
+    return <Unfinished cross={unfinished.cross} landed={unfinished.landed} total={unfinished.total} resume={unfinished.resume} account={account} onDone={() => { setCreated(unfinished.cross); setUnfinished(null); }} />;
   }
 
   return (
@@ -494,6 +545,20 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
           }}
         />
 
+        <RulesPanel
+          form={d.rules}
+          setForm={(f) => set('rules', f)}
+          build={rulesBuild}
+          check={verdict.check}
+          size={verdict.size}
+          view={rulesView}
+          checkable={checkBody !== null}
+          walletConnected={Boolean(account)}
+          hasGate={Boolean(gateSummary?.gateMint)}
+          oracleOn={d.oracle.enabled}
+          supplyMode={d.supplyMode}
+        />
+
         {d.supplyMode === 'mint' ? (
           <p className="text-sm text-muted">
             Minting crosses take over the token&apos;s mint authority in the same transaction, so only the cross can create supply, and only at the clearing price. Your wallet must hold that authority now.
@@ -541,7 +606,7 @@ function Wizard({ account }: { account: UiWalletAccount | null }) {
               <li>If the cross does not print, every bidder is refunded in full and, in a minting cross, nothing is created.</li>
             </ul>
           </div>
-          {account ? <CreateAction account={account} body={body} disabled={!canCreate} onDone={(c) => setCreated(c)} onPartial={(c, landed, total) => setUnfinished({ cross: c, landed, total })} /> : <DisabledCreate />}
+          {account ? <CreateAction account={account} body={body} ruled={rulesBuild.active} disabled={!canCreate} onDone={(c) => setCreated(c)} onPartial={(c, landed, total, opening) => setUnfinished({ cross: c, landed, total, resume: opening !== null && landed < opening ? body() : null })} /> : <DisabledCreate />}
           {typeBlocked ? (
             <p role="status" className="text-sm text-accent-text">
               {type?.name} cannot be created from this page yet, so Create stays off.
@@ -572,13 +637,44 @@ function DisabledCreate() {
   );
 }
 
-function CreateAction({ account, body, disabled, onDone, onPartial }: { account: UiWalletAccount; body: () => Record<string, unknown>; disabled: boolean; onDone: (cross: string) => void; onPartial: (cross: string, landed: number, total: number) => void }) {
+function CreateAction({ account, body, ruled, disabled, onDone, onPartial }: { account: UiWalletAccount; body: () => Record<string, unknown>; ruled: boolean; disabled: boolean; onDone: (cross: string) => void; onPartial: (cross: string, landed: number, total: number, openingTransactions: number | null) => void }) {
   const sign = useSigner(account);
-  return <ActionButton label="Create the cross" path="/v1/tx/create-cross" disabled={disabled} body={body} sign={sign} onDone={(_s, extra) => onDone(String(extra.cross))} onPartial={(extra, landed, total) => onPartial(String(extra.cross), landed, total)} />;
+  if (ruled) {
+    return (
+      <IssuerAction
+        label="Create the cross with its rules"
+        path="/v1/tx/create-cross-ruled"
+        needs="crossCore"
+        what="Creating a cross with rules"
+        body={body}
+        sign={sign}
+        disabled={disabled}
+        testId="create-ruled"
+        onDone={(_s, extra) => onDone(String(extra.cross))}
+        onPartial={(extra, landed, total) => onPartial(String(extra.cross), landed, total, (extra.sizes as { firstTransactions?: number } | undefined)?.firstTransactions ?? null)}
+      />
+    );
+  }
+  return <ActionButton label="Create the cross" path="/v1/tx/create-cross" disabled={disabled} body={body} sign={sign} onDone={(_s, extra) => onDone(String(extra.cross))} onPartial={(extra, landed, total) => onPartial(String(extra.cross), landed, total, null)} />;
 }
 
-function Unfinished({ cross, landed, total, account, onDone }: { cross: string; landed: number; total: number; account: UiWalletAccount; onDone: () => void }) {
+function Unfinished({ cross, landed, total, resume, account, onDone }: { cross: string; landed: number; total: number; resume: Record<string, unknown> | null; account: UiWalletAccount; onDone: () => void }) {
   const sign = useSigner(account);
+  if (resume) {
+    // The cross does not exist yet: its first transaction (your quote account, the handover of the mint authority) landed and the creation did not.
+    // The same request builds the same transactions for the same cross number, so the ones that landed are skipped, not sent twice.
+    return (
+      <div role="alert" className="mt-8 rounded-[var(--radius-card)] border border-border p-6" data-testid="unfinished-creation">
+        <p className="font-medium">The cross was not created: its opening stopped part way.</p>
+        <p className="mt-1 text-sm text-muted">
+          {landed} of {total} transactions landed, and the one that creates the cross with its rules did not. Nothing can trade. Sending the rest creates it; the transactions that already landed are not sent again. The cross will be <span className="break-all font-mono">{cross}</span>.
+        </p>
+        <div className="mt-4">
+          <IssuerAction label="Create the cross with its rules" path="/v1/tx/create-cross-ruled" needs="crossCore" what="Creating a cross with rules" body={() => resume} sign={sign} skip={landed} testId="resume-creation" onDone={onDone} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div role="alert" className="mt-8 rounded-[var(--radius-card)] border border-border p-6">
       <p className="font-medium">Your cross exists but its setup stopped part way.</p>

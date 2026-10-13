@@ -25,6 +25,7 @@ import { recentReplays, replayRow } from './replay.js';
 import { registerCalendar } from './routes/calendar.js';
 import { registerCrossList } from './routes/crosslist.js';
 import { registerGate } from './routes/gate.js';
+import { registerHolderPrograms } from './routes/holder-programs.js';
 import { registerHolderRoutes } from './routes/holder.js';
 import { registerIssuerBoard } from './routes/issuer-board.js';
 import { registerIssuerTx } from './routes/issuer-tx.js';
@@ -853,6 +854,7 @@ export async function buildServer(d: ApiDeps) {
   registerSettleTx(app, { account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
   registerIssuerTx(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
   registerIssuerBoard(app, { db: d.db, curators: new Set((process.env.ISSUER_CURATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean)), ...(d.clock && { clock: d.clock }) });
+  registerHolderPrograms(app, { account: d.account, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
   const holder = await registerHolderRoutes(app, d);
   app.addHook('onClose', async () => holder.stop());
   // Liquidity, pay-per-call, Blinks, routed execution, fees, duplicate tickers, integrity, presets, agents, dashboard. RPC_URL may list

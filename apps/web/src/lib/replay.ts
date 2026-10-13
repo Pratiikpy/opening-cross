@@ -69,12 +69,39 @@ const KIND_LABEL: Record<string, string> = {
   cleared: 'Cleared',
   order_claimed: 'Order settled',
   finalized: 'Finalized',
+  rules_set: 'Rules set',
+  order_placement: 'Order placed in a window',
+  draw_started: 'Draw begun',
+  draw_finished: 'Draw finished',
+  extension_pending: 'Extension pending',
+  insider_challenged: 'Insider challenged',
+  challenge_resolved: 'Challenge ruled on',
+  challenge_expired: 'Challenge expired',
+  lock_created: 'Fill locked',
+  lock_released: 'Lock released',
+  print_fed: 'Price published to lenders',
 };
 export const kindLabel = (kind: string): string => KIND_LABEL[kind] ?? kind;
 
 const sideOf = (v: unknown): 'buy' | 'sell' | null => (v === 0 || v === '0' ? 'buy' : v === 1 || v === '1' ? 'sell' : null);
 const RATIONED = ['none', 'buy', 'sell'];
-const NO_PRINT = ['no crossing orders', 'volume below the minimum', 'imbalance too high', 'settlement window expired', 'oracle divergence', 'oracle unavailable'];
+const NO_PRINT = [
+  'no crossing orders',
+  'volume below the minimum',
+  'imbalance too high',
+  'settlement window expired',
+  'oracle divergence',
+  'oracle unavailable',
+  'amount raised below the minimum',
+  'float below the minimum',
+  'valuation above the ceiling',
+  'price moved too far from the reference',
+  'trading halted',
+  'corporate action',
+  'token paused',
+  'oracles disagreed',
+];
+const PURPOSE = ['', 'the last counted ending window', 'the length of the extension'];
 const KIND = ['launch', 'reopen', 'tender', 'recurring'];
 
 export const utcStamp = (iso: string | null): string => (iso ? `${new Date(iso).toISOString().replace('T', ' ').slice(0, 19)} UTC` : 'time not recorded');
@@ -132,6 +159,41 @@ export function describeEvent(e: ReplayEvent, m: Market): string {
       const got = quote(d.quoteOut);
       return fill === 0n ? `${who(d.owner)} sold nothing and took its tokens back.` : `${who(d.owner)} sold ${tokens(d.fill) ?? 'its fill'}${got ? ` and received ${got} quote tokens` : ''}.`;
     }
+    case 'rules_set': {
+      const bits: string[] = [];
+      const ending = d.ending as { endingSecs?: number; buckets?: number } | undefined;
+      if (ending?.endingSecs) bits.push(`an ending period of ${ending.endingSecs} s in ${ending.buckets} windows`);
+      const bond = big(d.bondQuote);
+      if (bond && bond > 0n) bits.push(`a bond of ${formatAtoms(bond, m.quoteDecimals)} quote behind ${str(d.insiders) ?? 'its'} declared insider${str(d.insiders) === '1' ? '' : 's'}`);
+      return `The cross’s rules were fixed${bits.length ? `: ${bits.join(', ')}` : ''}. They cannot change.`;
+    }
+    case 'order_placement': {
+      const x = d.ext as { class?: number; bucket?: number; lockCliff?: number } | undefined;
+      const cls = x?.class ? [, 'small verified buyer', 'locked buyer', 'priority'][x.class] : null;
+      return `An order was recorded${x && x.bucket !== undefined && x.bucket !== 255 ? ` in ending window ${x.bucket + 1}` : ''}${cls ? ` as a ${cls} order` : ''}${x?.lockCliff ? `, its fill locked for ${x.lockCliff} s` : ''}.`;
+    }
+    case 'draw_started':
+      return `A draw began at slot ${str(d.slot) ?? 'unknown'} to fix ${PURPOSE[Number(d.purpose)] ?? 'a rule of the cross'}.`;
+    case 'draw_finished': {
+      const end = Number(d.endBucket);
+      return `The draw finished${Number(d.purpose) === 1 && end !== 255 && Number.isFinite(end) ? `: ending window ${end + 1} is the last that counts, and orders in later windows are refunded` : Number(d.purpose) === 2 ? ': the length of the extension was set' : ''}.`;
+    }
+    case 'extension_pending': {
+      const reason = NO_PRINT[Number(d.reason)];
+      return `The cross did not print${reason ? ` (${reason})` : ''} and its rules allow one extension, so the call will reopen for a drawn length.`;
+    }
+    case 'insider_challenged':
+      return `${who(d.challenger)} challenged ${who(d.subject)} as an undeclared insider (challenge ${str(d.id) ?? ''}).`.replace(' ()', '');
+    case 'challenge_resolved':
+      return d.upheld === true ? `Challenge ${str(d.id) ?? ''} was upheld and ${quote(d.slash) ? `${quote(d.slash)} quote` : 'part'} of the issuer’s bond was slashed.` : `Challenge ${str(d.id) ?? ''} was rejected.`;
+    case 'challenge_expired':
+      return `Challenge ${str(d.id) ?? ''} expired unanswered and its deposit was returned.`;
+    case 'lock_created':
+      return `${who(d.owner)}’s fill of ${tokens(d.amount) ?? 'tokens'} was locked${big(d.cliffSecs) ? ` for ${str(d.cliffSecs)} s` : ''}${big(d.vestSecs) ? ` and vests over ${str(d.vestSecs)} s` : ''}.`;
+    case 'lock_released':
+      return `${tokens(d.amount) ?? 'Tokens'} were released to ${who(d.owner)}; ${tokens(d.remaining) ?? 'none'} remain locked.`;
+    case 'print_fed':
+      return `The cross’s price ${price(d.price) ?? ''} for ${tokens(d.matched) ?? 'its volume'} was published to the lender price feed.`.replace('  ', ' ');
     case 'finalized':
       return `The cross was finalized: every order is paid or refunded and the proceeds went to the issuer${quote(d.proceedsQuote) ? ` (${quote(d.proceedsQuote)} quote tokens after fees)` : ''}.`;
     default:

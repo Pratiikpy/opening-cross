@@ -11,6 +11,7 @@ const empty: ConciergeState = {
   gridFilled: false,
   minMatchedSet: false,
   guardsBlocked: false,
+  rules: 'off',
   demandEntered: false,
   gate: 'none',
   walletConnected: false,
@@ -29,6 +30,7 @@ describe('concierge checklist', () => {
       ['grid', 'todo'],
       ['window', 'done'],
       ['guards', 'todo'],
+      ['rules', 'optional'],
       ['simulate', 'optional'],
       ['gate', 'optional'],
       ['wallet', 'todo'],
@@ -131,5 +133,18 @@ describe('draft storage', () => {
     const d = newDraft(now);
     expect(new Date(d.closeAt).getTime() - new Date(d.openAt).getTime()).toBe(2 * 3_600_000);
     expect(new Date(d.openAt).getTime() - now.getTime()).toBe(3_600_000);
+  });
+});
+
+describe('the rules step', () => {
+  it('is optional when off, blocks creation while refused, and is done only when the rules are accepted', () => {
+    expect(status(empty, 'rules')).toBe('optional');
+    expect(status({ ...empty, rules: 'pending' }, 'rules')).toBe('todo');
+    expect(status({ ...empty, rules: 'invalid' }, 'rules')).toBe('blocked');
+    expect(status({ ...empty, rules: 'valid' }, 'rules')).toBe('done');
+    const ready: ConciergeState = { ...empty, listingType: 'launch' as never, baseMint: { entered: true, read: 'ok', blockers: 0 }, quoteMint: { entered: true, read: 'ok' }, gridFilled: true, minMatchedSet: true, walletConnected: true, readiness: 'ready' };
+    expect(status({ ...ready, rules: 'valid' }, 'create')).toBe('current');
+    expect(status({ ...ready, rules: 'pending' }, 'create')).toBe('todo');
+    expect(status({ ...ready, rules: 'invalid' }, 'create')).toBe('todo');
   });
 });

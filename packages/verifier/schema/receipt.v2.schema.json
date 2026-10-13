@@ -1,0 +1,624 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opening-cross:schema:receipt:v2",
+  "title": "Opening Cross receipt, version 2",
+  "description": "A receipt restates the result the chain recorded for a settled cross, the verdict of the independent recomputation, and the transactions that recorded the result. Version 2 is the receipt of a cross that carries rules (ADR-0450 to ADR-0462): it is built from a version-2 fairness proof and adds the checks made on the rules, the draw and the allocation figures. A cross created without rules keeps version 1, unchanged. Bound to its content by the SHA-256 of its canonical JSON (docs/adr/0601-receipt-v2-for-crosses-with-rules.md); not signed, not a zero-knowledge or multi-party proof, no timestamp and no randomness.",
+  "type": "object",
+  "required": [
+    "schema",
+    "network",
+    "program",
+    "cross",
+    "market",
+    "result",
+    "verification",
+    "orders",
+    "anchors",
+    "wallet",
+    "rules",
+    "limits"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "opening-cross/receipt/v2"
+    },
+    "network": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The cluster the API follows, as it reports it."
+    },
+    "program": {
+      "$ref": "#/$defs/address"
+    },
+    "cross": {
+      "$ref": "#/$defs/address"
+    },
+    "market": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priceScale",
+        "baseDecimals",
+        "quoteDecimals"
+      ],
+      "properties": {
+        "priceScale": {
+          "$ref": "#/$defs/u64"
+        },
+        "baseDecimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "quoteDecimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "result": {
+      "description": "The on-chain outcome (the `onchain` object of the fairness proof), with the no-print reason as its name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "printed",
+        "price",
+        "matched",
+        "rationed",
+        "noPrintReason"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "Cleared",
+            "NoPrint",
+            "Finalized"
+          ]
+        },
+        "printed": {
+          "type": "boolean"
+        },
+        "price": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/u64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "matched": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/u64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationed": {
+          "enum": [
+            "none",
+            "buy",
+            "sell",
+            null
+          ]
+        },
+        "noPrintReason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "NoCross, BelowMinimumVolume, ImbalanceTooHigh, SettlementExpired, OracleDivergence, OracleUnavailable, BelowMinimumRaise, FloatTooLow, FdvTooHigh, PriceMoved, Halted, CorporateAction, IssuerPaused or OracleDisagreement; a reason this version does not know is written as `reason <index>`."
+        }
+      },
+      "if": {
+        "type": "object",
+        "properties": {
+          "printed": {
+            "const": true
+          }
+        },
+        "required": [
+          "printed"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "string"
+          },
+          "matched": {
+            "type": "string"
+          },
+          "noPrintReason": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "null"
+          },
+          "matched": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "recomputedMatchesChain",
+        "proofSchema",
+        "proofSha256"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recomputedMatchesChain": {
+          "type": "boolean",
+          "description": "The `verified` field of the fairness proof."
+        },
+        "proofSchema": {
+          "const": "opening-cross/fairness-proof/v2"
+        },
+        "proofSha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 of the canonical JSON of the whole fairness proof this receipt was built from."
+        }
+      }
+    },
+    "orders": {
+      "description": "Counts over every order of the cross, or null when the index could not be read.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "total",
+            "filled"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "filled": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "anchors": {
+      "description": "The transactions that recorded the result, from the cross's event log.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event",
+          "signature",
+          "slot",
+          "time"
+        ],
+        "properties": {
+          "event": {
+            "enum": [
+              "CrossCleared",
+              "CrossFinalized"
+            ]
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{64,90}$"
+          },
+          "slot": {
+            "$ref": "#/$defs/u64"
+          },
+          "time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "wallet": {
+      "description": "Present for a wallet receipt: that wallet's orders in this cross.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "owner",
+            "orders"
+          ],
+          "properties": {
+            "owner": {
+              "$ref": "#/$defs/address"
+            },
+            "orders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "order",
+                  "index",
+                  "side",
+                  "escrow",
+                  "limitPrice",
+                  "quantity",
+                  "status",
+                  "fill",
+                  "baseOut",
+                  "quoteOut",
+                  "fee"
+                ],
+                "properties": {
+                  "order": {
+                    "$ref": "#/$defs/address"
+                  },
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "side": {
+                    "enum": [
+                      "buy",
+                      "sell"
+                    ]
+                  },
+                  "escrow": {
+                    "$ref": "#/$defs/u64"
+                  },
+                  "limitPrice": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "quantity": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "committed",
+                      "revealed",
+                      "cancelled",
+                      "claimed"
+                    ]
+                  },
+                  "fill": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "baseOut": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "quoteOut": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fee": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/u64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "rules": {
+      "description": "What a version-2 proof adds to the recomputed result.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checks",
+        "ending",
+        "draw",
+        "allocation",
+        "limits"
+      ],
+      "properties": {
+        "checks": {
+          "description": "What was re-derived from the cross account beyond the clearing itself. ok is null when the inputs the check needs were not supplied or no longer exist.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "ok",
+              "detail"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "ok": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "ending": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "endingSecs",
+                "buckets",
+                "cancelCutoffSecs",
+                "randomEnd",
+                "startsAt",
+                "lastCountedBucket",
+                "extension"
+              ],
+              "properties": {
+                "endingSecs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "buckets": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                },
+                "cancelCutoffSecs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "randomEnd": {
+                  "type": "boolean"
+                },
+                "startsAt": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^-?[0-9]{1,19}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lastCountedBucket": {
+                  "oneOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 7
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extension": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "minSecs",
+                        "maxSecs",
+                        "used",
+                        "epoch"
+                      ],
+                      "properties": {
+                        "minSecs": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "maxSecs": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "used": {
+                          "type": "boolean"
+                        },
+                        "epoch": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "draw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "epoch",
+            "seed",
+            "endBucket"
+          ],
+          "properties": {
+            "epoch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "seed": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "endBucket": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 7
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "allocation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "classQty",
+                "tickets",
+                "rho",
+                "insiderUpperBound",
+                "counted"
+              ],
+              "properties": {
+                "classQty": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/u64"
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "tickets": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rho": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "insiderUpperBound": {
+                  "$ref": "#/$defs/u64"
+                },
+                "counted": {
+                  "$ref": "#/$defs/u64"
+                }
+              }
+            }
+          ]
+        },
+        "limits": {
+          "description": "What the proof does not establish.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What the receipt does not show, carried inside it so it cannot be quoted without it."
+    }
+  },
+  "$defs": {
+    "address": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+    },
+    "u64": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

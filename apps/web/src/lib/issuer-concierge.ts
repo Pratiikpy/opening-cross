@@ -6,7 +6,7 @@ import type { ListingTypeId } from '@opening-cross/presets/launch';
 
 export type StepStatus = 'done' | 'current' | 'todo' | 'optional' | 'later' | 'blocked';
 
-export type StepId = 'type' | 'token' | 'quote' | 'grid' | 'window' | 'guards' | 'simulate' | 'gate' | 'wallet' | 'create' | 'treasury' | 'disclosure';
+export type StepId = 'type' | 'token' | 'quote' | 'grid' | 'window' | 'guards' | 'rules' | 'simulate' | 'gate' | 'wallet' | 'create' | 'treasury' | 'disclosure';
 
 export type Step = {
   id: StepId;
@@ -33,6 +33,8 @@ export type ConciergeState = {
   gridFilled: boolean;
   minMatchedSet: boolean;
   guardsBlocked: boolean;
+  /** The rules step: none set, set and accepted, set and refused or unreadable, or set and still being checked. */
+  rules: 'off' | 'valid' | 'invalid' | 'pending';
   demandEntered: boolean;
   gate: 'none' | 'incomplete' | 'complete';
   walletConnected: boolean;
@@ -117,6 +119,22 @@ export function concierge(s: ConciergeState): Step[] {
     status: s.guardsBlocked ? 'blocked' : s.minMatchedSet ? 'done' : 'todo',
     detail: s.guardsBlocked ? 'A guard as set would stop the cross ever printing.' : s.minMatchedSet ? 'A minimum volume is set.' : 'No minimum volume is set, so a very thin sale would still print. Set one, or keep none on purpose.',
     anchor: 'guards',
+  });
+
+  push({
+    id: 'rules',
+    title: 'Add rules for the ending, who is filled first and the team',
+    why: 'Rules make the call harder to game and say who is filled first when a level is oversubscribed. They are written once, when the cross is created.',
+    status: s.rules === 'off' ? 'optional' : s.rules === 'valid' ? 'done' : s.rules === 'invalid' ? 'blocked' : 'todo',
+    detail:
+      s.rules === 'off'
+        ? 'Optional. Leave every rule off and the cross is created as it is today, or start from a preset.'
+        : s.rules === 'valid'
+          ? 'The rules are accepted. With a wallet connected, the creation transaction is measured too, and the readiness list shows how many bytes it uses.'
+          : s.rules === 'invalid'
+            ? 'A rule is refused, cannot be read, or the network cannot create a cross with rules yet. The reason is shown beside it.'
+            : 'The rules are being checked against the grid, the window and the transaction size.',
+    anchor: 'rules',
   });
 
   push({

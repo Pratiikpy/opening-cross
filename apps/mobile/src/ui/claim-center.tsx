@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { type ClaimScan, claimBody, scanClaims } from '../lib/claims';
-import { ActionError, build, signSendConfirm } from '../lib/tx';
+import { build, failureText, signSendConfirm } from '../lib/tx';
 import { formatAtoms, shortAddress } from '../lib/units';
 import { useWallet } from '../lib/wallet';
 import { Button, Card, Notice, Txt } from './components';
@@ -30,7 +30,12 @@ export function ClaimCenter({ owner, onChanged }: { owner: string; onChanged: ()
       await load();
       onChanged();
     } catch (e) {
-      setError(e instanceof ActionError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
+      // A refund can be pushed by a keeper before this wallet claims it. Read the chain again so a row paid out meanwhile leaves the list.
+      const before = scan?.claimable.length ?? 0;
+      const fresh = await scanClaims(owner);
+      setScan(fresh);
+      const gone = before - fresh.claimable.length;
+      setError(gone > 0 ? `${gone} order${gone === 1 ? ' was' : 's were'} paid out on chain before you claimed (a keeper may refund an order that has no fill). The list is up to date; claim again for what is left.` : failureText(e));
     } finally {
       setStatus(null);
     }
@@ -59,6 +64,11 @@ export function ClaimCenter({ owner, onChanged }: { owner: string; onChanged: ()
               <Txt variant="small" tone="muted">
                 escrow {formatAtoms(BigInt(c.order.escrow), c.order.side === 'buy' ? c.cross.decimals.quote : c.cross.decimals.base)} {c.order.side === 'buy' ? 'quote' : 'tokens'}
               </Txt>
+              {c.kind === 'no-print' ? (
+                <Txt variant="small" tone="muted">
+                  Nothing traded, so anyone can send this refund and it always goes to your wallet. A keeper may do it first.
+                </Txt>
+              ) : null}
             </View>
           ))}
           <Txt variant="small" tone="muted">

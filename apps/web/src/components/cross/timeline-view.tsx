@@ -32,7 +32,7 @@ function useSettleTimes(address: string, state: CrossDetail['state']): SettleTim
 }
 
 /** The four stages of a cross with the real times from its window, the stage it is in, and a worked example of its price. */
-export function TimelineView({ cross, book, orders, phase, market: m }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; market: Market }) {
+export function TimelineView({ cross, book, orders, phase, market: m, coarse = false }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; market: Market; coarse?: boolean }) {
   const times = useSettleTimes(cross.address, cross.state);
   const stages = stagesOf(cross, phase, times);
   const example = workedExample(cross, book, m, orders);
@@ -68,9 +68,11 @@ export function TimelineView({ cross, book, orders, phase, market: m }: { cross:
       </ol>
       <div className="mt-6 rounded-lg bg-surface p-4" data-testid="worked-example">
         <p className="font-mono text-xs uppercase tracking-widest text-muted">
-          {example.kind === 'projection' ? 'Worked example, if the call closed now' : example.kind === 'result' ? 'Worked example from this result' : 'What happened'}
+          {example.kind === 'projection' ? (coarse ? 'Worked example, held back' : 'Worked example, if the call closed now') : example.kind === 'result' ? 'Worked example from this result' : 'What happened'}
         </p>
-        <p className="mt-2 text-sm leading-relaxed">{example.text}</p>
+        <p className="mt-2 text-sm leading-relaxed">
+          {coarse && example.kind === 'projection' ? 'The ending period is open, so the worked example with the exact price is held back until the call closes. The price above is shown to the nearest band.' : example.text}
+        </p>
       </div>
     </section>
   );

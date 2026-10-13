@@ -11,7 +11,9 @@
     ".": "./src/gate.ts",
     "./gate": "./src/gate.ts",
     "./gate-allowlist": "./src/gate-allowlist.ts",
-    "./launch": "./src/launch.ts"
+    "./launch": "./src/launch.ts",
+    "./rules": "./src/rules.ts",
+    "./treasury": "./src/treasury.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

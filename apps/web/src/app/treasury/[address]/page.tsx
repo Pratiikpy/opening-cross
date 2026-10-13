@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { NetworkTag, TreasuryStateBadge } from '@/components/treasury/badges';
+import { HolderActions } from '@/components/treasury/holder-actions';
+import { RightsReleaseNote } from '@/components/treasury/release-note';
 import { RightsCards } from '@/components/treasury/rights-cards';
 import { DisclosureStatus, UpdatesFeed } from '@/components/treasury/updates-feed';
 import { get } from '@/lib/api';
@@ -95,6 +97,8 @@ export default async function TreasuryPage({ params }: Params) {
         ) : null}
       </section>
 
+      <HolderActions treasury={t.address} coinMint={t.terms.coinMint} quoteMint={t.terms.quoteMint} />
+
       <section aria-labelledby="terms" className="mt-12">
         <h2 id="terms" className="text-2xl font-semibold tracking-tight">Terms</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted">Fixed when the treasury was created. The program has no instruction that changes them.</p>
@@ -149,6 +153,7 @@ export default async function TreasuryPage({ params }: Params) {
         {upd.ok ? <UpdatesFeed updates={upd.data.updates} decimals={d} /> : <p role="status" className="mt-4 text-sm text-muted">Updates are unavailable right now: {upd.error}</p>}
       </section>
 
+      <RightsReleaseNote />
       <RightsCards cards={t.rights} />
 
       <section aria-labelledby="events" className="mt-14">

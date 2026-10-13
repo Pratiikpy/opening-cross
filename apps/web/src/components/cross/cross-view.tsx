@@ -6,6 +6,8 @@ import { FollowButton } from '@/components/alerts/follow-button';
 import { StateBadge } from '@/components/state-badge';
 import { API_URL } from '@/lib/api';
 import { HOLDER_API_URL } from '@/lib/holder-api';
+import { type Programs, usePrograms } from '@/lib/holder-programs';
+import { type RulesRead, type Standing, endingNow } from '@/lib/holder-rules';
 import type { AuthenticityView, PromiseView } from '@/lib/trust-types';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, shortAddress } from '@/lib/units';
@@ -26,8 +28,11 @@ import { SignedBand } from './signed-band';
 import { Tabs } from './tabs';
 import { TimelineView } from './timeline-view';
 import type { Phase } from './timeline';
+import { RulesPanel } from './rules-panel';
 import { TokenFacts } from './token-facts';
+import { useIndicative, useRules } from './use-rules';
 import { useSigner } from './use-signer';
+import { useStanding } from './use-standing';
 
 export type { Phase } from './timeline';
 
@@ -66,6 +71,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
   const [now, setNow] = useState(() => BigInt(serverNow));
   const [version, setVersion] = useState(0);
   const { account } = useWallet();
+  const programs = usePrograms();
 
   const refresh = useCallback(async () => {
     const [c, b, o] = await Promise.all([
@@ -118,6 +124,11 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
 
   const phase = phaseOf(cross, now);
   const m = marketOf(cross);
+  // The rules the cross carries, and from them the ending period: while it is open the page shows the coarse figures of /indicative, not the book's.
+  const rules = useRules(initial.address, version);
+  const ending = endingNow(rules?.rules ?? null, rules?.state, BigInt(cross.window.closeTs), now);
+  const indicative = useIndicative(initial.address, ending.kind === 'ending' && cross.state === 'Live', version);
+  const standing = useStanding(cross, rules, account?.address ?? null, version);
 
   const bookTab = (
     <section aria-labelledby="book-h">
@@ -129,6 +140,11 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
           ? 'Only revealed bids appear here. A sealed bid carries no price until its owner reveals it.'
           : 'Every resting order, by price. The price it trades at is where demand and supply meet.'}
       </p>
+      {ending.kind === 'ending' ? (
+        <p className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4 text-sm" data-testid="book-coarse">
+          The ending period is open, so this page does not draw the exact book. The price and the balance of demand are shown to the nearest band on the Overview. The order accounts are public on chain, so this is the display rule of this app and not secrecy; the exact book appears here again once the call closes.
+        </p>
+      ) : (
       <div className="mt-5">
         <BookChart
           book={book}
@@ -139,6 +155,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
           connected={account !== null}
         />
       </div>
+      )}
     </section>
   );
 
@@ -152,10 +169,11 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
       <p className="mt-2 text-sm text-muted">
         {cross.kind} · {cross.disclosure === 'sealed' ? 'sealed bids' : 'open book'} · base {cross.baseMint ? shortAddress(cross.baseMint) : 'minted at settlement'} · quote {shortAddress(cross.quoteMint)}
         {cross.gateMint ? ' · eligibility pass required' : ''}
+        {rules?.rules ? ' · has rules (see the Rules tab)' : ''}
       </p>
 
       <div className="mt-8">
-        <Hero cross={cross} book={book} orders={orders} phase={phase} now={now} market={m} />
+        <Hero cross={cross} book={book} orders={orders} phase={phase} now={now} market={m} ending={ending} indicative={indicative} />
       </div>
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -169,15 +187,16 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
                 label: 'Overview',
                 content: (
                   <div className="space-y-8">
-                    <TimelineView cross={cross} book={book} orders={orders} phase={phase} market={m} />
+                    <TimelineView cross={cross} book={book} orders={orders} phase={phase} market={m} coarse={ending.kind === 'ending'} />
                     <TokenFacts cross={cross} market={m} identity={initialIdentity} />
                   </div>
                 ),
               },
+              { id: 'rules', label: 'Rules', content: <RulesPanel cross={cross} read={rules} market={m} now={now} programs={programs} wallet={account?.address ?? null} standing={standing} /> },
               { id: 'book', label: 'Book', content: bookTab },
-              { id: 'orders', label: 'Orders', content: <OrdersTab cross={cross} orders={orders} loaded={ordersLoaded} phase={phase} market={m} owner={account?.address ?? null} /> },
+              { id: 'orders', label: 'Orders', content: <OrdersTab cross={cross} orders={orders} loaded={ordersLoaded} phase={phase} market={m} owner={account?.address ?? null} coarse={ending.kind === 'ending'} /> },
               { id: 'proof', label: 'Proof', content: <ProofTab cross={cross} proof={proof} loaded={proofLoaded} market={m} /> },
-              { id: 'replay', label: 'Replay', content: <ReplayTab cross={cross} version={version} market={m} /> },
+              { id: 'replay', label: 'Replay', content: <ReplayTab cross={cross} version={version} market={m} coarse={ending.kind === 'ending'} /> },
               { id: 'comments', label: 'Comments', content: <CommentsTab cross={cross.address} account={account} /> },
             ]}
           />
@@ -185,7 +204,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
 
         {/* What a person can do comes first on a phone, and the panels that load after the page go below it so they never push it down. */}
         <div className="order-first space-y-6 lg:order-none">
-          {account ? <Connected account={account} cross={cross} phase={phase} market={m} book={book} version={version} onChanged={refresh} onMarks={setOwn} /> : <ConnectPrompt phase={phase} />}
+          {account ? <Connected account={account} cross={cross} phase={phase} market={m} book={book} version={version} onChanged={refresh} onMarks={setOwn} rules={rules} standing={standing} now={now} programs={programs} /> : <ConnectPrompt phase={phase} />}
           {phase === 'awaiting-settlement' && !account ? (
             <p className="rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">
               This cross is ready to settle. Anyone can settle it; connect a wallet to do so, or wait for a keeper.
@@ -210,7 +229,15 @@ function Connected({
   version,
   onChanged,
   onMarks,
+  rules,
+  standing,
+  now,
+  programs,
 }: {
+  rules: RulesRead | null | undefined;
+  standing: Standing | null;
+  now: bigint;
+  programs: Programs | null | 'unavailable';
   account: UiWalletAccount;
   cross: CrossDetail;
   phase: Phase;
@@ -223,9 +250,9 @@ function Connected({
   const sign = useSigner(account);
   return (
     <>
-      {phase === 'open' ? <OrderTicket cross={cross} market={market} owner={account.address} sign={sign} book={book} onPlaced={onChanged} /> : null}
-      {phase === 'awaiting-settlement' ? <SettlePanel cross={cross} payer={account.address} sign={sign} onDone={onChanged} /> : null}
-      <MyOrders cross={cross} phase={phase} market={market} owner={account.address} sign={sign} version={version} onChanged={onChanged} onMarks={onMarks} />
+      {phase === 'open' ? <OrderTicket cross={cross} market={market} owner={account.address} sign={sign} book={book} onPlaced={onChanged} rules={rules} standing={standing} now={now} /> : null}
+      {phase === 'awaiting-settlement' ? <SettlePanel cross={cross} payer={account.address} sign={sign} onDone={onChanged} rules={rules} /> : null}
+      <MyOrders cross={cross} phase={phase} market={market} owner={account.address} sign={sign} version={version} onChanged={onChanged} onMarks={onMarks} rules={rules} now={now} programs={programs} />
     </>
   );
 }

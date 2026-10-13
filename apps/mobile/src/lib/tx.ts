@@ -10,6 +10,22 @@ export type Unsigned = { transaction: string; signers: string[] };
 
 export class ActionError extends Error {}
 
+/** The wallet-facing errors the program gives when an order meets a rule, in the words a person needs. */
+export function explainProgramError(message: string): string {
+  if (/Wrong shard for this order/i.test(message)) return 'The ending period moved into its next window while the wallet was open, so the transaction named the wrong window. Nothing was placed and no funds moved. Press the button again.';
+  if (/Orders can no longer be cancelled/i.test(message)) return 'The cancel cutoff has passed: this order can no longer be withdrawn. It is still refunded in full if the cross does not print.';
+  if (/identity has reached its order or escrow limit/i.test(message)) return 'This wallet has reached the limit the cross sets on orders or escrow per identity.';
+  if (/does not qualify for the class/i.test(message)) return 'The order does not qualify for the class it asked for. Choose the general class or meet the class condition.';
+  if (/lottery order must be exactly one lot/i.test(message)) return 'A class-1 lottery order must be exactly one lot.';
+  if (/Fallback functions are not supported|InstructionFallbackNotFound/i.test(message)) return 'The program deployed on this network does not have this instruction yet: the upgrade (H27) has not been funded. Nothing was changed.';
+  return message;
+}
+
+/** The text of a failure, with the program's own rule errors translated. */
+export function failureText(e: unknown): string {
+  return e instanceof ActionError ? explainProgramError(e.message) : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`;
+}
+
 type Deps = { fetchImpl?: typeof fetch; apiUrl?: string; rpcUrl?: string; sleep?: (ms: number) => Promise<void>; now?: () => number };
 
 /** POSTs to an API transaction builder; returns the unsigned transactions in order. */

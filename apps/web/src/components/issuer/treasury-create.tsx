@@ -77,9 +77,14 @@ function Form({ account }: { account: UiWalletAccount }) {
           <p className="mt-1 break-all font-mono text-xs text-muted" data-testid="created-treasury">
             {created.treasury}
           </p>
-          <Link href={`/treasury/${created.treasury}`} className="mt-4 inline-flex min-h-11 items-center rounded-full bg-accent-fill px-5 py-2.5 text-sm font-medium text-on-accent">
-            Open the page holders see
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href={`/treasury/${created.treasury}`} className="inline-flex min-h-11 items-center rounded-full bg-accent-fill px-5 py-2.5 text-sm font-medium text-on-accent">
+              Open the page holders see
+            </Link>
+            <Link href={`/issuer/treasury/${created.treasury}`} className="inline-flex min-h-11 items-center rounded-full border border-border-strong px-5 py-2.5 text-sm font-medium hover:bg-surface" data-testid="open-console">
+              Open the treasury console
+            </Link>
+          </div>
         </div>
         {detail ? <RightsCards cards={detail.rights} /> : <p className="text-sm text-muted">Reading what holders will be told…</p>}
       </div>

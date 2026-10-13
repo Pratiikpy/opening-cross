@@ -11,7 +11,7 @@ import { ReplayPlayer } from './replay-player';
 type Load = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; replay: ReplayResponse };
 
 /** The Replay tab: GET /v1/replay/:address, played back event by event. Read again whenever the cross changes, so a live cross keeps growing. */
-export function ReplayTab({ cross, version, market }: { cross: CrossDetail; version: number; market: Market }) {
+export function ReplayTab({ cross, version, market, coarse = false }: { cross: CrossDetail; version: number; market: Market; coarse?: boolean }) {
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   useEffect(() => {
     let live = true;
@@ -45,6 +45,16 @@ export function ReplayTab({ cross, version, market }: { cross: CrossDetail; vers
       Replay
     </h2>
   );
+  if (coarse) {
+    return (
+      <section aria-labelledby="replay-h" className="space-y-4">
+        {head}
+        <p className="text-sm text-muted" data-testid="replay-coarse">
+          The ending period is open, so the replay of this cross, which would give each order’s price and size as it arrives, is shown once the call closes. The events are public on chain; this is a display rule of this app.
+        </p>
+      </section>
+    );
+  }
   return (
     <section aria-labelledby="replay-h" className="space-y-4">
       <div>
