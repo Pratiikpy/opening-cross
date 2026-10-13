@@ -16,6 +16,28 @@ if (!DATABASE_URL || !RPC_URL) {
 const db = new pg.Pool({ connectionString: DATABASE_URL });
 const rpc = createIndexerRpc(RPC_URL);
 await migrate(db);
+// The public cluster endpoint answers bursts with 429 while the indexer, keeper, promiser and pages share it: repeat a read a few
+// times with growing pauses, and let simultaneous reads of one account share a single request. No result is kept, so a read is
+// never older than the call that made it.
+const inflight = new Map<string, Promise<{ data: Uint8Array; owner: Address } | null>>();
+function readAccount(a: Address) {
+  const hit = inflight.get(a);
+  if (hit) return hit;
+  const run = (async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const x = await fetchEncodedAccount(rpc, a, { commitment: 'confirmed' });
+        return x.exists ? { data: x.data, owner: x.programAddress } : null;
+      } catch (e) {
+        const busy = /429|HTTP error|fetch failed|ETIMEDOUT|ECONNRESET/.test(`${String(e)} ${JSON.stringify((e as { context?: unknown }).context ?? {})}`);
+        if (!busy || attempt >= 5) throw e;
+        await new Promise((r) => setTimeout(r, 300 * 2 ** attempt));
+      }
+    }
+  })().finally(() => inflight.delete(a));
+  inflight.set(a, run);
+  return run;
+}
 const app = await buildServer({
   db,
   network: process.env.NETWORK ?? 'devnet',
@@ -25,10 +47,7 @@ const app = await buildServer({
   ...(process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true' ? { trustProxy: true } : {}),
   ...(process.env.PROMISE_SIGNER ? { promiseSigner: process.env.PROMISE_SIGNER } : {}),
   ...(process.env.CORS_ORIGINS ? { corsOrigins: process.env.CORS_ORIGINS.split(',') } : {}),
-  account: async (a: Address) => {
-    const x = await fetchEncodedAccount(rpc, a, { commitment: 'confirmed' });
-    return x.exists ? { data: x.data, owner: x.programAddress } : null;
-  },
+  account: readAccount,
   lifetime: async () => (await rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()).value,
   listen: async () => {
     const c = new pg.Client({ connectionString: DATABASE_URL });
