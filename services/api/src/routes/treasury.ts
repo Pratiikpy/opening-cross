@@ -237,11 +237,14 @@ export function registerTreasury(app: FastifyInstance, d: TreasuryDeps): void {
   // simultaneous requests, and given up on after three: the row is then served from the index with `chain: 'unavailable'`,
   // or from the last good read when there is one.
   const listReads = new Map<string, { at: number; value: Promise<Awaited<ReturnType<typeof readChain>> | 'error'>; good?: Awaited<ReturnType<typeof readChain>> }>();
+  let listOpenUntil = 0;
   const listChain = (address: Address): Promise<Awaited<ReturnType<typeof readChain>> | 'error'> => {
     const hit = listReads.get(address);
     if (hit && Date.now() - hit.at < 10_000) return hit.value;
     const read = readChain(d, address, false);
-    const bounded = Promise.race([read, new Promise<'error'>((r) => setTimeout(() => r('error'), 3_000).unref())])
+    // After one read gives up, the others in the next fifteen seconds are not waited for: a rate-limited endpoint is served from the index.
+    const wait = Date.now() < listOpenUntil ? 0 : 3_000;
+    const bounded = Promise.race([read, new Promise<'error'>((r) => setTimeout(() => { if (wait) listOpenUntil = Date.now() + 15_000; r('error'); }, wait).unref())])
       .catch(() => 'error' as const)
       .then((v) => (v === 'error' && hit?.good ? hit.good : v));
     const entry: { at: number; value: typeof bounded; good?: Awaited<ReturnType<typeof readChain>> } = { at: Date.now(), value: bounded, ...(hit?.good && { good: hit.good }) };

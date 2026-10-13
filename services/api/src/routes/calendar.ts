@@ -82,8 +82,20 @@ export function registerCalendar(app: FastifyInstance, d: ApiDeps, opts: { chain
   // A chain read that has not answered within this long (the shared endpoint rate-limits and the client retries with growing pauses) is
   // given up on: the page is served from the index, marked `verified: false`, instead of waiting out every retry.
   const chainWaitMs = opts.chainWaitMs ?? 3_000;
-  const within = <T>(p: Promise<T>, fallback: T): Promise<T> =>
-    Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), chainWaitMs).unref())]);
+  // After one read gives up, further reads are skipped for BREAKER_MS and the index is served at once: a rate-limited endpoint is not
+  // asked again by every request in the meantime, and the page does not wait three seconds on each.
+  const BREAKER_MS = 15_000;
+  let openUntil = 0;
+  const within = <T>(p: Promise<T>, fallback: T): Promise<T> => {
+    if (Date.now() < openUntil) {
+      p.catch(() => undefined);
+      return Promise.resolve(fallback);
+    }
+    return Promise.race([
+      p.catch(() => fallback),
+      new Promise<T>((r) => setTimeout(() => { openUntil = Date.now() + BREAKER_MS; r(fallback); }, chainWaitMs).unref()),
+    ]);
+  };
 
   /** The protocol-wide pause flag, or null when the Protocol account cannot be read. */
   async function protocolPaused(): Promise<boolean | null> {
