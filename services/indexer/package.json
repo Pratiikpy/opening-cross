@@ -13,7 +13,9 @@
     "devnet-check": "tsx scripts/devnet-check.ts"
   },
   "dependencies": {
+    "@opening-cross/cross-calendar-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/treasury-client": "workspace:*",
     "@solana/kit": "8.4.0",
     "pg": "^8.23.1"
   },

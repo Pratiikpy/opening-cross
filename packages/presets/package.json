@@ -1,0 +1,27 @@
+{
+  "name": "@opening-cross/presets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed presets for Opening Cross: gate configurations (open, allowlist, attested wallet) and the allowlist Merkle tree the cross_gate program verifies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/gate.ts",
+  "types": "src/gate.ts",
+  "exports": {
+    ".": "./src/gate.ts",
+    "./gate": "./src/gate.ts",
+    "./gate-allowlist": "./src/gate-allowlist.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

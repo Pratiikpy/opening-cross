@@ -22,6 +22,10 @@ import { type RateLimit, createLimiter } from './rate-limit.js';
 import { createSafety, gate } from './safety.js';
 import { rankVenues } from './venues.js';
 import { recentReplays, replayRow } from './replay.js';
+import { registerCalendar } from './routes/calendar.js';
+import { registerCrossList } from './routes/crosslist.js';
+import { registerGate } from './routes/gate.js';
+import { registerTreasury } from './routes/treasury.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -783,6 +787,12 @@ export async function buildServer(d: ApiDeps) {
       await client.end();
     });
   }
+  // Features added in routes/*.ts (each file documents its own routes).
+  registerCalendar(app, d);
+  registerCrossList(app, d);
+  registerGate(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
+  registerTreasury(app, d);
+
   app.get('/v1/stream', { websocket: true }, (socket, req) => {
     const q = req.query as { cross?: string };
     if (q.cross !== undefined && !isAddress(q.cross)) {

@@ -1,0 +1,19 @@
+{
+  "name": "@opening-cross/rights-card",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rights cards for an ownership-coin treasury: what a holder is and is not entitled to, each derived only from what the deployed treasury program enforces and cited to the instruction and error that enforce it.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

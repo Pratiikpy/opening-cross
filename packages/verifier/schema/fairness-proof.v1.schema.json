@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opening-cross:schema:fairness-proof:v1",
+  "title": "Opening Cross fairness proof, version 1",
+  "description": "The document served by GET /v1/crosses/:address/proof and produced by opening-cross-verify (OCIP-1 section 13.3). Integers that may exceed 2^53 are decimal strings; ticks, buyOrders, sellOrders and the on-chain noPrintReason are JSON numbers. Optional fields may be added to version 1 without a new version, so unknown properties are allowed; every property listed here is required and typed.",
+  "type": "object",
+  "required": ["schema", "program", "cross", "state", "params", "book", "onchain", "recomputed", "verified", "notes"],
+  "properties": {
+    "schema": { "const": "opening-cross/fairness-proof/v1" },
+    "program": { "$ref": "#/$defs/address", "description": "The cross_core program id." },
+    "cross": { "$ref": "#/$defs/address" },
+    "state": { "enum": ["Live", "Cleared", "NoPrint", "Finalized"] },
+    "params": {
+      "type": "object",
+      "required": ["minPrice", "tick", "ticks", "priceScale", "referencePrice", "minMatched", "maxImbalanceBps", "oracleGuard"],
+      "properties": {
+        "minPrice": { "$ref": "#/$defs/u64" },
+        "tick": { "$ref": "#/$defs/u64" },
+        "ticks": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "priceScale": { "$ref": "#/$defs/u64" },
+        "referencePrice": { "oneOf": [{ "$ref": "#/$defs/u64" }, { "type": "null" }] },
+        "minMatched": { "$ref": "#/$defs/u64" },
+        "maxImbalanceBps": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 10000 }, { "type": "null" }] },
+        "oracleGuard": { "type": "boolean" }
+      }
+    },
+    "book": {
+      "description": "One entry per non-empty price level, ascending by price.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["price", "buy", "sell", "buyOrders", "sellOrders"],
+        "properties": {
+          "price": { "$ref": "#/$defs/u64" },
+          "buy": { "$ref": "#/$defs/u64" },
+          "sell": { "$ref": "#/$defs/u64" },
+          "buyOrders": { "type": "integer", "minimum": 0 },
+          "sellOrders": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "onchain": {
+      "description": "What the program recorded on the cross account.",
+      "type": "object",
+      "required": ["printed", "price", "matched", "rationed", "noPrintReason"],
+      "properties": {
+        "printed": { "type": "boolean" },
+        "price": { "oneOf": [{ "$ref": "#/$defs/u64" }, { "type": "null" }] },
+        "matched": { "oneOf": [{ "$ref": "#/$defs/u64" }, { "type": "null" }] },
+        "rationed": { "enum": ["none", "buy", "sell", null] },
+        "noPrintReason": { "description": "Index into the NoPrintReason enumeration (OCIP-1 section 3.4), or null.", "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] }
+      }
+    },
+    "recomputed": {
+      "description": "What the second implementation of the clearing rule produced from the book above.",
+      "type": "object",
+      "required": ["printed", "price", "matched", "rationed", "noPrintReason"],
+      "properties": {
+        "printed": { "type": "boolean" },
+        "price": { "oneOf": [{ "$ref": "#/$defs/u64" }, { "type": "null" }] },
+        "matched": { "oneOf": [{ "$ref": "#/$defs/u64" }, { "type": "null" }] },
+        "rationed": { "enum": ["none", "buy", "sell", null] },
+        "noPrintReason": { "description": "The variant name, unlike the on-chain field, which is an index.", "enum": ["NoCross", "BelowMinimumVolume", "ImbalanceTooHigh", null] }
+      }
+    },
+    "verified": { "type": "boolean", "description": "OCIP-1 section 13.2 step 7. Always false for a cross that has not cleared." },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    {
+      "description": "A printed result carries a price, a matched volume and a side; a result that did not print carries none of them.",
+      "if": { "type": "object", "properties": { "onchain": { "type": "object", "properties": { "printed": { "const": true } } } }, "required": ["onchain"] },
+      "then": { "type": "object", "properties": { "onchain": { "type": "object", "properties": { "price": { "type": "string" }, "matched": { "type": "string" }, "rationed": { "type": "string" }, "noPrintReason": { "type": "null" } } } } },
+      "else": { "type": "object", "properties": { "onchain": { "type": "object", "properties": { "price": { "type": "null" }, "matched": { "type": "null" }, "rationed": { "type": "null" } } } } }
+    },
+    {
+      "if": { "type": "object", "properties": { "recomputed": { "type": "object", "properties": { "printed": { "const": true } } } }, "required": ["recomputed"] },
+      "then": { "type": "object", "properties": { "recomputed": { "type": "object", "properties": { "price": { "type": "string" }, "matched": { "type": "string" }, "rationed": { "type": "string" }, "noPrintReason": { "type": "null" } } } } },
+      "else": { "type": "object", "properties": { "recomputed": { "type": "object", "properties": { "price": { "type": "null" }, "matched": { "type": "null" }, "rationed": { "type": "null" } } } } }
+    },
+    {
+      "description": "A cross that has not cleared has nothing to verify.",
+      "if": { "type": "object", "properties": { "state": { "const": "Live" } }, "required": ["state"] },
+      "then": { "type": "object", "properties": { "verified": { "const": false } } }
+    }
+  ],
+  "$defs": {
+    "address": { "type": "string", "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$" },
+    "u64": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "description": "An unsigned 64-bit integer as a decimal string." }
+  }
+}
