@@ -469,8 +469,17 @@ export async function buildServer(d: ApiDeps) {
     const list = raw.split(',').filter(Boolean);
     if (list.length > 100) throw new RequestError(400, 'at most 100 addresses per request');
     const out = [];
-    for (const item of list) {
-      const a = address(item, 'addresses');
+    const wanted = list.map((item) => address(item, 'addresses'));
+    // An order the indexer has seen claimed or cancelled has been closed on chain: its row answers without a chain read, which
+    // keeps a page of settled orders off the rate-limited public RPC. Anything else is read from chain, as before.
+    const settled = new Map<string, Record<string, unknown>>();
+    for (const r of (await d.db.query("SELECT * FROM orders WHERE address = ANY($1::text[]) AND status IN ('claimed', 'cancelled')", [wanted])).rows) settled.set(r.address, r);
+    for (const a of wanted) {
+      const done = settled.get(a);
+      if (done) {
+        out.push({ ...done, found: true, side: done.side === 0 ? 'buy' : 'sell', open: false });
+        continue;
+      }
       const data = owned(await d.account(a), ORDER_DISCRIMINATOR as Uint8Array);
       if (data) {
         const o = getOrderDecoder().decode(data);
