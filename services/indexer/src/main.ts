@@ -1,6 +1,6 @@
 // Indexer process: DATABASE_URL and RPC_URL from the environment; polls every POLL_MS and
 // reconciles every RECONCILE_EVERY polls.
-import { type Address, fetchEncodedAccount } from '@solana/kit';
+import { type Address, fetchEncodedAccount, fetchEncodedAccounts } from '@solana/kit';
 import pg from 'pg';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { bindCrosses, pollCalendar, reconcileCalendars, rpcAccountReader, scanCalendars } from './calendar.js';
@@ -8,7 +8,7 @@ import { createIndexerRpc } from './rpc.js';
 import { migrate } from './ingest.js';
 import { backfillOrderTerms } from './order-terms.js';
 import { pollOnce } from './rpc-source.js';
-import { reconcileSettled } from './reconcile.js';
+import { type AccountFetcher, reconcileSettled } from './reconcile.js';
 import { pollTreasuryOnce } from './treasury.js';
 
 const dbUrl = process.env.DATABASE_URL;
@@ -24,10 +24,22 @@ const slowEvery = Math.max(1, Number(process.env.SLOW_EVERY ?? 4));
 const db = new pg.Pool({ connectionString: dbUrl });
 const rpc = createIndexerRpc(rpcUrl);
 const readAccounts = rpcAccountReader(rpc);
-const fetcher = async (a: Address) => {
-  const acct = await fetchEncodedAccount(rpc, a, { commitment: 'finalized' });
-  return acct.exists ? acct.data : null;
-};
+const fetcher: AccountFetcher = Object.assign(
+  async (a: Address) => {
+    const acct = await fetchEncodedAccount(rpc, a, { commitment: 'finalized' });
+    return acct.exists ? acct.data : null;
+  },
+  {
+    many: async (addresses: Address[]) => {
+      const out: (Uint8Array | null)[] = [];
+      for (let i = 0; i < addresses.length; i += 100) {
+        const found = await fetchEncodedAccounts(rpc, addresses.slice(i, i + 100), { commitment: 'finalized' });
+        out.push(...found.map((x) => (x.exists ? x.data : null)));
+      }
+      return out;
+    },
+  },
+);
 
 await migrate(db);
 for (let tick = 0; ; tick++) {

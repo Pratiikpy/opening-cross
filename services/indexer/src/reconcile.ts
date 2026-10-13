@@ -5,7 +5,10 @@ import type { Address } from '@solana/kit';
 import type pg from 'pg';
 import { CrossState, getCrossDecoder } from '@opening-cross/cross-core-client';
 
-export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
+export type AccountFetcher = ((address: Address) => Promise<Uint8Array | null>) & {
+  /** Reads many accounts in one call (the same order back). When present, a reconciliation reads every account it needs at once. */
+  many?: (addresses: Address[]) => Promise<(Uint8Array | null)[]>;
+};
 export type Drift = { cross: string; field: string; indexed: string | null; onchain: string | null };
 
 const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'];
@@ -13,6 +16,16 @@ const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'];
 export async function reconcile(db: pg.Pool, fetch: AccountFetcher, opts: { record?: boolean } = {}): Promise<Drift[]> {
   const drift: Drift[] = [];
   const { rows: crosses } = await db.query('SELECT * FROM crosses ORDER BY created_slot');
+  // One batched read of every cross and order account instead of one request per account: a reconciliation covers hundreds,
+  // and the public endpoint rate-limits every other process while it runs.
+  if (fetch.many) {
+    const { rows: all } = await db.query('SELECT address FROM orders');
+    const wanted = [...new Set([...crosses.map((c) => c.address as string), ...all.map((o) => o.address as string)])] as Address[];
+    const got = await fetch.many(wanted);
+    const byAddress = new Map(wanted.map((a, i) => [a, got[i] ?? null] as const));
+    const batched = (async (a: Address) => (byAddress.has(a) ? byAddress.get(a)! : await fetch(a))) as AccountFetcher;
+    fetch = batched;
+  }
   for (const row of crosses) {
     const push = (field: string, indexed: unknown, onchain: unknown) => {
       const a = indexed === null || indexed === undefined ? null : String(indexed);
