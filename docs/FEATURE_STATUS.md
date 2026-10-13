@@ -80,14 +80,14 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 |---|---|---|---|
 | X1, V2, C2 weekly reopen and unlock crosses | PARTIAL | `Reopen` kind, calendar program, a sealed escrow reopen on devnet (`C2`, `C6`) | Nothing on mainnet; no weekly generator; no unlock logic; no lender feed. DP10 found a uniform-price call auction for xStocks already exists (Uncross) |
 | C1, VM9, C3 listing cross with an oracle median | PARTIAL | One pinned Pyth feed guard (program, SDK, LiteSVM; `DP15-pyth-mainnet.md`) | No median, no second oracle, no off-hours band widening. The pull update proof (`DP15-pyth-pull-devnet.md`) failed with a 401 and has not been re-run |
-| Y5, Z5 stock-token safeguards | PARTIAL | `packages/token-safety` (library), `DP14.md` | Detection only: not called by cross creation, the keeper or the API, not shown in the UI |
+| Y5, Z5 stock-token safeguards | BUILT | `packages/token-safety` wired in: `GET /v1/tokens/:mint/safety` and a `safety` field on every cross; `create-cross` refuses a base or quote mint whose properties block a fair cross (active transfer hook, transfer fee, non-transferable, unknown extension) with a typed 422 and returns warnings for paused or issuer-powered mints; the keeper withholds a print while a mint is halted and logs the risk code; a safety badge on the cross page. Proved on real devnet mints (hook and fee mints refused; paused mint warned; keeper attempted 0 transactions on a paused-mint cross) (`Y5-safety-router-replay-api.md`) | The refusal was not run against the LiteSVM `api.test.ts` contract test (Windows cannot load it) |
 | Z3, C5, C6, S9 | NOT BUILT, except S9 PARTIAL | S9: cross-page countdown | No pegged-to-open orders, corporate actions or composite reference price |
 
 ## 8. Router and execution quality
 
 | ID | Status | What exists | Gap |
 |---|---|---|---|
-| Z1 open-execution router | PARTIAL | `packages/router`: a cross quote against a live Jupiter route at the same moment (`D6-router.md`) | No API route or UI use; no weekend pools, no execution |
+| Z1 open-execution router | PARTIAL | `packages/router` and now `GET /v1/router/quote` and `POST /v1/route/quote` (the route the client, CLI and React hook already called): ranks the live crosses of a pair against a Jupiter route with the reason for each exclusion; MCP tool `oc_quote_route`; priced a real live cross at 1.2 and it then cleared at 1.2 | Quote only, no execution; Jupiter is mainnet only, so on devnet only the cross prices; Meteora pools are listed as excluded, not priced; no weekend pools |
 | Y2 execution-quality metric | BUILT | `GET /v1/metrics/execution` over every Finalized cross that printed: fill rate, price improvement of each filled bid against its own limit (median, 10th percentile, in bps and quote atoms), refund share, close-to-cleared and close-to-finalized times, each with its sample size and a method line; shown on `/accuracy` and the home page. Open-order limit prices are recovered from the `commit_order` instruction data by the indexer (`services/indexer/src/order-terms.ts`); bids whose terms are not yet recovered are reported as `unaccounted`, never guessed. Figures recomputed independently from the live API and equal (24 of 24) | Bids only, not asks; the sample is our own devnet test traffic and the page says so |
 | X8, C4, K5 | NOT BUILT | none | |
 
@@ -96,7 +96,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | W9 order entry paths | PARTIAL | Direct `place_order` (program, API, web, mobile, SDK); CPI venue example | No pool resting liquidity, aggregator intents or signed market-maker quotes |
-| X6, Y7, P6 | PARTIAL | Jupiter quote; `@opening-cross/x402`: pay-per-call for HTTP and MCP (x402 exact scheme and the MPP charge intent, a self-hosted facilitator, a paying client, a Postgres payment ledger), 51 unit tests pass | The 54 integration tests that need Postgres and a validator were skipped here and have not been run; not wired into the API or MCP server; no Blinks or market-maker bot |
+| X6, Y7, P6 | PARTIAL | Jupiter quote; `@opening-cross/x402`: pay-per-call for HTTP and MCP (x402 exact scheme and the MPP charge intent, a self-hosted facilitator, a paying client, a Postgres payment ledger), 51 unit tests pass | The 54 integration tests that need Postgres and a validator were run in WSL (x402: 105 of 105 pass, with the official `@solana/mpp` client paying the server; `X6-integration-tests.md`); not wired into the API or MCP server; no Blinks or market-maker bot |
 
 ## 10. Integrity, data and AI
 
@@ -104,7 +104,7 @@ What is built, in one paragraph: five on-chain programs (`cross_core`, `cross_ga
 |---|---|---|---|
 | F1 fairness report | BUILT | `GET /v1/metrics/fairness`: per cross and in aggregate, distinct bidding wallets, the share of filled volume taken by the largest 1, 5 and 10 wallets, a Wilson interval over crosses for the share where the top buyer exceeds a threshold, and a method line; additive `fairness` field on a finalized cross | The identity count is wallets, not people (no gate on most crosses); top-5 and top-10 shares read no data because crosses have at most 3 bidders |
 | F7 impersonation protection | PARTIAL | `packages/authenticity` (1,774 issuer-listed mints), `/v1/tokens/:mint/authenticity`, cross-page panel, issuer-console check; ADR-0016, `T-trust-e2e.md` | Mainnet and listed issuers only; no duplicate-ticker warning for arbitrary tokens; republication of the lists awaits H15 |
-| S12 launch replay | PARTIAL | Per-cross events, orders, book, proof | No 30-day view |
+| S12 launch replay | BUILT | `GET /v1/replay/:address` (ordered on-chain events with slot, time and signature, 11 events for a real finalized cross) and `GET /v1/replay?days=30` (recent crosses with outcome and timings); MCP tool `oc_get_replay` | No dedicated replay page in the web app |
 | S2, F2, F3, F5, F6, F8, F9, V5, X10, J3 | NOT BUILT | none | The signed-promise track record (`/accuracy`) is a different thing from V5 |
 | V-A release bars | PARTIAL | Clearing reproducibility holds (525 vectors, 38 devnet crosses) | The bot, OVS, AI, agent and simulator bars cannot be measured: the features do not exist |
 
@@ -126,16 +126,16 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | X7, M9 mobile app | PARTIAL | `apps/mobile` (Expo, Mobile Wallet Adapter), ADR-0020: strict typecheck, 26 tests, Android export | Not run on a device (H19); no onramp or embedded wallet |
-| Y9, M6 holdings and portfolio | PARTIAL | `/orders` page and the cross-page "Your orders"; mobile Orders screen | No positions, rights, votes, distributions or P&L |
-| Z6, M5 post-trade | PARTIAL | Fill report, claim and refund buttons | No notifications, onramp or claim center |
+| Y9, M6 holdings and portfolio | PARTIAL | `/orders`: per cross and in total, tokens received, average price paid, refunds, escrow still locked and price improvement against each order's own limit (per token, never summed across tokens); a clear no-activity state | No rights, votes or distributions; no mark-to-market beyond the cross's own clearing price |
+| Z6, M5 post-trade | PARTIAL | Fill report, claim and refund buttons; a claim center on `/orders` lists claimable and refundable orders read from the chain and signs one claim at a time with per-row status and retry | The claim center is covered by unit tests and rendering only: a real signed Claim all run did not complete (API rate limits during the attempt); no notifications or onramp |
 | T2 calendar | PARTIAL | `/calendar` groups crosses by their real windows (open now, opening soon, closed) by local day with UTC beside each, and an Add to calendar control downloads a valid RFC 5545 file; `cross_calendar` | No waitlists or reminders; the add-to-calendar download was tested against a local mock because the live site has no open or upcoming cross |
 | M1 discovery | BUILT | `/crosses` filters by state, bid disclosure and supply mode, free-text search on address or mint, four sorts, state in the URL, empty state, live result count (counts equal the API for every case tried) | Disclosure and supply-mode filters read each cross's detail lazily (about 60 to 90 s for 57 crosses the first time); adding the two fields to the list endpoint would remove that |
 | M2, S3 asset page | BUILT | Three-number hero (live: indicative price, offered versus wanted, countdown; settled: price, matched, fills), Token Facts card with mints, decimals, supply mode, fees, gate, oracle guard, creator and the authenticity verdict, and keyboard-navigable Overview, Book, Orders and Proof tabs with deep links | Verified on real priced, no-print, sealed and gated crosses; the Live phases were exercised with the real detail and a rewritten state because no cross was open |
 | M3 timeline | BUILT | Four-stage timeline from the real window times with the current stage marked, and a worked example computed from the cross's own clearing (matches the indexer's order record); a no-print cross says why | The API serves no timestamps for Cleared and Finalized, and the page says so |
 | M4 request, preview, confirm | BUILT | Before signing: escrow, best and worst case, share of the offered supply and price impact against the indicative price, from a TypeScript port of the clearing rule tested against the verifier's reference on 400 random books; sealed crosses show only escrow and share | The impact is shown only when it reproduces the API's own indicative price |
 | S1 price-discovery view | PARTIAL | Book chart, WebSocket updates, indicative price, and a marker with legend for the connected wallet's own orders (never drawn for unrevealed sealed orders) | No coarse final window; an order's limit price is only known for orders placed in this browser (the API does not serve it for open orders), others are listed as not placeable |
-| M10, M11 consumer standard | PARTIAL | Light and dark, 42 contrast pairs at AA, axe clean on every route (`W1-W2-web-landing.md`) | Addresses and mint names are visible; no risk-acknowledgment screen. Axe covers WCAG 2.1 AA, the target says 2.2 |
-| I1 to I3, I8 | PARTIAL | Browse without a wallet; Wallet Standard connect; non-custodial escrow, free cancel | No KYC step, embedded wallet or readiness checklist |
+| M10, M11 consumer standard | PARTIAL | Light and dark, 42 contrast pairs at AA, axe clean on every route (`W1-W2-web-landing.md`); a one-click risk acknowledgement before a wallet's first order, remembered per wallet; target-size and focus fixes against WCAG 2.2 AA | Addresses and mint names are visible; the risk step was verified by unit tests and the live lifecycle only; WCAG 2.2 was checked by hand and axe 2.1 AA, not by a 2.2 audit tool |
+| I1 to I3, I8 | PARTIAL | Browse without a wallet; Wallet Standard connect; non-custodial escrow, free cancel; a seven-item readiness checklist read from the chain gates "Create the cross" (mint authority, decimals, rent about 0.17 SOL, quote account, token program, window), checked on a real devnet cross | No KYC step or embedded wallet; mobile 390 on `/issue` not covered |
 | T1, M7, I4 to I6, S14, S11, S10, S4, S7, S5, M8, M12, I7, R6, N1, N2 | NOT BUILT | none | |
 | UX targets [V-U] | NOT MEASURED | Contrast AA and Lighthouse (`W1-W2-web-landing.md`: mobile 97, desktop 100 performance) | Time to first bid, task success, SUS and the other bars are not measured |
 
@@ -144,7 +144,7 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 | ID | Status | What exists | Gap |
 |---|---|---|---|
 | A1 listing types | PARTIAL | Kinds launch, reopen, tender, recurring; treasury for revenue share | No stock listing flow through tokenizers |
-| A9, T6, T5 wizard | PARTIAL | `/issue` form with on-chain checks (`W4`, 11 checks) | No presets, auto-fill or concierge |
+| A9, T6, T5 wizard | PARTIAL | `/issue` form with on-chain checks (`W4`, 11 checks) and five presets (format, number of price levels, call length; never price or supply), shown as presets not recommendations | No auto-fill from a token or concierge; `packages/presets` holds no definitions, so the presets live in the web app |
 | A2, A3, S13, A8, A10, R5, R7 | NOT BUILT | none | |
 
 ## 15. Standard, SDK and integrations
@@ -153,9 +153,9 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 |---|---|---|---|
 | W13, V1 verifier and conformance | BUILT | `packages/verifier`, 525 vectors checked in CI, `D5-conformance.md` | Not on a registry (H12); the proof schema is a TypeScript type and a string |
 | W13, V1 OCIP spec and sRFC | NOT BUILT | none | Needs an authored specification |
-| W14, L3 SDK and UI kit | PARTIAL | `@opening-cross/sdk`, `opening-cross-cpi`, `examples/ts-quickstart` (run in CI), `D4-sdk-and-cpi.md`; `@opening-cross/client` (typed API client, exact unit maths, order validation, signing pipeline; 17 tests), `@opening-cross/react` (hooks and components; 34 tests) and `@opening-cross/cli` (read, place, cancel, reveal, claim, settle, verify; 20 tests) | None of the three has been run against a live cluster or published to a registry (H12); the cross-language parity test against a Rust SDK was dropped because that crate is not in the repository |
+| W14, L3 SDK and UI kit | PARTIAL | `@opening-cross/sdk`, `opening-cross-cpi`, `examples/ts-quickstart` (run in CI), `D4-sdk-and-cpi.md`; `@opening-cross/client` (typed API client, exact unit maths, order validation, signing pipeline; 17 tests), `@opening-cross/react` (hooks and components; 34 tests) and `@opening-cross/cli` (read, place, cancel, reveal, claim, settle, verify; 20 tests) | All three were installed from packed tarballs into an empty project and run literally against the live API and devnet, including a real signed order through the CLI, the client snippet and the React `OrderTicket`; three defects found and fixed (`W14-sdk-live-run.md`); none is published to a registry (H12); the cross-language parity test against a Rust SDK was dropped because that crate is not in the repository |
 | W15 reference integrations | PARTIAL | Design (d), router comparison, `examples/venue` | No reopen, halt, tender or block-sale adapters; the Genesis composition is not run on devnet |
-| L4, X16 data and agents | PARTIAL | `/v1/stream`, `services/mcp` (12 reads, 5 drafts, 9 tests; ADR-0019) | No gRPC stream, backtester or agent skill file |
+| L4, X16 data and agents | PARTIAL | `/v1/stream`, `services/mcp` (now 15 tools including safety, route quote and replay), an agent skill `docs/agent-skill/opening-cross/SKILL.md` with a test that fails when a route drifts from the server | No gRPC stream or backtester |
 | L7, J4 docs for humans and AI | PARTIAL | MCP server; `/developers`; `docs/CONFIGURATION.md`; `/llms.txt` and `/llms-full.txt`, with a test that every documented route exists in the server and every server route is documented | No docs MCP |
 | L2, X15, L5, J1, J5, L1 | NOT BUILT | none | |
 
@@ -173,10 +173,10 @@ H2 confidential balances and H3 private treasury operations: NOT BUILT. Sealed o
 |---|---|---|---|
 | V-E programs and architecture | PARTIAL | Five programs; sharded books (32 shards, 256 ticks); integer maths; keepers (`D2-keeper-devnet.md`); finalized-only indexer with a reconciler | Fees are inside `cross_core`; no Yellowstone source (H7); no WASM preview or Python simulator |
 | Q1 open source | PARTIAL | Apache-2.0 (ADR-0002); Meteora called through deployed programs | The repository is private (H21) |
-| Q2 testing | PARTIAL | LiteSVM suites, property tests (10,000 cases), randomized end-to-end runs | No Mollusk, Surfpool or cargo-fuzz; no adversarial simulator |
+| Q2 testing | PARTIAL | LiteSVM suites, property tests (10,000 cases), randomized end-to-end runs, a cargo-fuzz target for the clearing rule against an exhaustive reference (11,968,260 executions, 0 crashes, 5 of 5 injected defects caught; `Q2-fuzz.md`); Mollusk and Surfpool install and run | No Mollusk or Surfpool tests written; no adversarial simulator |
 | Q3 audits, builds | PARTIAL | Verifiable build; all five programs match on devnet (`L4-verifiable-build.md`) | No audit (H6), bug bounty or monitoring with auto-pause |
 | Q5 disclosure of third-party powers | BUILT | `/status` section "Who holds power" reads the upgrade authority of each deployed program and the protocol admin, guardian and fee recipient live from devnet, and states what each external program (Meteora, Pyth, Jupiter, Token-2022) can do to a cross; it says plainly that one key can upgrade all five programs today | Reads the public devnet RPC, which can answer 429 under heavy shared use (retried) |
-| X19 devnet proofs | PARTIAL | DP1 to DP6, DP8, DP10 to DP12, DP14 done | DP7, DP9, DP13 (latency target) and DP15 (pull proof) open |
+| X19 devnet proofs | PARTIAL | DP1 to DP6, DP8, DP10 to DP12, DP14 done; DP15 pull path proved with BTC/USD on devnet; DP13 measured | DP7 (wallet display, human), DP9 (Arcium, human), DP13 misses the 5 s target on the public RPC (p90 17.1 s, the bare endpoint is the same), DP15 fails for NVDA because the Pyth key lacks the equity feed entitlement (H11) |
 | Q4, R10, R11, R12, R15, O2, O3 | NOT BUILT | none | |
 | O1 public dashboard | PARTIAL | `/status`, `/accuracy`, landing totals | Devnet figures only |
 

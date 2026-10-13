@@ -141,9 +141,17 @@ Found by looking at the deployed site and its API as a stranger, then fixed and 
 | 40 | The keeper logged a failure for the same stranded cross every 30 seconds | Reported once per pass as skipped (`services/keeper/src/keeper.ts`) |
 | 41 | `/v1/stats` counted only state `NoPrint` as "did not print", so the landing tile read 0 while 10 finalized crosses had no price | Counts finalized crosses with no clearing price too (`services/api/src/server.ts`); live value now 10, equal to an independent count |
 
+### Found by the last live run (2026-10-13, after the second wave of features)
+
+| # | Defect | Fix |
+|---|---|---|
+| 42 | A buyer whose wallet held less quote token than the order locks saw only "Transaction simulation failed: custom program error: 0x1" | The order ticket reads the wallet's balance of the token the order locks and, when short, disables Place order and says how much it holds and how much more it needs (`apps/web/src/lib/balance.ts`; checked live with a wallet holding none: `e2e/shortfall-check.mjs`) |
+| 43 | The live-run harness counted a click before hydration and request cancellations on reload as failures | `e2e/live-devnet.mjs` clicks again until the wallet list opens and ignores `net::ERR_ABORTED` |
+
 ### Not covered in this pass
+
 
 - Devnet: once the operator wallet was funded (10 SOL, 2026-10-13) the Meteora features added that day (DAMM v2 lock, vesting and compounding; DLMM conviction ladder; fee-sharing vault) were also proven on devnet against the live Meteora programs: `D1-damm-lock-compounding-devnet.md`, `D5-dlmm-conviction-ladder-devnet.md`, `D7-fee-sharing-vault-devnet.md`, all PASS, each with Meteora's own refusal read from the logs. Not covered by those runs: the `flat` and `wall` ladder shapes on devnet, and a compounding pool's claimable-fee split on devnet (both are covered in LiteSVM only).
 - The premium monitor's Jupiter quotes are rate limited from the server (the latest rounds often price few tickers); the page says how many quotes failed.
 - Programs were not changed or rebuilt; the five deployed programs still equal the repository builds.
-
+- The second wave's claim center was not exercised with a real signed Claim all (API rate limits during the attempt); the issuer console at 390 px was not covered; the router quotes crosses only on devnet (Jupiter is mainnet-only); DP13 misses its 5 s target and DP15 fails for NVDA on a Pyth entitlement, both external and recorded in their evidence files.

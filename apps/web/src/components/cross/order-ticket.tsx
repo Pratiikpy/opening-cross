@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { readTokenBalance, shortfall } from '@/lib/balance';
 import { ActionError, type Signer } from '@/lib/tx';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, buyerPays, formatAtoms, formatPrice, parseAtoms, parsePrice } from '@/lib/units';
@@ -42,6 +43,20 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
   const ready = typeof price === 'bigint' && qty !== null && qty > 0n;
   const escrow = ready ? (side === 'buy' ? buyerPays(qty, price, m.priceScale) : qty) : null;
   const feeBps = cross.fees.protocolBps + cross.fees.integratorBps;
+  // What the wallet holds of the token this order locks up; an order it cannot fund is stopped here, with the shortfall.
+  const [held, setHeld] = useState<bigint | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const lockMint = side === 'buy' ? cross.quoteMint : cross.baseMint;
+  useEffect(() => {
+    let live = true;
+    setHeld(null);
+    if (lockMint) void readTokenBalance(owner, lockMint).then((v) => live && setHeld(v));
+    return () => {
+      live = false;
+    };
+  }, [owner, lockMint, refresh]);
+  const lockDecimals = side === 'buy' ? m.quoteDecimals : m.baseDecimals;
+  const missing = escrow !== null ? shortfall(held, escrow) : 0n;
   const preview = ready ? previewOrder({ side, price, quantity: qty, market: m, grid: cross.grid, feeBps, sealed, book }) : null;
 
   return (
@@ -103,6 +118,11 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
         </div>
       ) : null}
 
+      {missing > 0n && held !== null && escrow !== null ? (
+        <p role="alert" className="mt-3 text-sm text-accent-text" data-testid="shortfall">
+          This wallet holds {formatAtoms(held, lockDecimals)} of the {side === 'buy' ? 'quote token' : 'token'} and the order locks up to {formatAtoms(escrow, lockDecimals)}. It needs {formatAtoms(missing, lockDecimals)} more.
+        </p>
+      ) : null}
       <RiskAck {...risk} />
       <div className="mt-4">
         {(() => {
@@ -112,7 +132,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
             <ActionButton
               label={sealed ? 'Place sealed order' : 'Place order'}
               path="/v1/tx/place-order"
-              disabled={!ready || risk.acknowledged !== true}
+              disabled={!ready || risk.acknowledged !== true || missing > 0n}
               sign={sign}
               before={() => {
                 if (risk.acknowledged !== true) throw new ActionError('Read and accept the risks above before your first order.');
@@ -131,6 +151,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
                 setPlaced(sigs[0] ?? null);
                 setPriceText('');
                 setQtyText('');
+                setRefresh((n) => n + 1);
                 onPlaced();
               }}
             />
