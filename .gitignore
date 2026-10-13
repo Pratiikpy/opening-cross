@@ -54,3 +54,4 @@ video/public/shots/
 video/public/clips/
 
 .vercel
+apps/web/e2e/screens/

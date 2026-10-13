@@ -39,9 +39,13 @@ function Row({ role, v }: { role: string; v: AuthenticityVerdict }) {
   );
 }
 
-/** "Is this real?" for both tokens of a cross, from the issuers' own lists and the chain. Mainnet mints only. */
-export function IdentityPanel({ address, initial = null }: { address: string; initial?: AuthenticityView | null }) {
+/**
+ * "Is this real?" for both tokens of a cross, from the issuers' own lists and the chain. Mainnet mints only.
+ * `embedded` drops the card frame so the answer can sit inside the Token Facts card.
+ */
+export function IdentityPanel({ address, initial = null, embedded = false }: { address: string; initial?: AuthenticityView | null; embedded?: boolean }) {
   const [a, setA] = useState<AuthenticityView | null>(initial);
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
     // The server's read is the first paint; the browser then asks again, so a result the server missed or that has changed
     // replaces it. A failed read keeps what is already shown.
@@ -49,17 +53,40 @@ export function IdentityPanel({ address, initial = null }: { address: string; in
     fetch(`${API_URL}/v1/crosses/${address}/authenticity`, { cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<AuthenticityView>) : null))
       .then((v) => live && v && setA(v))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => live && setSettled(true));
     return () => {
       live = false;
     };
   }, [address]);
-  if (!a) return null;
+  if (!a) {
+    return embedded && settled ? (
+      <p className="text-sm text-muted" data-testid="identity-unavailable">
+        The identity check could not be read right now.
+      </p>
+    ) : null;
+  }
   if (!a.comparable) {
     return (
-      <p className="px-1 text-xs text-muted" data-testid="identity-not-comparable">
+      <p className={embedded ? 'text-sm text-muted' : 'px-1 text-xs text-muted'} data-testid="identity-not-comparable">
         Identity check: {a.note}
       </p>
+    );
+  }
+  const body = (
+    <>
+      <ul className={embedded ? 'divide-y divide-border' : 'mt-1 divide-y divide-border'}>
+        {a.base ? <Row role="Token" v={a.base.verdict} /> : null}
+        <Row role="Quote" v={a.quote.verdict} />
+      </ul>
+      <p className="mt-2 text-xs text-muted">Checked against the issuers' own lists and the keys on chain (registry of {a.registry.generatedAt.slice(0, 10)}). It says who issued a token, not whether it is a good buy.</p>
+    </>
+  );
+  if (embedded) {
+    return (
+      <div className="text-sm" data-testid="identity-panel">
+        {body}
+      </div>
     );
   }
   return (
@@ -67,11 +94,7 @@ export function IdentityPanel({ address, initial = null }: { address: string; in
       <h2 id="identity" className="font-mono text-xs uppercase tracking-widest text-muted">
         Is this real?
       </h2>
-      <ul className="mt-1 divide-y divide-border">
-        {a.base ? <Row role="Token" v={a.base.verdict} /> : null}
-        <Row role="Quote" v={a.quote.verdict} />
-      </ul>
-      <p className="mt-2 text-xs text-muted">Checked against the issuers' own lists and the keys on chain (registry of {a.registry.generatedAt.slice(0, 10)}). It says who issued a token, not whether it is a good buy.</p>
+      {body}
     </section>
   );
 }

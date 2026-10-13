@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { API_URL } from '@/lib/api';
+import { WhoHoldsPower } from '@/components/status/who-holds-power';
 import { RPC_URL } from '@/lib/config';
 
 export const metadata: Metadata = { title: 'Status' };
@@ -51,7 +52,7 @@ export default async function Status() {
   ];
   const all = checks.every((c) => c.ok);
   return (
-    <div className="mx-auto max-w-[800px] px-4 py-12 sm:px-6">
+    <div className="mx-auto max-w-[900px] px-4 py-12 sm:px-6">
       <h1 className="text-[34px] font-semibold tracking-tight">Status</h1>
       <p role="status" className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${all ? 'border-positive text-positive' : 'border-accent text-accent-text'}`}>
         <span className={`size-2 rounded-full ${all ? 'bg-positive' : 'bg-accent'}`} aria-hidden="true" />
@@ -69,6 +70,7 @@ export default async function Status() {
           </li>
         ))}
       </ul>
+      <WhoHoldsPower />
     </div>
   );
 }

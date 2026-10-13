@@ -79,14 +79,21 @@ async function user(name, key, theme, viewport) {
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
   page.on('response', (r) => { if (r.status() >= 400 && !/[?&]_rsc=/.test(r.url())) problems.push(`http ${r.status()}: ${r.request().method()} ${r.url().slice(0, 90)} ${String(r.request().postData() ?? '').slice(0, 80)}`); });
   page.on('requestfailed', (r) => {
-    if (/[?&]_rsc=/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED') return;
+    // A reload cancels the page's in-flight fetches (and the router its prefetches): a cancellation is not a failure.
+    if (r.failure()?.errorText === 'net::ERR_ABORTED') return;
     problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`);
   });
   return { name, page, problems };
 }
 const connect = async (u, address) => {
-  await u.page.getByRole('button', { name: 'Connect wallet' }).click();
-  await u.page.getByRole('button', { name: /E2E Test Wallet/ }).click();
+  // A click that lands before the page has hydrated does nothing, as for a person: click again until the wallet list opens.
+  const option = u.page.getByRole('button', { name: /E2E Test Wallet/ });
+  for (let attempt = 1; !(await option.isVisible()); attempt++) {
+    if (attempt > 8) throw new Error('the wallet list never opened');
+    await u.page.getByRole('button', { name: 'Connect wallet' }).click();
+    await option.waitFor({ timeout: 4000 }).catch(() => undefined);
+  }
+  await option.click();
   await u.page.getByLabel(`Connected as ${address}`).waitFor();
 };
 // The public devnet endpoint answers bursts with 429; a person clicks the button again, so the script does too.

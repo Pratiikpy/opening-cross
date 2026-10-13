@@ -8,6 +8,7 @@ import type { CrossDetail, OwnerOrder } from '@/lib/types';
 import { type Market, formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 import { ActionButton } from './action-button';
 import type { Phase } from './cross-view';
+import { type OwnMarks, deriveMarks, loadTerms } from './own-orders';
 
 /** One order as the chain sees it now (open) or as the indexer recorded it (closed). */
 type OrderView = {
@@ -45,7 +46,7 @@ async function loadOrders(cross: string, owner: string): Promise<OrderView[]> {
   return views.filter((v): v is OrderView => v !== null);
 }
 
-export function MyOrders({ cross, phase, market: m, owner, sign, version, onChanged }: { cross: CrossDetail; phase: Phase; market: Market; owner: string; sign: Signer; version: number; onChanged: () => void }) {
+export function MyOrders({ cross, phase, market: m, owner, sign, version, onChanged, onMarks }: { cross: CrossDetail; phase: Phase; market: Market; owner: string; sign: Signer; version: number; onChanged: () => void; onMarks?: (marks: OwnMarks) => void }) {
   const [orders, setOrders] = useState<OrderView[] | null>(null);
   const [bids, setBids] = useState<SealedBid[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
@@ -61,6 +62,20 @@ export function MyOrders({ cross, phase, market: m, owner, sign, version, onChan
 
   const settled = cross.state === 'Cleared' || cross.state === 'NoPrint';
   const sealed = cross.disclosure === 'sealed';
+
+  // When the wallet disconnects, the chart forgets these orders.
+  useEffect(() => () => onMarks?.({ marks: [], unlocated: 0, hidden: 0 }), [onMarks]);
+
+  // Tell the book chart where these orders sit. A sealed order is only reported once revealed.
+  useEffect(() => {
+    if (!orders || !onMarks) return;
+    const inputs = orders.map((o) => {
+      const bid = bids.find((b) => b.nonce === o.nonce);
+      const known = !sealed || o.revealed;
+      return { address: o.address, side: o.side, sealed, revealed: o.revealed, price: known ? (o.price ?? bid?.price ?? null) : null, quantity: known ? (o.quantity ?? bid?.quantity ?? null) : null, status: o.status };
+    });
+    onMarks(deriveMarks(inputs, loadTerms(cross.address, owner), cross.state !== 'Live'));
+  }, [orders, bids, sealed, cross.address, cross.state, owner, onMarks]);
   const needsBackup = sealed && orders?.some((o) => o.open && !o.revealed && !bids.find((b) => b.nonce === o.nonce));
 
   return (

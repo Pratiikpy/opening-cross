@@ -1,4 +1,8 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { ExecutionSection } from '@/components/metrics/execution-section';
+import { FairnessSection } from '@/components/metrics/fairness-section';
+import { MetricsSkeleton } from '@/components/metrics/metric-card';
 import { API_URL, get } from '@/lib/api';
 import { explainCalibration } from '@/lib/reasons';
 import type { AccuracyView, BucketReport } from '@/lib/trust-types';
@@ -105,6 +109,24 @@ export default async function Accuracy() {
           Bands are also folded into a Merkle root written to Solana, which bounds when each was issued.
         </p>
       </section>
+      <Suspense
+        fallback={
+          <div className="mt-12">
+            <MetricsSkeleton count={3} label="Loading execution quality" />
+          </div>
+        }
+      >
+        <ExecutionSection />
+      </Suspense>
+      <Suspense
+        fallback={
+          <div className="mt-12">
+            <MetricsSkeleton count={3} label="Loading the fairness report" />
+          </div>
+        }
+      >
+        <FairnessSection />
+      </Suspense>
     </div>
   );
 }

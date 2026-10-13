@@ -1,0 +1,80 @@
+# Opening Bell and Opening Cross
+
+> Opening Cross is an open call-auction protocol on Solana: orders collect during a call period, and when it closes every filled order trades at one uniform clearing price. Opening Bell is the web app built on it. Status: early development on Solana devnet only. No mainnet deployment, no external audit, no real users; nothing here is an offer of securities or investment advice. Every figure in the API comes from the chain or from an indexer that reconciles against it.
+
+Two names, one thing: "Opening Cross" is the protocol (programs, SDK, API, licence Apache-2.0); "Opening Bell" is the app and company brand. Integers in the API are decimal strings. Errors are a 4xx status with `{ "error": "..." }`. The full text of this file, with parameters and the verification procedures, is at /llms-full.txt.
+
+Base URLs (the current devnet deployment; they can change, so read them from the site if a call fails):
+- Web app: https://opening-bell-psi.vercel.app
+- API: https://98-87-59-136.sslip.io
+
+## Web pages
+
+- [Crosses](https://opening-bell-psi.vercel.app/crosses): every cross, filterable by state, bid disclosure and supply mode; the filter state is in the URL.
+- [Calendar](https://opening-bell-psi.vercel.app/calendar): crosses by their real windows (open now, opening soon, closed), with an .ics download for each upcoming one.
+- [Track record](https://opening-bell-psi.vercel.app/accuracy): every signed price band, counted by outcome, misses included.
+- [Premium monitor](https://opening-bell-psi.vercel.app/premium): executable premium of Solana stock tokens against a reference.
+- [Status](https://opening-bell-psi.vercel.app/status): live health of the API, RPC and indexer, and who holds power over the deployed programs.
+- [Developers](https://opening-bell-psi.vercel.app/developers): packages, API and quickstart.
+
+## API (read-only GET routes)
+
+- GET /v1/health: indexed slot, indexer heartbeat, reconciliation alerts in the last hour.
+- GET /v1/stats: protocol totals and the network they were counted on.
+- GET /v1/crosses?state=&limit=: crosses, newest first (`state` is Live, Cleared, NoPrint or Finalized; `limit` 1 to 200, default 50).
+- GET /v1/crosses/:address: one cross, read from chain.
+- GET /v1/crosses/:address/orders: indexed orders with fills.
+- GET /v1/crosses/:address/book: the resting book and the price it would clear at now.
+- GET /v1/crosses/:address/proof: the clearing recomputed independently from the on-chain book.
+- GET /v1/crosses/:address/promise: the latest signed price band for a cross.
+- GET /v1/crosses/:address/authenticity: is each token of this cross the issuer's real token (mainnet mints only).
+- GET /v1/promises/signer: the key that signs promises.
+- GET /v1/promises/:id: a signed promise with its grade and anchor proof.
+- GET /v1/promises/:id/inputs: the book a promise was computed from.
+- GET /v1/accuracy: every signed band counted by outcome.
+- GET /v1/tokens/:mint/authenticity: is this the issuer's real token (mainnet mints only).
+- GET /v1/premium/summary?days=: stock-token premium by order size and market session.
+- GET /v1/premium/latest: the newest premium measurement per token.
+- GET /v1/metrics/execution: what bidders actually got over every finalized cross that printed: fill rate, price improvement, refund share, close-to-finalized time, each with its sample size and method.
+- GET /v1/metrics/fairness?threshold=: how concentrated fills are across wallets, with a confidence interval over crosses.
+- GET /v1/metrics/external-flow: how much of the flow comes from wallets that are not ours.
+- GET /v1/orders?addresses=: orders by address, at most 100.
+- GET /v1/orders/:address: one order.
+- GET /v1/owners/:owner/orders: all orders of one wallet.
+- WS /v1/stream?cross=: a WebSocket of every event as the indexer commits it, optionally for one cross.
+
+## Unsigned transactions (POST)
+
+These return transactions for your wallet to sign and send. The API never holds keys and never signs for anyone.
+
+- POST /v1/tx/create-cross
+- POST /v1/tx/place-order
+- POST /v1/tx/cancel
+- POST /v1/tx/reveal
+- POST /v1/tx/settle
+- POST /v1/tx/claim
+- POST /v1/tx/finalize
+- POST /v1/tx/init-shards
+
+## Verify a cross yourself
+
+- [README](https://github.com/Pratiikpy/opening-cross/blob/main/README.md): `pnpm --filter @opening-cross/verifier verify <cross-address> --rpc <your RPC URL>` recomputes a cleared cross from its on-chain book and exits 0 only when it matches.
+- [Clearing rule (ADR-0003)](https://github.com/Pratiikpy/opening-cross/blob/main/docs/adr/0003-clearing-rule.md)
+- [Conformance vectors](https://github.com/Pratiikpy/opening-cross/blob/main/docs/evidence/D5-conformance.md)
+
+## Signed price bands
+
+- [Signed, graded promises (ADR-0015)](https://github.com/Pratiikpy/opening-cross/blob/main/docs/adr/0015-signed-graded-promises.md): format `opening-cross/promise/v1`, signature domain `opening-cross/promise/v1\n`, id = SHA-256 of the RFC 8785 canonical body.
+
+## Honest status
+
+- [Feature status, row by row](https://github.com/Pratiikpy/opening-cross/blob/main/docs/FEATURE_STATUS.md)
+- [Roadmap](https://github.com/Pratiikpy/opening-cross/blob/main/docs/ROADMAP.md)
+- [Threat model](https://github.com/Pratiikpy/opening-cross/blob/main/docs/security/THREAT_MODEL.md)
+- [Governance (ADR-0013)](https://github.com/Pratiikpy/opening-cross/blob/main/docs/adr/0013-governance.md)
+
+## Optional
+
+- [Repository](https://github.com/Pratiikpy/opening-cross)
+- [All design decisions](https://github.com/Pratiikpy/opening-cross/tree/main/docs/adr)
+- [Security invariants](https://github.com/Pratiikpy/opening-cross/blob/main/docs/security/INVARIANTS.md)

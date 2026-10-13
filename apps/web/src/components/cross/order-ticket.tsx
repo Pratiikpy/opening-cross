@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { ActionError, type Signer } from '@/lib/tx';
-import type { CrossDetail } from '@/lib/types';
+import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, buyerPays, formatAtoms, formatPrice, parseAtoms, parsePrice } from '@/lib/units';
 import { downloadBackup, loadBids, randomNonce, randomSalt, rememberOrder, saveBid } from '@/lib/sealed';
 import { ActionButton } from './action-button';
+import { rememberTerms } from './own-orders';
+import { type OrderPreview, previewOrder } from './preview';
 
 type Side = 'buy' | 'sell';
 
@@ -25,7 +27,7 @@ function onGrid(text: string, c: CrossDetail, m: Market): bigint | string {
   return p;
 }
 
-export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross: CrossDetail; market: Market; owner: string; sign: Signer; onPlaced: () => void }) {
+export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: { cross: CrossDetail; market: Market; owner: string; sign: Signer; book: BookResponse | null; onPlaced: () => void }) {
   const [side, setSide] = useState<Side>('buy');
   const [priceText, setPriceText] = useState('');
   const [qtyText, setQtyText] = useState('');
@@ -38,6 +40,7 @@ export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross
   const ready = typeof price === 'bigint' && qty !== null && qty > 0n;
   const escrow = ready ? (side === 'buy' ? buyerPays(qty, price, m.priceScale) : qty) : null;
   const feeBps = cross.fees.protocolBps + cross.fees.integratorBps;
+  const preview = ready ? previewOrder({ side, price, quantity: qty, market: m, grid: cross.grid, feeBps, sealed, book }) : null;
 
   return (
     <section aria-labelledby="ticket" className="rounded-[var(--radius-card)] border border-border p-5">
@@ -86,13 +89,16 @@ export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross
       </label>
       {qtyError ? <p className="mt-1 text-xs text-accent-text">{qtyError}</p> : null}
 
-      {escrow !== null && ready ? (
-        <p className="mt-4 rounded-lg bg-surface p-3 text-sm" data-testid="preview">
-          {side === 'buy'
-            ? `Up to ${formatAtoms(escrow, m.quoteDecimals)} is held in escrow. You pay the clearing price for what you are filled; the rest comes back at settlement.`
-            : `${formatAtoms(escrow, m.baseDecimals)} tokens are held in escrow. You receive at least ${formatAtoms((qty! * (price as bigint)) / m.priceScale, m.quoteDecimals)} less the ${feeBps / 100}% seller fee for what is filled.`}
-          {sealed ? ' Your price stays sealed until you reveal it after the close.' : ''}
-        </p>
+      {escrow !== null && ready && preview ? (
+        <div className="mt-4 space-y-3 rounded-lg bg-surface p-3 text-sm" data-testid="preview">
+          <p>
+            {side === 'buy'
+              ? `Up to ${formatAtoms(escrow, m.quoteDecimals)} is held in escrow. You pay the clearing price for what you are filled; the rest comes back at settlement.`
+              : `${formatAtoms(escrow, m.baseDecimals)} tokens are held in escrow. You receive at least ${formatAtoms((qty! * (price as bigint)) / m.priceScale, m.quoteDecimals)} less the ${feeBps / 100}% seller fee for what is filled.`}
+            {sealed ? ' Your price stays sealed until you reveal it after the close.' : ''}
+          </p>
+          <PreviewDetail p={preview} side={side} market={m} quantity={qty!} />
+        </div>
       ) : null}
 
       <div className="mt-4">
@@ -113,7 +119,11 @@ export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross
               }}
               body={() => ({ cross: cross.address, owner, side, price: String(price), quantity: String(qty), nonce, ...(salt ? { salt } : {}) })}
               onDone={(sigs, extra) => {
-                if (typeof extra.order === 'string') rememberOrder(cross.address, owner, extra.order);
+                if (typeof extra.order === 'string') {
+                  rememberOrder(cross.address, owner, extra.order);
+                  // An open order's price is not served by the API; keep it here so the book chart can mark it.
+                  if (!sealed) rememberTerms(cross.address, owner, extra.order, { side, price: String(price), quantity: String(qty) });
+                }
                 setPlaced(sigs[0] ?? null);
                 setPriceText('');
                 setQtyText('');
@@ -135,5 +145,81 @@ export function OrderTicket({ cross, market: m, owner, sign, onPlaced }: { cross
         </div>
       ) : null}
     </section>
+  );
+}
+
+const share = (bps: bigint) => `${(Number(bps) / 100).toFixed(1)}%`;
+const percent = (bps: bigint) => `${bps > 0n ? '+' : ''}${(Number(bps) / 100).toFixed(1)}%`;
+
+/** What signing would do, from the live book, before anything is signed. */
+function PreviewDetail({ p, side, market: m, quantity }: { p: OrderPreview; side: Side; market: Market; quantity: bigint }) {
+  const quote = (v: bigint) => formatAtoms(v, m.quoteDecimals);
+  const tokens = (v: bigint) => formatAtoms(v, m.baseDecimals);
+  const outcome = (o: NonNullable<OrderPreview['best']>) =>
+    side === 'buy' ? `you pay ${quote(o.quote)} and ${quote(o.other)} comes back` : `you receive ${quote(o.quote)} after a ${quote(o.other)} fee`;
+  return (
+    <div className="border-t border-border pt-3" data-testid="preview-detail">
+    <dl className="space-y-2">
+      {p.hidden ? (
+        <div>
+          <dt className="text-xs text-muted">The book</dt>
+          <dd>Bids are sealed, so the book is hidden and there is no indicative price to compare with. Only what your own order fixes is shown here.</dd>
+        </div>
+      ) : (
+        <>
+          <div>
+            <dt className="text-xs text-muted">Best case: filled in full at today’s indicative price</dt>
+            <dd data-testid="preview-best">
+              {p.best
+                ? `At ${formatPrice(p.best.price, m)}, ${outcome(p.best)}.`
+                : p.bestMissing === 'limit-does-not-reach'
+                  ? `Today’s indicative price is ${formatPrice(p.indicative!, m)}, which your limit does not reach, so at this price your order would not trade.`
+                  : 'There is no indicative price yet, because no buy and sell orders cross.'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted">Worst case: filled in full at your limit</dt>
+            <dd data-testid="preview-worst">
+              At {formatPrice(p.worst.price, m)}, {outcome(p.worst)}. The price you get is never worse than this.
+            </dd>
+          </div>
+        </>
+      )}
+      <div>
+        <dt className="text-xs text-muted">{side === 'buy' ? 'Your share of the supply' : 'Your share of the supply on offer'}</dt>
+        <dd data-testid="preview-share">
+          {p.share
+            ? side === 'buy'
+              ? `${share(p.share.bps)} of the ${tokens(p.share.against)} tokens offered at or below your limit${p.share.bps > 10_000n ? '. You ask for more than is on offer, so you cannot be filled in full' : ''}.`
+              : `${share(p.share.bps)} of the ${tokens(p.share.against)} tokens that would be on offer with your order.`
+            : p.hidden
+              ? 'The supply on offer is not visible while bids are sealed.'
+              : 'Nothing is offered at or below your limit yet.'}
+        </dd>
+      </div>
+      {!p.hidden ? (
+        <div>
+          <dt className="text-xs text-muted">Price impact on the indicative price</dt>
+          <dd data-testid="preview-impact">
+            {p.impact
+              ? p.impact.before === null && p.impact.after === null
+                ? 'Your order alone would not create a crossing, so there would still be no indicative price.'
+                : p.impact.before === null
+                  ? `Your order would create the first indicative price, ${formatPrice(p.impact.after!, m)}.`
+                  : p.impact.after === null
+                    ? 'Your order would remove the crossing, leaving no indicative price.'
+                    : p.impact.before === p.impact.after
+                      ? `None. The indicative price stays ${formatPrice(p.impact.before, m)}.`
+                      : `${formatPrice(p.impact.before, m)} to ${formatPrice(p.impact.after, m)} (${p.impact.bps === null ? 'change not defined' : percent(p.impact.bps)}).`
+              : p.impactMissing === 'no-book'
+                ? 'Loading the book…'
+                : 'Not shown: this page could not reproduce the indicative price from the book as it stands, so it will not guess at the change.'}
+            {p.impact && (p.impact.before !== null || p.impact.after !== null) ? ` If the call closed right after your order, it would be filled for ${tokens(p.impact.fill)} of your ${tokens(quantity)}.` : ''}
+          </dd>
+        </div>
+      ) : null}
+    </dl>
+    <p className="mt-3 text-xs text-muted">Orders can still arrive before the call closes, so this is a preview of the book as it is now, not a promise.</p>
+    </div>
   );
 }

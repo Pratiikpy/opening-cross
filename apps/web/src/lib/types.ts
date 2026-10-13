@@ -18,6 +18,8 @@ export type CrossDetail = {
   gateMint: string | null;
   oracleGuard: boolean;
   settlement: { settleDeadlineTs: string; baseBound: boolean };
+  /** Fairness figures for this cross once it has printed and finalized; null before, and null if the index could not be read. */
+  fairness?: CrossFairness | null;
 };
 
 export type BookResponse = {
@@ -41,4 +43,64 @@ export type OwnerOrder = {
   quote_out: string | null;
   base_out: string | null;
   fee: string | null;
+};
+
+// ---- measured metrics (GET /v1/metrics/*). Counts are numbers, ratios are 0..1, atoms are decimal strings; null means "no data", never zero.
+export type Quantiles = { median: number | null; p10: number | null };
+
+export type ExecutionMetrics = {
+  network: string;
+  generatedAt: string;
+  method: string;
+  crosses: number;
+  finalizedWithoutPrint: number;
+  bids: { placed: number; filled: number; fillRate: number | null; fullyFilled: number; partiallyFilled: number; notFilledPricedOut: number; cancelled: number; unrevealed: number; unaccounted: number };
+  priceImprovement: {
+    filledBids: number;
+    atClearingPrice: number;
+    bps: Quantiles;
+    quoteAtoms: { median: string | null; p10: string | null; quoteDecimals: number[] };
+    inconsistent: number;
+  };
+  refundShare: { crosses: number; median: number | null; min: number | null; max: number | null };
+  closeToFinalizedSeconds: { n: number; median: number | null; p90: number | null; max: number | null; excluded: number };
+  closeToClearedSeconds: { n: number; median: number | null; p90: number | null; max: number | null; excluded: number };
+};
+
+export type SideShare = { wallets: number; top1: number | null; top5: number | null; top10: number | null };
+
+export type CrossFairness = {
+  address: string;
+  bidders: number;
+  sellers: number;
+  wallets: number;
+  buy: SideShare;
+  sell: SideShare;
+  bothSides: number;
+  identity: { count: number; basis: 'gate-passing wallets' | 'wallets, not people'; gated: boolean };
+};
+
+export type FairnessMetrics = {
+  network: string;
+  generatedAt: string;
+  method: string;
+  crosses: number;
+  threshold: number;
+  topBuyerAboveThreshold: { k: number; n: number; proportion: number | null; wilsonLo: number | null; wilsonHi: number | null };
+  medianBuySide: { top1: number | null; top5: number | null; top10: number | null; crossesOver1: number; crossesOver5: number; crossesOver10: number };
+  crossesWithSelfCross: number;
+  wallets: { distinctAcrossCrosses: number; medianBiddersPerCross: number | null; maxBiddersInACross: number | null };
+  perCross: CrossFairness[];
+};
+
+export type ExternalFlowMetrics = {
+  network: string;
+  generatedAt: string;
+  method: string;
+  ownWalletsConfigured: number;
+  crosses: { withOrders: number; withAnExternalWallet: number; onlyOwnWallets: number };
+  wallets: { total: number; own: number; external: number; externalShare: number | null };
+  filledWallets: { total: number; own: number; external: number };
+  orders: { total: number; byExternal: number; filled: number; filledByExternal: number };
+  verdict: 'no external wallets seen' | 'external wallets seen, ownership list not configured (upper bound)' | 'external wallets seen, not known to be ours (upper bound on outside users)';
 };

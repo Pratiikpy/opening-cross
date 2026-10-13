@@ -14,7 +14,7 @@ export function SiteFooter() {
         </div>
         <nav aria-label="Footer" className="space-y-2 text-sm">
           <p className="font-medium">Opening Bell</p>
-          {[...NAV.slice(0, 2), { href: '/#how', label: 'How it works' }, { href: '/#proof', label: 'Proof' }, { href: '/#issuers', label: 'For issuers' }, { href: '/orders', label: 'My orders' }].map((n) => (
+          {[...NAV.slice(0, 2), { href: '/#how', label: 'How it works' }, MORE_NAV[4]!, { href: '/#proof', label: 'Proof' }, { href: '/#issuers', label: 'For issuers' }, { href: '/orders', label: 'My orders' }].map((n) => (
             <Link key={n.href} href={n.href} prefetch={false} className="block text-muted hover:text-ink">
               {n.label}
             </Link>
@@ -27,6 +27,7 @@ export function SiteFooter() {
               {n.label}
             </Link>
           ))}
+          <a className="block text-muted hover:text-ink" href="/llms.txt">For AI agents (llms.txt)</a>
           <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/tree/main/docs/adr">Design decisions</a>
           <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross/blob/main/docs/ROADMAP.md">Roadmap</a>
           <a className="block text-muted hover:text-ink" href="https://github.com/Pratiikpy/opening-cross">GitHub</a>

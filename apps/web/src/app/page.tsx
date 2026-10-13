@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { CrossingChart } from '@/components/crossing-chart';
 import { ExampleTag } from '@/components/example-tag';
+import { MeasuredSoFar } from '@/components/metrics/measured-so-far';
+import { MetricsSkeleton } from '@/components/metrics/metric-card';
 import { type CrossSummary, type Stats, get } from '@/lib/api';
 
 export const revalidate = 15;
@@ -82,6 +85,15 @@ export default async function Home() {
               Live totals are unavailable right now: {stats.error} Nothing is shown in their place.
             </p>
           )}
+        </div>
+      </section>
+
+      {/* Measured so far: execution quality, fairness and external flow, computed by the API from indexed crosses */}
+      <section aria-labelledby="measured" className="border-b border-border">
+        <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
+          <Suspense fallback={<MetricsSkeleton />}>
+            <MeasuredSoFar />
+          </Suspense>
         </div>
       </section>
 

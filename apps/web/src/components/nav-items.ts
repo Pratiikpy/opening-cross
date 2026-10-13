@@ -12,4 +12,5 @@ export const MORE_NAV = [
   { href: '/accuracy', label: 'Track record' },
   { href: '/premium', label: 'Premium monitor' },
   { href: '/status', label: 'Status' },
+  { href: '/calendar', label: 'Calendar' },
 ];
