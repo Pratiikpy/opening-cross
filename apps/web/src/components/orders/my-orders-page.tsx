@@ -1,73 +1,66 @@
 'use client';
 
+import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSigner } from '@/components/cross/use-signer';
+import { ClaimCenter } from '@/components/portfolio/claim-center';
+import { PortfolioView } from '@/components/portfolio/portfolio-view';
 import { StateBadge } from '@/components/state-badge';
-import { API_URL } from '@/lib/api';
 import { describeOrder } from '@/lib/orders';
-import type { CrossDetail, OwnerOrder } from '@/lib/types';
+import { buildPortfolio } from '@/lib/portfolio';
+import { type Loaded, MAX_CROSSES, loadChain, loadPortfolio } from '@/lib/portfolio-load';
+import type { CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
 
-type Row = { order: OwnerOrder; cross: CrossDetail | null };
-type Load = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; rows: Row[]; truncated: boolean };
-
-const MAX_CROSSES = 60;
-
-async function getJson<T>(path: string): Promise<T | null> {
-  try {
-    const r = await fetch(`${API_URL}${path}`, { cache: 'no-store' });
-    return r.ok ? ((await r.json()) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function load(owner: string): Promise<Load> {
-  const res = await getJson<{ orders: OwnerOrder[] }>(`/v1/owners/${owner}/orders`);
-  if (!res) return { state: 'error', message: 'The Opening Cross API could not be reached, so your orders cannot be listed. Nothing is lost: they are on chain.' };
-  const addresses = [...new Set(res.orders.map((o) => o.cross_address))];
-  const wanted = addresses.slice(0, MAX_CROSSES);
-  const crosses = new Map<string, CrossDetail | null>();
-  await Promise.all(wanted.map(async (a) => crosses.set(a, await getJson<CrossDetail>(`/v1/crosses/${a}`))));
-  return {
-    state: 'ready',
-    rows: res.orders.filter((o) => crosses.has(o.cross_address)).map((order) => ({ order, cross: crosses.get(order.cross_address) ?? null })),
-    truncated: addresses.length > MAX_CROSSES,
-  };
-}
+type Load = { state: 'loading'; progress?: string } | { state: 'error'; message: string } | { state: 'ready'; data: Loaded };
 
 const marketOf = (c: CrossDetail): Market => ({ priceScale: BigInt(c.grid.priceScale), baseDecimals: c.decimals.base, quoteDecimals: c.decimals.quote });
 
 export function MyOrdersPage() {
   const { account } = useWallet();
-  const [data, setData] = useState<Load>({ state: 'loading' });
-  const [now, setNow] = useState<bigint>(() => BigInt(Math.floor(Date.now() / 1000)));
-  const owner = account?.address;
-
-  useEffect(() => {
-    if (!owner) return;
-    let live = true;
-    setData({ state: 'loading' });
-    void load(owner).then((d) => live && setData(d));
-    const tick = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1000);
-    return () => {
-      live = false;
-      clearInterval(tick);
-    };
-  }, [owner]);
-
-  if (!owner) {
+  if (!account) {
     return (
       <p role="status" className="mt-10 rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">
         Connect a wallet with Connect wallet at the top right to see its orders. Orders are read from the chain index by wallet address; nothing is stored about you.
       </p>
     );
   }
+  return <Orders account={account} />;
+}
+
+function Orders({ account }: { account: UiWalletAccount }) {
+  const owner = account.address;
+  const sign = useSigner(account);
+  const [data, setData] = useState<Load>({ state: 'loading' });
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    // A reload after a claim keeps the old figures on screen until the new ones arrive.
+    if (version === 0) setData({ state: 'loading' });
+    void loadPortfolio(owner, (done, total) => live && version === 0 && total > 0 && setData({ state: 'loading', progress: `${done} of ${total} crosses` })).then(async (d) => {
+      if (!live) return;
+      if (!d) return setData({ state: 'error', message: 'The Opening Cross API could not be reached, so your orders cannot be listed. Nothing is lost: they are on chain.' });
+      // Show everything the records say now; the chain's live view of open orders (what can be claimed) follows.
+      setData((prev) => (prev.state === 'ready' && version > 0 ? prev : { state: 'ready', data: d }));
+      const withChain = await loadChain(d);
+      if (live) setData({ state: 'ready', data: withChain });
+    });
+    return () => {
+      live = false;
+    };
+  }, [owner, version]);
+
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
+  const ready = data.state === 'ready' ? data.data : null;
+  const portfolio = useMemo(() => (ready ? buildPortfolio(ready.orders, ready.crosses, ready.chain) : null), [ready]);
+
   if (data.state === 'loading') {
     return (
       <p role="status" className="mt-10 text-sm text-muted">
-        Loading your orders…
+        Loading your orders…{data.progress ? ` ${data.progress}` : ''}
       </p>
     );
   }
@@ -78,27 +71,46 @@ export function MyOrdersPage() {
       </p>
     );
   }
-  if (data.rows.length === 0) {
+  if (!ready || !portfolio) return null;
+  if (ready.orders.length === 0) {
     return (
       <div className="mt-10 rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted" data-testid="no-orders">
-        <p>This wallet has no orders the index has seen yet. New orders appear here once their block is finalized, usually within a minute.</p>
-        <Link href="/crosses" className="mt-3 inline-block text-accent-text underline">
+        <p className="font-medium text-ink">No activity yet</p>
+        <p className="mt-2">
+          This wallet has no orders the index has seen. There is nothing to hold, nothing in escrow and nothing to claim. New orders appear here once their block is finalized, usually within a minute.
+        </p>
+        {ready.missing.length > 0 ? <p className="mt-2">{ready.missing.length} cross records could not be loaded just now.</p> : null}
+        <Link href="/crosses" className="mt-3 inline-block py-1 text-accent-text underline">
           Browse crosses
         </Link>
       </div>
     );
   }
   return (
-    <>
-      <ul className="mt-10 divide-y divide-border border-y border-border" data-testid="orders-list">
-        {data.rows.map(({ order: o, cross: c }) => {
-          if (!c) {
-            return (
-              <li key={o.address} className="py-4 text-sm text-muted">
-                An order in cross <span className="font-mono">{shortAddress(o.cross_address)}</span> could not be loaded right now.
-              </li>
-            );
-          }
+    <div className="mt-10 space-y-10">
+      <ClaimCenter claimable={portfolio.claimable} owner={owner} sign={sign} onChanged={reload} chainUnread={ready.chainUnread} checking={ready.chainState === 'pending'} />
+      <PortfolioView portfolio={portfolio} />
+      <OrderList data={ready} />
+    </div>
+  );
+}
+
+function OrderList({ data }: { data: Loaded }) {
+  const [now, setNow] = useState<bigint>(() => BigInt(Math.floor(Date.now() / 1000)));
+  const [all, setAll] = useState(false);
+  useEffect(() => {
+    const tick = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1000);
+    return () => clearInterval(tick);
+  }, []);
+  return (
+    <section aria-labelledby="all-orders">
+      <h2 id="all-orders" className="text-xl font-semibold tracking-tight">
+        All orders
+      </h2>
+      <ul className="mt-3 divide-y divide-border border-y border-border" data-testid="orders-list">
+        {(all ? data.orders : data.orders.slice(0, 20)).map((o) => {
+          const c = data.details.get(o.cross_address);
+          if (!c) return null;
           const m = marketOf(c);
           const d = describeOrder(o, c, now);
           const phase = c.state === 'Live' ? (now < BigInt(c.window.closeTs) ? ('open' as const) : ('awaiting-settlement' as const)) : undefined;
@@ -144,8 +156,14 @@ export function MyOrdersPage() {
           );
         })}
       </ul>
+      {data.orders.length > 20 ? (
+        <button type="button" onClick={() => setAll(!all)} className="mt-4 min-h-11 rounded-full border border-border-strong px-4 py-2 text-sm">
+          {all ? 'Show fewer orders' : `Show all ${data.orders.length} orders`}
+        </button>
+      ) : null}
+      {data.missing.length > 0 ? <p className="mt-4 text-xs text-muted">{data.missing.length} crosses could not be loaded just now; their orders are left out of this page.</p> : null}
       {data.truncated ? <p className="mt-4 text-xs text-muted">Showing orders from the {MAX_CROSSES} most recent crosses.</p> : null}
-    </>
+    </section>
   );
 }
 

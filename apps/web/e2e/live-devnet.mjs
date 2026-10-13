@@ -145,6 +145,10 @@ try {
   const quoteBefore = await tokenBalance(buyerAddr, seed.quote);
   await B.page.getByLabel(/per token/).fill('1.30');
   await B.page.getByLabel('Tokens').fill('600');
+  // First order from this wallet on this device: accept the risks once.
+  const risks = B.page.getByRole('checkbox', { name: /understand the risks/ });
+  await risks.waitFor({ timeout: 4000 }).catch(() => undefined);
+  if (await risks.isVisible()) await risks.check();
   await B.page.getByRole('button', { name: /Place (sealed )?order/ }).click();
   await B.page.getByText('Order placed.').waitFor({ timeout: 120_000 });
   const quoteAfter = await tokenBalance(buyerAddr, seed.quote);

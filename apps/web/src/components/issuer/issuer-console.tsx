@@ -2,11 +2,15 @@
 
 import type { UiWalletAccount } from '@wallet-standard/ui';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { ActionButton } from '@/components/cross/action-button';
 import { useSigner } from '@/components/cross/use-signer';
 import { API_URL } from '@/lib/api';
 import { type IssuerForm, checkIssuerForm } from '@/lib/issuer';
+import { readFacts } from '@/lib/issuer-chain';
+import { type Check, type ChainFacts, creationCost, dustBond, evaluateReadiness, ready as allReady, sol } from '@/lib/issuer-readiness';
+import { PRESETS, applyPreset } from '@/lib/issuer-presets';
+import { formatAtoms } from '@/lib/units';
 import type { AuthenticityVerdict, VerdictClass } from '@/lib/trust-types';
 import { RPC_URL } from '@/lib/tx';
 import { useWallet } from '@/lib/wallet';
@@ -78,6 +82,12 @@ function Form({ account }: { account: UiWalletAccount }) {
   // A create is several transactions; if the later ones fail, the cross exists on chain without all its shards and must be finished.
   const [unfinished, setUnfinished] = useState<{ cross: string; landed: number; total: number } | null>(null);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
+  const [facts, setFacts] = useState<ChainFacts | null>(null);
+  const [reading, setReading] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  // Number fields keep their own text; bumping this remounts them so a preset's values show.
+  const [rev, setRev] = useState(0);
+  const [preset, setPreset] = useState<{ id: string; stepKept: boolean } | null>(null);
 
   const baseInfo = typeof mints.base === 'object' ? mints.base : null;
   const quoteInfo = typeof mints.quote === 'object' ? mints.quote : null;
@@ -101,6 +111,47 @@ function Form({ account }: { account: UiWalletAccount }) {
         )
       : null;
   const err = (k: string) => (checked && !checked.ok ? checked.errors[k] : undefined);
+
+  const refresh = useCallback(async () => {
+    setReading(true);
+    try {
+      setFacts(await readFacts({ wallet: account.address, baseMint: f.baseMint.trim(), quoteMint: f.quoteMint.trim() }));
+    } finally {
+      setReading(false);
+    }
+  }, [account.address, f.baseMint, f.quoteMint]);
+
+  // Read the chain whenever both mints have just been checked; clear the facts when either is edited.
+  const mintsReady = Boolean(baseInfo && quoteInfo);
+  useEffect(() => {
+    if (!mintsReady) {
+      setFacts(null);
+      return;
+    }
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the read is tied to the mint checks, not to every keystroke in other fields
+  }, [mints.base, mints.quote]);
+  // Chain time moves on while the form is open; re-judge the window every 10 seconds.
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 10_000);
+    return () => clearInterval(t);
+  }, []);
+  const checks = evaluateReadiness(
+    { wallet: account.address, supplyMode: f.supplyMode, baseMint: f.baseMint.trim(), quoteMint: f.quoteMint.trim(), shards: f.shards, openAt: new Date(f.openAt), closeAt: new Date(f.closeAt), form: checked },
+    facts,
+    nowMs,
+  );
+  const canCreate = Boolean(checked?.ok) && allReady(checks);
+  const cost = facts?.rent ? creationCost(facts.rent, f.shards, facts.quoteAccount?.exists ?? false) : null;
+  const bond = checked?.ok ? dustBond(checked.body) : null;
+  const choosePreset = (id: string) => {
+    const p = PRESETS.find((x) => x.id === id);
+    if (!p) return;
+    const applied = applyPreset(p, { minPrice: f.minPrice, tick: f.tick, quoteDecimals: quoteInfo?.decimals ?? null }, new Date());
+    setF((x) => ({ ...x, ...applied.fields }));
+    setRev((r) => r + 1);
+    setPreset({ id, stepKept: applied.stepKept });
+  };
 
   if (created) {
     return (
@@ -131,6 +182,32 @@ function Form({ account }: { account: UiWalletAccount }) {
 
   return (
     <form className="mt-10 space-y-8" onSubmit={(e) => e.preventDefault()}>
+      <Fieldset legend="Start from a preset (optional)">
+        <p className="text-sm text-muted">
+          A preset fills the format, the number of price levels and the length of the call. It does not choose your price or your supply, and it is a starting shape, not a recommendation: every field stays editable.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Presets">
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => choosePreset(p.id)}
+              aria-pressed={preset?.id === p.id}
+              data-testid={`preset-${p.id}`}
+              className={`min-h-11 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-surface ${preset?.id === p.id ? 'border-ink' : 'border-border-strong'}`}
+            >
+              <span className="block font-medium">{p.name}</span>
+              <span className="mt-1 block text-xs text-muted">{p.summary}</span>
+            </button>
+          ))}
+        </div>
+        {preset ? (
+          <p className="text-xs text-muted" role="status" data-testid="preset-note">
+            Preset applied: {PRESETS.find((x) => x.id === preset.id)?.name}. {preset.stepKept ? 'The step between prices was left as it is, because the preset’s step does not land exactly on your lowest price.' : 'The step between prices is now a share of your lowest price.'} Set the supply schedule and the lowest price yourself.
+          </p>
+        ) : null}
+      </Fieldset>
+
       <Fieldset legend="Tokens">
         <MintField label="Token being sold (base mint)" value={f.baseMint} onChange={(v) => { set('baseMint', v); setMints((m) => ({ ...m, base: undefined })); setIdentity((i) => ({ ...i, base: undefined })); }} info={mints.base} identity={identity.base} onRead={async () => { const base = await readMint(f.baseMint); setMints((m) => ({ ...m, base })); setIdentity((i) => ({ ...i, base: null })); const id = await readIdentity(f.baseMint); setIdentity((i) => ({ ...i, base: id })); }} />
         <MintField label="Paid in (quote mint)" value={f.quoteMint} onChange={(v) => { set('quoteMint', v); setMints((m) => ({ ...m, quote: undefined })); setIdentity((i) => ({ ...i, quote: undefined })); }} info={mints.quote} identity={identity.quote} onRead={async () => { const quote = await readMint(f.quoteMint); setMints((m) => ({ ...m, quote })); setIdentity((i) => ({ ...i, quote: null })); const id = await readIdentity(f.quoteMint); setIdentity((i) => ({ ...i, quote: id })); }} />
@@ -145,13 +222,13 @@ function Form({ account }: { account: UiWalletAccount }) {
       <Fieldset legend="Price grid">
         <Text label="Lowest price per token" value={f.minPrice} onChange={(v) => set('minPrice', v)} error={err('minPrice')} />
         <Text label="Step between prices" value={f.tick} onChange={(v) => set('tick', v)} error={err('tick')} />
-        <Num label="Number of price levels (2–256)" value={f.ticks} onChange={(v) => set('ticks', v)} error={err('ticks')} />
+        <Num key={`ticks-${rev}`} label="Number of price levels (2–256)" value={f.ticks} onChange={(v) => set('ticks', v)} error={err('ticks')} />
       </Fieldset>
 
       <Fieldset legend="Call window (your local time)">
         <Text label="Orders open" type="datetime-local" value={f.openAt} onChange={(v) => set('openAt', v)} error={err('openAt')} />
         <Text label="Orders close" type="datetime-local" value={f.closeAt} onChange={(v) => set('closeAt', v)} error={err('closeAt')} />
-        {f.disclosure === 'sealed' ? <Num label="Reveal window (minutes)" value={f.revealMinutes} onChange={(v) => set('revealMinutes', v)} error={err('revealMinutes')} /> : null}
+        {f.disclosure === 'sealed' ? <Num key={`reveal-${rev}`} label="Reveal window (minutes)" value={f.revealMinutes} onChange={(v) => set('revealMinutes', v)} error={err('revealMinutes')} /> : null}
       </Fieldset>
 
       {f.supplyMode === 'mint' ? (
@@ -160,12 +237,12 @@ function Form({ account }: { account: UiWalletAccount }) {
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
               <Text label={`Step ${i + 1}: price`} value={s.price} onChange={(v) => set('schedule', f.schedule.map((x, j) => (j === i ? { ...x, price: v } : x)))} error={err(`schedule.${i}`)} />
               <Text label="Tokens offered" value={s.quantity} onChange={(v) => set('schedule', f.schedule.map((x, j) => (j === i ? { ...x, quantity: v } : x)))} />
-              <button type="button" className="mb-1 text-sm text-muted underline" onClick={() => set('schedule', f.schedule.filter((_, j) => j !== i))} aria-label={`Remove step ${i + 1}`}>
+              <button type="button" className="mb-1 min-h-6 min-w-6 px-1 py-1 text-sm text-muted underline" onClick={() => set('schedule', f.schedule.filter((_, j) => j !== i))} aria-label={`Remove step ${i + 1}`}>
                 Remove
               </button>
             </div>
           ))}
-          <button type="button" className="text-sm text-accent-text underline" onClick={() => set('schedule', [...f.schedule, { price: '', quantity: '' }])}>
+          <button type="button" className="min-h-6 py-1 text-sm text-accent-text underline" onClick={() => set('schedule', [...f.schedule, { price: '', quantity: '' }])}>
             Add a step
           </button>
           {err('schedule') ? <p className="text-xs text-accent-text">{err('schedule')}</p> : null}
@@ -175,7 +252,7 @@ function Form({ account }: { account: UiWalletAccount }) {
       <Fieldset legend="Guards">
         <Text label="Minimum tokens traded to print (optional)" value={f.minMatched} onChange={(v) => set('minMatched', v)} error={err('minMatched')} hint="If fewer tokens than this would trade, the cross does not print and everyone is refunded." />
         <Text label="Maximum imbalance, % (optional)" value={f.maxImbalancePct} onChange={(v) => set('maxImbalancePct', v)} error={err('maxImbalancePct')} hint="If the unmatched quantity at the clearing price is larger than this share of the tokens traded, the cross does not print." />
-        <Num label="Maximum orders" value={f.maxOrders} onChange={(v) => set('maxOrders', v)} error={err('maxOrders')} hint="The call stops accepting orders at this count." />
+        <Num key={`max-${rev}`} label="Maximum orders" value={f.maxOrders} onChange={(v) => set('maxOrders', v)} error={err('maxOrders')} hint="The call stops accepting orders at this count." />
       </Fieldset>
 
       {f.supplyMode === 'mint' ? (
@@ -184,16 +261,23 @@ function Form({ account }: { account: UiWalletAccount }) {
           clearing price. Your wallet must hold that authority now.
         </p>
       ) : null}
-      {!baseInfo || !quoteInfo ? <p className="text-sm text-muted">Check both mints to continue.</p> : null}
+      <Readiness checks={checks} reading={reading} canRead={mintsReady} onRefresh={() => void refresh()} />
       <p className="text-sm text-muted" data-testid="create-cost">
-        Creating a cross costs about 0.17 SOL in rent (the cross, its book and its {f.shards} shards; measured on devnet) plus network fees, and a small
-        bond in the quote token (about 0.003 of one token at the defaults, growing with Maximum orders), so the wallet needs both. If a setup transaction fails part way you can
-        finish it from this page.
+        {cost && facts?.rent ? (
+          <>
+            Creating this cross costs about <strong className="font-medium text-ink">{sol(cost.total)}</strong>: {sol(cost.rent)} of rent for the cross, its book, its {f.shards} shards and two vaults (the cluster&apos;s own rent for the sizes of the newest cross on chain)
+            {cost.ata > 0n ? `, ${sol(cost.ata)} for your quote token account` : ''}, and {sol(cost.fees)} in network fees.
+            {bond !== null && quoteInfo ? ` A bond of ${formatAtoms(bond, quoteInfo.decimals)} quote is also taken from your quote token account and returned at settlement.` : ''}
+          </>
+        ) : (
+          'The cost is worked out from the cluster’s rent once both mints are checked: it is mostly rent for the cross, its book and one account per shard, plus a small bond in the quote token.'
+        )}{' '}
+        If a setup transaction fails part way you can finish it from this page.
       </p>
       <ActionButton
         label="Create the cross"
         path="/v1/tx/create-cross"
-        disabled={!checked?.ok}
+        disabled={!canCreate}
         body={() => (checked?.ok ? checked.body : {})}
         sign={sign}
         onDone={(_s, extra) => setCreated(String(extra.cross))}
@@ -305,5 +389,54 @@ function MintField({ label, value, onChange, info, identity, onRead }: { label: 
         </p>
       ) : null}
     </div>
+  );
+}
+
+const STATUS_LABEL: Record<Check['status'], string> = { pass: 'Ready', fail: 'Not ready', warn: 'Check this', wait: 'Waiting' };
+const STATUS_STYLE: Record<Check['status'], string> = {
+  pass: 'border-positive text-positive',
+  fail: 'border-accent text-accent-text',
+  warn: 'border-border-strong text-ink',
+  wait: 'border-border text-muted',
+};
+
+function Readiness({ checks, reading, canRead, onRefresh }: { checks: Check[]; reading: boolean; canRead: boolean; onRefresh: () => void }) {
+  const failing = checks.filter((c) => c.status === 'fail').length;
+  const waiting = checks.filter((c) => c.status === 'wait').length;
+  return (
+    <section aria-labelledby="readiness" className="rounded-[var(--radius-card)] border border-border p-5" data-testid="readiness">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="readiness" className="font-medium">
+            Readiness
+          </h2>
+          <p className="mt-1 text-sm text-muted" role="status" data-testid="readiness-summary">
+            {reading
+              ? 'Reading the chain…'
+              : !canRead
+                ? 'Check both mints. Each item below is then judged from what the chain says, and Create stays off until none fails.'
+                : failing > 0
+                  ? `${failing} ${failing === 1 ? 'item is' : 'items are'} not ready. Create the cross stays off until ${failing === 1 ? 'it is' : 'they are'} fixed.`
+                  : waiting > 0
+                    ? 'Nearly there: finish the fields marked waiting.'
+                    : 'Everything is ready to create.'}
+          </p>
+        </div>
+        <button type="button" onClick={onRefresh} disabled={!canRead || reading} className="min-h-11 rounded-full border border-border-strong px-4 py-2 text-sm disabled:opacity-50">
+          Read the chain again
+        </button>
+      </div>
+      <ul className="mt-4 divide-y divide-border border-y border-border">
+        {checks.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-start gap-x-4 gap-y-1 py-3 text-sm" data-testid={`check-${c.id}`} data-status={c.status}>
+            <span className={`inline-flex min-w-24 justify-center rounded-full border px-2.5 py-1 text-xs ${STATUS_STYLE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
+            <div className="min-w-0 flex-1 basis-60">
+              <p className="font-medium">{c.label}</p>
+              <p className="mt-0.5 text-muted">{c.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -1,3 +1,4 @@
+import type { SafetyReport } from './safety';
 // Shapes returned by the API's cross endpoints (all integers are decimal strings).
 export type CrossDetail = {
   address: string;
@@ -20,6 +21,8 @@ export type CrossDetail = {
   settlement: { settleDeadlineTs: string; baseBound: boolean };
   /** Fairness figures for this cross once it has printed and finalized; null before, and null if the index could not be read. */
   fairness?: CrossFairness | null;
+  /** What the base token's issuer can do to holders (from /v1/tokens/:mint/safety); null when the mint is unbound or unreadable. */
+  safety?: SafetyReport | null;
 };
 
 export type BookResponse = {

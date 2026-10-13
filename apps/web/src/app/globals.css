@@ -78,6 +78,8 @@
 }
 
 html {
+  /* The header is sticky and 64px tall: a focused control scrolled into view must not end up underneath it (WCAG 2.4.11). */
+  scroll-padding-top: 5rem;
   background: var(--bg);
   color: var(--ink);
 }

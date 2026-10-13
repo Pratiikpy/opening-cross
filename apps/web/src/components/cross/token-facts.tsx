@@ -3,6 +3,7 @@ import type { CrossDetail } from '@/lib/types';
 import { type Market, formatPrice } from '@/lib/units';
 import { CopyButton } from './copy-button';
 import { IdentityPanel } from './identity-panel';
+import { SafetyBadge } from './safety-badge';
 
 // The program's supply modes (cross_core SupplyMode): what the issuer sells and where it comes from.
 const SUPPLY: Record<string, string> = {
@@ -73,6 +74,11 @@ export function TokenFacts({ cross, market: m, identity }: { cross: CrossDetail;
         <Row label="Created by">
           <Address value={cross.creator} label="creator address" />
         </Row>
+        {cross.safety ? (
+          <Row label="Token safety">
+            <SafetyBadge safety={cross.safety} label="Token safety" />
+          </Row>
+        ) : null}
         <Row label="Is it the real token?">
           <IdentityPanel address={cross.address} initial={identity} embedded />
         </Row>

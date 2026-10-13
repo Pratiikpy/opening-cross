@@ -33,6 +33,10 @@ Base URLs (the current devnet deployment; they can change, so read them from the
 - GET /v1/promises/:id/inputs: the book a promise was computed from.
 - GET /v1/accuracy: every signed band counted by outcome.
 - GET /v1/tokens/:mint/authenticity: is this the issuer's real token (mainnet mints only).
+- GET /v1/tokens/:mint/safety: what the issuer of a token can do to escrowed balances (pause, freeze, permanent delegate, transfer hook, fee, mint authority), with a verdict: blocked, halted, disclosures or clear.
+- GET /v1/router/quote?base=&quote=&side=&amount=: ranked venues for one order (live crosses of the pair, Jupiter on mainnet), each exclusion with its reason. Meteora pools are not priced. Nothing is signed.
+- GET /v1/replay/:address: every on-chain event of one cross in order, from the indexed event log.
+- GET /v1/replay?days=&limit=: crosses that opened in the last days (default 30) with outcome, order counts and timings.
 - GET /v1/premium/summary?days=: stock-token premium by order size and market session.
 - GET /v1/premium/latest: the newest premium measurement per token.
 - GET /v1/metrics/execution: what bidders actually got over every finalized cross that printed: fill rate, price improvement, refund share, close-to-finalized time, each with its sample size and method.
@@ -47,6 +51,7 @@ Base URLs (the current devnet deployment; they can change, so read them from the
 
 These return transactions for your wallet to sign and send. The API never holds keys and never signs for anyone.
 
+- POST /v1/route/quote
 - POST /v1/tx/create-cross
 - POST /v1/tx/place-order
 - POST /v1/tx/cancel

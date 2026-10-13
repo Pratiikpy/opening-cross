@@ -5,6 +5,7 @@ import { ActionError, type Signer } from '@/lib/tx';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, buyerPays, formatAtoms, formatPrice, parseAtoms, parsePrice } from '@/lib/units';
 import { downloadBackup, loadBids, randomNonce, randomSalt, rememberOrder, saveBid } from '@/lib/sealed';
+import { RiskAck, useRiskAck } from '@/components/portfolio/risk-ack';
 import { ActionButton } from './action-button';
 import { rememberTerms } from './own-orders';
 import { type OrderPreview, previewOrder } from './preview';
@@ -33,6 +34,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
   const [qtyText, setQtyText] = useState('');
   const [placed, setPlaced] = useState<string | null>(null);
   const sealed = cross.disclosure === 'sealed';
+  const risk = useRiskAck(owner);
 
   const price = priceText ? onGrid(priceText, cross, m) : null;
   const qty = qtyText ? parseAtoms(qtyText, m.baseDecimals) : null;
@@ -101,6 +103,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
         </div>
       ) : null}
 
+      <RiskAck {...risk} />
       <div className="mt-4">
         {(() => {
           const nonce = randomNonce();
@@ -109,9 +112,10 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
             <ActionButton
               label={sealed ? 'Place sealed order' : 'Place order'}
               path="/v1/tx/place-order"
-              disabled={!ready}
+              disabled={!ready || risk.acknowledged !== true}
               sign={sign}
               before={() => {
+                if (risk.acknowledged !== true) throw new ActionError('Read and accept the risks above before your first order.');
                 // The reveal needs these; keep them before anything is signed.
                 if (sealed && !saveBid({ cross: cross.address, owner, nonce, side, price: String(price), quantity: String(qty), salt: salt!, placedAt: new Date().toISOString() })) {
                   throw new ActionError('This browser could not store your sealed bid, so it could not be revealed later. Nothing was sent.');

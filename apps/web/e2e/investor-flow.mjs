@@ -65,9 +65,16 @@ async function openCross(u, address) {
   await u.page.getByRole('heading', { level: 1 }).waitFor();
   await u.page.getByTestId('countdown').or(u.page.getByTestId('price')).first().waitFor();
 }
+// Before a wallet's first order on this device the ticket asks it to accept the risks: one checkbox, once per wallet.
+async function acceptRisks(u) {
+  const box = u.page.getByRole('checkbox', { name: /understand the risks/ });
+  await box.waitFor({ timeout: 4000 }).catch(() => undefined);
+  if (await box.isVisible()) await box.check();
+}
 async function place(u, price, qty) {
   await u.page.getByLabel(/per token/).fill(price);
   await u.page.getByLabel('Tokens').fill(qty);
+  await acceptRisks(u);
   await u.page.getByRole('button', { name: /Place (sealed )?order/ }).click();
   await u.page.getByText('Order placed.').waitFor({ timeout: 60_000 });
 }
@@ -112,9 +119,13 @@ log(await A.page.getByText(/must be between 1 and 2.95/).isVisible(), 'a price o
 await A.page.getByLabel('Tokens').fill('abc');
 log(await A.page.getByText(/Enter an amount of tokens/).isVisible(), 'a malformed quantity is refused');
 log(await A.page.getByRole('button', { name: 'Place order' }).isDisabled(), 'the order button stays disabled while inputs are invalid');
+log(await A.page.getByTestId('risk-ack').isVisible(), 'a wallet placing its first order sees the risk acknowledgement');
 await A.page.getByLabel(/per token/).fill('1.30');
 await A.page.getByLabel('Tokens').fill('600');
 log((await A.page.getByTestId('preview').textContent()).includes('Up to 780 is held in escrow'), 'escrow preview shows the exact maximum (600 × 1.30 = 780)');
+log(await A.page.getByRole('button', { name: 'Place order' }).isDisabled(), 'valid inputs alone do not enable the order button until the risks are accepted');
+await acceptRisks(A);
+log(await A.page.getByRole('button', { name: 'Place order' }).isEnabled(), 'accepting the risks enables the order button');
 await A.page.evaluate(() => (window.__E2E_REJECT_NEXT__ = true));
 await A.page.getByRole('button', { name: 'Place order' }).click();
 await A.page.getByText('You declined in your wallet. Nothing was sent.').waitFor();
