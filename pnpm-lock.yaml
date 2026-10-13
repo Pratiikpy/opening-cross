@@ -873,6 +873,9 @@ importers:
       '@fastify/websocket':
         specifier: 11.3.3
         version: 11.3.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@opening-cross/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@opening-cross/agent-identity':
         specifier: workspace:*
         version: link:../../packages/agent-identity
@@ -1083,6 +1086,9 @@ importers:
       '@opening-cross/cross-core-client':
         specifier: workspace:*
         version: link:../../packages/cross-core-client
+      '@opening-cross/cross-settle-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-settle-client
       '@opening-cross/treasury-client':
         specifier: workspace:*
         version: link:../../packages/treasury-client

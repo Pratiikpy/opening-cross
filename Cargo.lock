@@ -473,10 +473,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross_basket"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "cross_calendar"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+]
+
+[[package]]
+name = "cross_conviction"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
 ]
 
 [[package]]
@@ -505,6 +521,16 @@ dependencies = [
  "spl-tlv-account-resolution",
  "spl-token-2022-interface",
  "spl-transfer-hook-interface",
+]
+
+[[package]]
+name = "cross_mandate"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+ "cross_core",
 ]
 
 [[package]]

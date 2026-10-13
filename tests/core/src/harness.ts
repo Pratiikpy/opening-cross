@@ -50,6 +50,12 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** Directory holding the built programs. `OC_DEPLOY_DIR` lets a build in progress be tested without touching `target/deploy`. */
 const DEPLOY = process.env.OC_DEPLOY_DIR ? `${process.env.OC_DEPLOY_DIR.replace(/\/$/, '')}/` : `${ROOT}target/deploy/`;
 export const T0 = 1_800_000_000n;
+/** Programs beyond the first five (address, file in the deploy directory); each is loaded only when its binary exists. */
+const EXTRA_PROGRAMS: [string, string][] = [
+  ['83EvNHUpKzguAUmyBHJgktVsVLzp3sCXYysgzmToLhs1', 'cross_mandate.so'],
+  ['JAWUTTDhBQQ97w9YiPMv5sjsDxZab7AsSnc9L57zJjz6', 'cross_conviction.so'],
+  ['4uNyZ4fSihcnrqASfYHCC35edh3EdndP37jSWqWQZxCp', 'cross_basket.so'],
+];
 
 /** A transaction the harness landed, in the shape an indexer receives it from an RPC node. */
 export type LandedTx = { signature: string; slot: bigint; blockTime: bigint; logs: string[]; err: null };
@@ -65,6 +71,8 @@ export class Harness {
     this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${DEPLOY}cross_settle.so`);
     this.svm.addProgramFromFile(address('CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN'), `${DEPLOY}cross_calendar.so`);
     this.svm.addProgramFromFile(TREASURY_PROGRAM_ADDRESS, `${DEPLOY}treasury.so`);
+    // Programs added after the first five load when their binary has been built.
+    for (const [id, file] of EXTRA_PROGRAMS) if (existsSync(`${DEPLOY}${file}`)) this.svm.addProgramFromFile(address(id), `${DEPLOY}${file}`);
     // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
     if (existsSync(DLMM_FIXTURE)) this.svm.addProgramFromFile(address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'), DLMM_FIXTURE);

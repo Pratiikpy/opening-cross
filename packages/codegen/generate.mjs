@@ -13,6 +13,9 @@ const CLIENTS = [
   { program: 'cross_settle', pkg: 'cross-settle-client' },
   { program: 'cross_calendar', pkg: 'cross-calendar-client' },
   { program: 'treasury', pkg: 'treasury-client' },
+  { program: 'cross_mandate', pkg: 'cross-mandate-client' },
+  { program: 'cross_basket', pkg: 'cross-basket-client' },
+  { program: 'cross_conviction', pkg: 'cross-conviction-client' },
 ];
 
 // ONLY=cross_core,treasury regenerates just those clients.
