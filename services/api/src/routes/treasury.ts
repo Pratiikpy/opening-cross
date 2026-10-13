@@ -233,6 +233,23 @@ export function registerTreasury(app: FastifyInstance, d: TreasuryDeps): void {
     return { at: rows[0].at === null ? null : Number(rows[0].at), n: rows[0].n as number };
   };
 
+  // The list reads two accounts per row from a rate-limited public endpoint. A read is reused for ten seconds, shared between
+  // simultaneous requests, and given up on after three: the row is then served from the index with `chain: 'unavailable'`,
+  // or from the last good read when there is one.
+  const listReads = new Map<string, { at: number; value: Promise<Awaited<ReturnType<typeof readChain>> | 'error'>; good?: Awaited<ReturnType<typeof readChain>> }>();
+  const listChain = (address: Address): Promise<Awaited<ReturnType<typeof readChain>> | 'error'> => {
+    const hit = listReads.get(address);
+    if (hit && Date.now() - hit.at < 10_000) return hit.value;
+    const read = readChain(d, address, false);
+    const bounded = Promise.race([read, new Promise<'error'>((r) => setTimeout(() => r('error'), 3_000).unref())])
+      .catch(() => 'error' as const)
+      .then((v) => (v === 'error' && hit?.good ? hit.good : v));
+    const entry: { at: number; value: typeof bounded; good?: Awaited<ReturnType<typeof readChain>> } = { at: Date.now(), value: bounded, ...(hit?.good && { good: hit.good }) };
+    listReads.set(address, entry);
+    void read.then((v) => { if (v) entry.good = v; }, () => undefined);
+    return bounded;
+  };
+
   app.get('/v1/treasuries', async (req, reply) => {
     const q = req.query as { state?: string; limit?: string };
     const limit = Math.min(Math.max(Number(q.limit ?? 50) || 50, 1), 200);
@@ -250,7 +267,7 @@ export function registerTreasury(app: FastifyInstance, d: TreasuryDeps): void {
         ...(await Promise.all(
           (rows as TreasuryRow[]).slice(i, i + 4).map(async (r) => {
             // The list needs the state and the vault, not the coin mint: two public-RPC reads per row instead of three.
-            const chain = await readChain(d, r.address as Address, false).catch(() => 'error' as const);
+            const chain = await listChain(r.address as Address);
             const live = chain !== 'error' && chain !== null ? chain : null;
             const periodSecs = Number(r.period_secs);
             return {
