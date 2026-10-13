@@ -1,0 +1,23 @@
+[package]
+name = "clearing-core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+clearing-core = { path = ".." }
+
+# Detached from the repository workspace on purpose: cargo-fuzz builds with nightly and sanitizer flags.
+[workspace]
+
+[[bin]]
+name = "clear_vs_reference"
+path = "fuzz_targets/clear_vs_reference.rs"
+test = false
+doc = false
+bench = false

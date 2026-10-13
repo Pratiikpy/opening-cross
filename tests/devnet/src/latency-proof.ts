@@ -22,7 +22,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
 } from '@solana/kit';
-import { getCreateAccountInstruction } from '@solana-program/system';
+import { getCreateAccountInstruction, getTransferSolInstruction } from '@solana-program/system';
 import {
   AuthorityType,
   TOKEN_2022_PROGRAM_ADDRESS,
@@ -107,6 +107,12 @@ async function main() {
 
   const bid = (n: number): [bigint, bigint] => [1_000_000n + BigInt(n % 10) * 100_000n, 10_000_000n + BigInt(n) * 1_000_000n];
   const refBuys: RefOrder[] = [];
+
+  // Endpoint floor: a plain one-lamport self-transfer, timed exactly like a bid (blockhash, sign, send with preflight, poll to
+  // confirmed). Whatever a bid costs above this is the program's and the client's; this part is the public endpoint's.
+  const floor: number[] = [];
+  for (let n = 0; n < 20; n++) floor.push((await sendTimed([getTransferSolInstruction({ source: operator, destination: operator.address, amount: 1n })], operator)).ms);
+  ev.check('endpoint-floor', 'the confirmation time of the public endpoint itself, measured with a plain self-transfer in the same way as a bid', true, summary(floor));
 
   // Sequential: one bid at a time.
   const seq: number[] = [];

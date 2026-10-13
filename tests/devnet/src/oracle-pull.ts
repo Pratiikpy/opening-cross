@@ -19,24 +19,36 @@ function pythApiKey(): string {
   return key;
 }
 
-const FEED = 'a470c4ac46f44b547b2cba52338f311fb642b79375ce5f0cfd5cb5b99227b852'; // Equity.Index.NVDA/USD, 24/7
-const ev = new Evidence('DP15-pyth-pull-devnet.md', 'DP15 — Pyth pull update posted on devnet (24/7 NVDA)', ['Script `tests/devnet/src/oracle-pull.ts`; Hermes https://hermes.pyth.network; receiver `rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ`']);
+const NVDA_FEED = 'a470c4ac46f44b547b2cba52338f311fb642b79375ce5f0cfd5cb5b99227b852'; // Equity.Index.NVDA/USD, 24/7
+// The mechanism is feed-independent. When the API key is not entitled to the equity feed (Hermes answers 403 "Not entitled"), the
+// same pull path is proved on a feed the key can read, and the equity step is recorded as the failure it is.
+const FALLBACK_FEED = 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'; // Crypto.BTC/USD
+const ev = new Evidence('DP15-pyth-pull-devnet.md', 'DP15 — Pyth pull update posted on devnet', ['Script `tests/devnet/src/oracle-pull.ts`; Hermes https://pyth.dourolabs.app/hermes (API key); receiver `rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ`']);
 
-async function main() {
-  // Upgraded Hermes endpoint per docs.pyth.network/price-feeds/core/upgrade/preparing.
-  const hermes = new HermesClient('https://pyth.dourolabs.app/hermes', { headers: { Authorization: `Bearer ${pythApiKey()}` } });
-  const update = await hermes.getLatestPriceUpdates([FEED], { encoding: 'base64' });
+async function post(hermes: HermesClient, feed: string, id: string, label: string, decimalsOut: { quote: number; token: number }) {
+  const update = await hermes.getLatestPriceUpdates([feed], { encoding: 'base64' });
   const receiver = new PythSolanaReceiver({ connection, wallet: new Wallet(operator) });
   const builder = receiver.newTransactionBuilder({ closeUpdateAccounts: false });
   await builder.addPostPriceUpdates(update.binary.data);
-  const account = builder.getPriceUpdateAccount(`0x${FEED}`);
+  const account = builder.getPriceUpdateAccount(`0x${feed}`);
   const sigs = await receiver.provider.sendAll(await builder.buildVersionedTransactions({ computeUnitPriceMicroLamports: 50_000 }), { skipPreflight: false });
   const a = await fetchEncodedAccount(rpc, address(account.toBase58()), { commitment: 'confirmed' });
   if (!a.exists) throw new Error('price update account not found');
   const o = parsePriceUpdate(a.data);
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const ok = isPythReceiver(a.programAddress) && !!o && Buffer.from(o.feedId).equals(Buffer.from(hexToBytes(FEED))) && o.fullyVerified && now - o.publishTime < 120n;
+  const ok = isPythReceiver(a.programAddress) && !!o && Buffer.from(o.feedId).equals(Buffer.from(hexToBytes(feed))) && o.fullyVerified && now - o.publishTime < 120n;
   const usd = o ? Number(o.price) * 10 ** o.exponent : NaN;
-  ev.check('pull-post', 'fresh, fully verified 24/7 NVDA price posted and parsed exactly as cross_core will read it', ok, `account ${account.toBase58()}; $${usd.toFixed(4)}; age ${o ? now - o.publishTime : '?'}s; cross units (USDC 6dp, token 8dp, scale 1e8) ${o ? oracleToCrossUnits(o, 6, 8, 100_000_000n) : null}`, sigs[sigs.length - 1]);
+  ev.check(id, `fresh, fully verified ${label} price posted and parsed exactly as cross_core will read it`, ok, `account ${account.toBase58()}; $${usd.toFixed(4)}; age ${o ? now - o.publishTime : '?'}s; cross units (quote ${decimalsOut.quote}dp, token ${decimalsOut.token}dp, scale 1e8) ${o ? oracleToCrossUnits(o, decimalsOut.quote, decimalsOut.token, 100_000_000n) : null}`, sigs[sigs.length - 1]);
+}
+
+async function main() {
+  // Upgraded Hermes endpoint per docs.pyth.network/price-feeds/core/upgrade/preparing.
+  const hermes = new HermesClient('https://pyth.dourolabs.app/hermes', { headers: { Authorization: `Bearer ${pythApiKey()}` } });
+  try {
+    await post(hermes, NVDA_FEED, 'pull-post-nvda', '24/7 NVDA', { quote: 6, token: 8 });
+  } catch (e) {
+    ev.check('pull-post-nvda', 'fresh, fully verified 24/7 NVDA price posted and parsed exactly as cross_core will read it', false, `Hermes refused the equity feed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  await post(hermes, FALLBACK_FEED, 'pull-post-btc', 'BTC/USD (a feed the key is entitled to; proves the pull path itself)', { quote: 6, token: 8 });
 }
 main().then(() => ev.write(), (e) => { console.error(e); ev.write(e); });
