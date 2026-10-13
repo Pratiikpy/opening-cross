@@ -148,7 +148,11 @@ try {
   // First order from this wallet on this device: accept the risks once.
   const risks = B.page.getByRole('checkbox', { name: /understand the risks/ });
   await risks.waitFor({ timeout: 4000 }).catch(() => undefined);
-  if (await risks.isVisible()) await risks.check();
+  // Accepting replaces the checkbox with a confirmation line, so click it (check() would wait for a state of an element that is gone).
+  if (await risks.isVisible()) {
+    await risks.click();
+    await B.page.getByText(/You accepted the risks/).waitFor();
+  }
   await B.page.getByRole('button', { name: /Place (sealed )?order/ }).click();
   await B.page.getByText('Order placed.').waitFor({ timeout: 120_000 });
   const quoteAfter = await tokenBalance(buyerAddr, seed.quote);

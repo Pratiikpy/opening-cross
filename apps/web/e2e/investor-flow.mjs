@@ -69,7 +69,11 @@ async function openCross(u, address) {
 async function acceptRisks(u) {
   const box = u.page.getByRole('checkbox', { name: /understand the risks/ });
   await box.waitFor({ timeout: 4000 }).catch(() => undefined);
-  if (await box.isVisible()) await box.check();
+  // Accepting replaces the checkbox with a confirmation line, so click it (check() would wait for a state of an element that is gone).
+  if (await box.isVisible()) {
+    await box.click();
+    await u.page.getByText(/You accepted the risks/).waitFor();
+  }
 }
 async function place(u, price, qty) {
   await u.page.getByLabel(/per token/).fill(price);
