@@ -13,16 +13,56 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{
-        self, Mint, MintTo, SetAuthority, TokenAccount, TokenInterface, TransferChecked,
-    },
+    token_interface::{self, Mint, SetAuthority, TokenAccount, TokenInterface, TransferChecked},
 };
 
+pub mod classbook;
+pub mod create;
+pub mod draw;
+pub mod ext;
+pub mod feed;
+pub mod halt;
+pub mod identity;
+pub mod lock;
+pub mod neutral;
 pub mod oracle;
+pub mod orders;
+pub mod refunds;
+pub mod rules;
+pub mod series;
 pub mod state;
+
+#[allow(ambiguous_glob_reexports)]
+pub use classbook::*;
+#[allow(ambiguous_glob_reexports)]
+pub use draw::*;
+#[allow(ambiguous_glob_reexports)]
+pub use ext::*;
+#[allow(ambiguous_glob_reexports)]
+pub use feed::*;
+#[allow(ambiguous_glob_reexports)]
+pub use halt::*;
+#[allow(ambiguous_glob_reexports)]
+pub use identity::*;
+#[allow(ambiguous_glob_reexports)]
+pub use lock::*;
+#[allow(ambiguous_glob_reexports)]
+pub use neutral::*;
+#[allow(ambiguous_glob_reexports)]
+pub use orders::*;
+#[allow(ambiguous_glob_reexports)]
+pub use refunds::*;
+#[allow(ambiguous_glob_reexports)]
+pub use rules::*;
+#[allow(ambiguous_glob_reexports)]
+pub use series::*;
 use state::*;
 
 declare_id!("F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ");
+
+/// How long after the reveal window an unfinished extension draw holds the clear back before the
+/// cross clears as it stands (3 days).
+pub const EXTENSION_GRACE_SECS: i64 = 3 * 24 * 60 * 60;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CreateCrossParams {
@@ -71,6 +111,23 @@ pub struct CommitOrderArgs {
     pub quantity: u64,
     /// Bump of the order PDA, computed by the client.
     pub order_bump: u8,
+}
+
+/// Arguments for `commit_order_ext`: those of `commit_order` and the order's class and lock.
+/// (A separate type keeps `commit_order`'s arguments flat in the generated clients.)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
+pub struct CommitOrderExtArgs {
+    pub nonce: u64,
+    pub side: OrderSide,
+    pub escrow: u64,
+    pub commitment: [u8; 32],
+    pub price: u64,
+    pub quantity: u64,
+    pub order_bump: u8,
+    /// Allocation class: 0 general, 1 identity-verified small, 2 locked, 3 priority.
+    pub class: u8,
+    /// Class 2: seconds the fill stays locked.
+    pub lock_secs: u32,
 }
 
 /// One step of an issuer's pre-committed supply schedule.
@@ -220,172 +277,28 @@ pub mod cross_core {
     }
 
     pub fn create_cross(ctx: Context<CreateCross>, params: CreateCrossParams) -> Result<()> {
-        let protocol = &ctx.accounts.protocol;
-        require!(!protocol.paused, CrossError::Paused);
-        require!(
-            params.integrator_fee_bps <= MAX_INTEGRATOR_FEE_BPS,
-            CrossError::FeeTooHigh
-        );
-        require!(
-            params.tick > 0 && params.price_scale > 0,
-            CrossError::InvalidParams
-        );
-        require!(
-            params.ticks > 0 && usize::from(params.ticks) <= MAX_TICKS,
-            CrossError::InvalidParams
-        );
-        require!(
-            params.shards > 0 && params.shards <= MAX_SHARDS,
-            CrossError::InvalidParams
-        );
-        require!(params.max_orders > 0, CrossError::InvalidParams);
-        let deferred = params.supply_mode == SupplyMode::DeferredMint;
-        require!(
-            deferred == ctx.accounts.base_mint.is_none()
-                && deferred == ctx.accounts.base_vault.is_none(),
-            CrossError::InvalidParams
-        );
-        if let Some(base) = ctx.accounts.base_mint.as_ref() {
-            require_keys_neq!(
-                base.key(),
-                ctx.accounts.quote_mint.key(),
-                CrossError::InvalidParams
-            );
-        }
-        let now = Clock::get()?.unix_timestamp;
-        require!(
-            params.open_ts < params.close_ts && params.close_ts > now,
-            CrossError::InvalidTimeline
-        );
-        let reveal_end_ts = match params.disclosure {
-            Disclosure::Open => params.close_ts,
-            Disclosure::Sealed => {
-                require!(
-                    params.reveal_end_ts > params.close_ts,
-                    CrossError::InvalidTimeline
-                );
-                params.reveal_end_ts
-            }
-        };
-
-        let cross_key = ctx.accounts.cross.key();
-        let c = &mut ctx.accounts.cross;
-        c.creator = ctx.accounts.creator.key();
-        c.cross_id = params.cross_id;
-        c.kind = params.kind;
-        c.supply_mode = params.supply_mode;
-        c.disclosure = params.disclosure;
-        c.state = CrossState::Live;
-        c.base_mint = ctx
-            .accounts
-            .base_mint
-            .as_ref()
-            .map_or(Pubkey::default(), |m| m.key());
-        c.quote_mint = ctx.accounts.quote_mint.key();
-        c.base_token_program = ctx.accounts.base_token_program.key();
-        c.quote_token_program = ctx.accounts.quote_token_program.key();
-        c.base_decimals = ctx.accounts.base_mint.as_ref().map_or(0, |m| m.decimals);
-        c.quote_decimals = ctx.accounts.quote_mint.decimals;
-        c.proceeds_to = params.proceeds_to;
-        c.min_price = params.min_price;
-        c.tick = params.tick;
-        c.ticks = params.ticks;
-        c.price_scale = params.price_scale;
-        c.open_ts = params.open_ts;
-        c.close_ts = params.close_ts;
-        c.reveal_end_ts = reveal_end_ts;
-        c.reference_price = params.reference_price;
-        c.min_matched = params.min_matched;
-        c.max_imbalance_bps = params.max_imbalance_bps;
-        // The protocol never takes more than 20% of a cross's total fees (ADR-0010):
-        // p ≤ 0.2 · (p + i)  ⇔  p ≤ i / 4. A cross with no integrator fee pays no protocol fee.
-        c.protocol_fee_bps =
-            protocol.fee_bps[params.kind.index()].min(params.integrator_fee_bps / 4);
-        c.integrator_fee_bps = params.integrator_fee_bps;
-        c.integrator = params.integrator;
-        c.fee_recipient = protocol.fee_recipient;
-        c.gate_mint = params.gate_mint;
-        if let Some(g) = params.oracle {
-            // The guard needs real base decimals; deferred-mint launches have no reference market.
-            require!(
-                !deferred && g.max_divergence_bps > 0 && g.max_staleness_secs > 0,
-                CrossError::InvalidParams
-            );
-        }
-        c.oracle = params.oracle;
-        if let Some(cal_key) = params.calendar {
-            let info = ctx
-                .accounts
-                .calendar_account
-                .as_ref()
-                .ok_or(CrossError::CalendarMismatch)?;
-            require_keys_eq!(info.key(), cal_key, CrossError::CalendarMismatch);
-            require_keys_eq!(
-                *info.owner,
-                cross_calendar::ID,
-                CrossError::CalendarMismatch
-            );
-            let data = info.try_borrow_data()?;
-            let cal = cross_calendar::Calendar::try_deserialize(&mut &data[..])?;
-            require!(
-                cal.has_session_start(params.close_ts),
-                CrossError::NotACalendarSession
-            );
-            if let Some(g) = params.oracle {
-                require!(cal.approves_feed(&g.feed_id), CrossError::FeedNotApproved);
-            }
-        }
-        c.calendar = params.calendar;
-        c.shards = params.shards;
-        c.max_orders = params.max_orders;
-        c.bump = ctx.bumps.cross;
-        c.quote_vault_bump = ctx.bumps.quote_vault;
-        c.base_vault_bump = ctx.bumps.base_vault.unwrap_or_default();
-        c.base_bound = !deferred;
-        if deferred {
-            require!(params.settler.is_some(), CrossError::InvalidParams);
-            require!(
-                params.settle_deadline_ts > reveal_end_ts,
-                CrossError::InvalidTimeline
-            );
-            c.settler = params.settler;
-            c.settle_deadline_ts = params.settle_deadline_ts;
-        } else {
-            require!(params.settler.is_none(), CrossError::InvalidParams);
-        }
-        c.book_bump = ctx.bumps.book;
-
-        if let Some(r) = params.reference_price {
-            require!(c.tick_index(r).is_some(), CrossError::OffGrid);
-        }
-        let max_price = c.max_price().ok_or(CrossError::Overflow)?;
-        // The dust bond must cover buying one atom per order at the highest grid price (ADR-0003).
-        let bond =
-            clearing_core::buyer_pays(u64::from(params.max_orders), max_price, params.price_scale)
-                .ok_or(CrossError::Overflow)?;
-        c.dust_bond = bond;
-
-        {
-            let mut book = ctx.accounts.book.load_init()?;
-            book.cross = cross_key;
-            if params.supply_mode.mints() {
-                require!(!params.schedule.is_empty(), CrossError::InvalidParams);
-                if let Some(base) = ctx.accounts.base_mint.as_ref() {
-                    require!(
-                        Option::<Pubkey>::from(base.mint_authority) == Some(cross_key),
-                        CrossError::MintAuthorityNotCross
-                    );
-                }
-                for level in &params.schedule {
-                    let i = c.tick_index(level.price).ok_or(CrossError::OffGrid)?;
-                    require!(level.quantity > 0, CrossError::InvalidParams);
-                    book.add(OrderSide::Sell, i, level.quantity)?;
-                }
-            } else {
-                require!(params.schedule.is_empty(), CrossError::InvalidParams);
-            }
-        }
-
+        let bond = create::populate(
+            create::Setup {
+                protocol: &ctx.accounts.protocol,
+                cross: &mut ctx.accounts.cross,
+                book: &ctx.accounts.book,
+                creator: ctx.accounts.creator.key(),
+                base_mint: ctx.accounts.base_mint.as_deref(),
+                has_base_vault: ctx.accounts.base_vault.is_some(),
+                quote_mint: &ctx.accounts.quote_mint,
+                base_token_program: ctx.accounts.base_token_program.key(),
+                quote_token_program: ctx.accounts.quote_token_program.key(),
+                calendar_account: ctx.accounts.calendar_account.as_ref().map(|a| a.as_ref()),
+                bumps: create::Bumps {
+                    cross: ctx.bumps.cross,
+                    quote_vault: ctx.bumps.quote_vault,
+                    base_vault: ctx.bumps.base_vault,
+                    book: ctx.bumps.book,
+                },
+            },
+            &params,
+        )?;
+        let c = &ctx.accounts.cross;
         if bond > 0 {
             token_interface::transfer_checked(
                 CpiContext::new(
@@ -403,7 +316,7 @@ pub mod cross_core {
         }
 
         emit!(CrossCreated {
-            cross: cross_key,
+            cross: c.key(),
             creator: c.creator,
             kind: c.kind,
             supply_mode: c.supply_mode,
@@ -420,305 +333,222 @@ pub mod cross_core {
     }
 
     pub fn init_shard(ctx: Context<InitShard>, index: u8) -> Result<()> {
-        require!(index < ctx.accounts.cross.shards, CrossError::InvalidParams);
+        let x = ext::read(&ctx.accounts.cross.to_account_info())?;
+        require!(
+            x.valid_shard_index(&ctx.accounts.cross, index),
+            CrossError::InvalidParams
+        );
         let mut shard = ctx.accounts.shard.load_init()?;
         shard.cross = ctx.accounts.cross.key();
         shard.index = index;
         Ok(())
     }
 
+    /// Fixes the rules of a cross (ADR-0450): the creator, in the slot the cross was created in,
+    /// before any order exists. Remaining accounts: the lender print feed when the cross feeds it.
+    pub fn set_rules<'info>(
+        ctx: Context<'info, SetRules<'info>>,
+        input: CompactRules,
+    ) -> Result<()> {
+        rules::set_rules(ctx, input)
+    }
+
+    /// Registers the halt state of a base mint (ADR-0455). Signed by the mint authority or the
+    /// protocol admin.
+    pub fn init_halt_state(
+        ctx: Context<InitHaltState>,
+        venue_signer: Option<Pubkey>,
+        breaker: Option<BreakerSetup>,
+    ) -> Result<()> {
+        halt::init_halt_state(ctx, venue_signer, breaker)
+    }
+
+    /// The issuer authority or the venue signer halts the asset. Only a printing resume cross
+    /// lifts the halt.
+    pub fn set_halt(ctx: Context<HaltSignal>) -> Result<()> {
+        halt::set_halt(ctx)
+    }
+
+    /// The issuer authority flags or unflags a corporate action.
+    pub fn set_corporate_action(ctx: Context<HaltSignal>, flag: bool) -> Result<()> {
+        halt::set_corporate_action(ctx, flag)
+    }
+
+    /// Anyone copies the mint's pause state into its halt state.
+    pub fn sync_pause(ctx: Context<SyncPause>) -> Result<()> {
+        halt::sync_pause(ctx)
+    }
+
+    /// Anyone feeds a verified oracle update to the asset's circuit breaker.
+    pub fn observe_price(ctx: Context<ObservePrice>) -> Result<()> {
+        halt::observe_price(ctx)
+    }
+
+    /// Registers the lender price feed of a base mint (ADR-0451).
+    pub fn init_print_feed(
+        ctx: Context<InitPrintFeed>,
+        publishers: Vec<Pubkey>,
+        min_matched: u64,
+    ) -> Result<()> {
+        feed::init_print_feed(ctx, publishers, min_matched)
+    }
+
+    /// Changes who may publish to a lender price feed, and the minimum print size.
+    pub fn set_feed_publishers(
+        ctx: Context<FeedAuthority>,
+        publishers: Vec<Pubkey>,
+        min_matched: u64,
+    ) -> Result<()> {
+        feed::set_feed_publishers(ctx, publishers, min_matched)
+    }
+
+    /// Starts the draw that closes an epoch or sets the extension length (ADR-0452). Anyone may
+    /// call it once the call, and any reveal window, is over.
+    pub fn draw_begin(ctx: Context<DrawBegin>) -> Result<()> {
+        draw::draw_begin(ctx)
+    }
+
+    /// Finishes a draw from the block hashes that followed `draw_begin`, and applies it.
+    pub fn draw_finish(ctx: Context<DrawFinish>) -> Result<()> {
+        draw::draw_finish(ctx)
+    }
+
+    /// Creates a recurring series of escrow crosses (ADR-0456).
+    pub fn create_series(
+        ctx: Context<CreateSeries>,
+        series_id: u64,
+        config: SeriesConfig,
+    ) -> Result<()> {
+        series::create_series(ctx, series_id, config)
+    }
+
+    /// Spawns the next cross of a series when it is due. Permissionless. Remaining accounts: the
+    /// lender print feed, when the series' rules feed it.
+    pub fn spawn_next<'info>(ctx: Context<'info, SpawnNext<'info>>) -> Result<()> {
+        series::spawn_next(ctx)
+    }
+
+    /// The series' authority pauses or resumes spawning.
+    pub fn set_series_active(ctx: Context<SeriesAuthority>, active: bool) -> Result<()> {
+        series::set_series_active(ctx, active)
+    }
+
+    /// The series' authority withdraws tokens the series holds.
+    pub fn series_withdraw(ctx: Context<SeriesWithdraw>, amount: u64) -> Result<()> {
+        series::series_withdraw(ctx, amount)
+    }
+
+    /// Emits the cross's extension tail as an event (permissionless, read-only).
+    pub fn log_ext(ctx: Context<LogExt>) -> Result<()> {
+        ext::log_ext(ctx)
+    }
+
+    /// Creates the class book a cross with allocation classes or declared insiders needs.
+    pub fn init_class_book(ctx: Context<InitClassBook>) -> Result<()> {
+        classbook::init_class_book(ctx)
+    }
+
+    /// Returns an applicant record's rent to its owner once the cross is finalized.
+    pub fn close_applicant(ctx: Context<CloseApplicant>) -> Result<()> {
+        identity::close_applicant(ctx)
+    }
+
+    /// Creates the vault that holds the cross's locked tokens.
+    pub fn init_lock_vault(ctx: Context<InitLockVault>) -> Result<()> {
+        lock::init_lock_vault(ctx)
+    }
+
+    /// Pays the vested part of a lockup to its owner. Anyone may call it.
+    pub fn release_locked(ctx: Context<ReleaseLocked>) -> Result<()> {
+        lock::release_locked(ctx)
+    }
+
+    /// The protocol admin names the arbiter that rules on insider challenges.
+    pub fn set_arbiter(ctx: Context<SetArbiter>, arbiter: Pubkey) -> Result<()> {
+        neutral::set_arbiter(ctx, arbiter)
+    }
+
+    /// Alleges that `subject` was an undeclared insider; posts a deposit (ADR-0454).
+    pub fn challenge_insider(
+        ctx: Context<ChallengeInsider>,
+        subject: Pubkey,
+        evidence: [u8; 32],
+    ) -> Result<()> {
+        neutral::challenge_insider(ctx, subject, evidence)
+    }
+
+    /// The arbiter rules on a challenge, slashing part of the bond when it is upheld.
+    pub fn resolve_challenge(
+        ctx: Context<ResolveChallenge>,
+        upheld: bool,
+        slash: u64,
+    ) -> Result<()> {
+        neutral::resolve_challenge(ctx, upheld, slash)
+    }
+
+    /// Refunds up to twelve orders that are owed nothing but their escrow (a cross that did not print, or orders
+    /// that were not filled) in one transaction, to their owners' own token accounts. Anyone may call it.
+    pub fn push_refunds<'info>(ctx: Context<'info, PushRefunds<'info>>) -> Result<()> {
+        refunds::push_refunds(ctx)
+    }
+
+    /// Anyone closes an insider challenge the arbiter has not ruled on within fourteen days; the
+    /// challenger's deposit returns and the bond is untouched.
+    pub fn expire_challenge(ctx: Context<ExpireChallenge>) -> Result<()> {
+        neutral::expire_challenge(ctx)
+    }
+
     /// Places an order and escrows its funds. Sealed crosses take a commitment; open crosses
     /// take the plaintext `price` and `quantity` and add them to the book immediately.
-    pub fn commit_order(ctx: Context<CommitOrder>, args: CommitOrderArgs) -> Result<()> {
-        let CommitOrderArgs {
-            nonce,
-            side,
-            escrow,
-            commitment,
-            price,
-            quantity,
-            order_bump,
-        } = args;
-        require!(!ctx.accounts.protocol.paused, CrossError::Paused);
-        let now = Clock::get()?.unix_timestamp;
-        let c = &mut ctx.accounts.cross;
-        require!(
-            c.state == CrossState::Live && now >= c.open_ts && now < c.close_ts,
-            CrossError::NotInCallWindow
-        );
-        require!(c.orders_total < c.max_orders, CrossError::CrossFull);
-        require!(escrow > 0, CrossError::InvalidParams);
-        if side == OrderSide::Sell {
-            require!(!c.supply_mode.mints(), CrossError::SellsNotAccepted);
-        }
-        if let Some(gate_mint) = c.gate_mint {
-            require!(
-                holds_gate_pass(
-                    ctx.accounts.pass.as_ref(),
-                    &gate_mint,
-                    &ctx.accounts.owner.key()
-                ),
-                CrossError::NotEligible
-            );
-        }
+    ///
+    /// Remaining accounts, only those the cross's rules call for and in this order (ADR-0450):
+    /// the applicant record (identity limits), the class book (classes, insiders), the priority
+    /// pass (class 3 outside the early window).
+    pub fn commit_order<'info>(
+        ctx: Context<'info, CommitOrder<'info>>,
+        args: CommitOrderArgs,
+    ) -> Result<()> {
+        orders::commit(ctx, args, OrderExtra::default())
+    }
 
-        let index = c.orders_total;
-        let cross_key = c.key();
-        let owner_key = ctx.accounts.owner.key();
-        let nonce_bytes = nonce.to_le_bytes();
-        let order_seeds: &[&[u8]] = &[
-            ORDER_SEED,
-            cross_key.as_ref(),
-            owner_key.as_ref(),
-            &nonce_bytes,
-            &[order_bump],
-        ];
-        let expected = Pubkey::create_program_address(order_seeds, &crate::ID)
-            .map_err(|_| CrossError::InvalidParams)?;
-        require_keys_eq!(
-            expected,
-            ctx.accounts.order.key(),
-            CrossError::InvalidParams
-        );
-        require!(
-            ctx.accounts.order.data_is_empty() && ctx.accounts.order.lamports() == 0,
-            CrossError::InvalidParams
-        );
-        let space = 8 + Order::INIT_SPACE;
-        anchor_lang::system_program::create_account(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.key(),
-                anchor_lang::system_program::CreateAccount {
-                    from: ctx.accounts.owner.to_account_info(),
-                    to: ctx.accounts.order.to_account_info(),
-                },
-                &[order_seeds],
-            ),
-            Rent::get()?.minimum_balance(space),
-            u64::try_from(space).map_err(|_| CrossError::Overflow)?,
-            &crate::ID,
-        )?;
-
-        let mut o = Order {
-            cross: cross_key,
-            owner: owner_key,
-            nonce,
-            index,
-            side,
-            state: OrderState::Committed,
-            commitment: [0; 32],
-            price: 0,
-            quantity: 0,
-            escrow,
-            bump: order_bump,
-        };
-        match c.disclosure {
-            Disclosure::Sealed => {
-                o.commitment = commitment;
-            }
-            Disclosure::Open => {
-                validate_order(c, side, price, quantity, escrow)?;
-                let shard_ix = shard_of(&owner_key, nonce, c.shards);
-                let shard_acc = ctx
-                    .accounts
-                    .shard
-                    .as_ref()
-                    .ok_or(CrossError::ShardMissing)?;
-                let mut shard = shard_acc.load_mut()?;
-                require!(
-                    usize::from(shard.index) == shard_ix && shard.cross == cross_key,
-                    CrossError::WrongShard
-                );
-                shard.add(
-                    side,
-                    c.tick_index(price).ok_or(CrossError::OffGrid)?,
-                    quantity,
-                )?;
-                o.state = OrderState::Revealed;
-                o.price = price;
-                o.quantity = quantity;
-            }
-        }
-        {
-            let info = ctx.accounts.order.to_account_info();
-            let mut data = info.try_borrow_mut_data()?;
-            o.try_serialize(&mut &mut data[..])?;
-        }
-        c.orders_total = c.orders_total.checked_add(1).ok_or(CrossError::Overflow)?;
-        c.orders_open = c.orders_open.checked_add(1).ok_or(CrossError::Overflow)?;
-
-        // Escrow transfer. The vault address is re-derived from the stored bump, the mint and
-        // token program must be the cross's, and the token program checks ownership and mint.
-        let (mint, program, decimals, vault_seed, vault_bump) = match side {
-            OrderSide::Buy => (
-                c.quote_mint,
-                c.quote_token_program,
-                c.quote_decimals,
-                QUOTE_VAULT_SEED,
-                c.quote_vault_bump,
-            ),
-            OrderSide::Sell => (
-                c.base_mint,
-                c.base_token_program,
-                c.base_decimals,
-                BASE_VAULT_SEED,
-                c.base_vault_bump,
-            ),
-        };
-        require_keys_eq!(ctx.accounts.escrow_mint.key(), mint, CrossError::WrongMint);
-        require_keys_eq!(
-            ctx.accounts.escrow_token_program.key(),
-            program,
-            CrossError::WrongMint
-        );
-        let vault = Pubkey::create_program_address(
-            &[vault_seed, cross_key.as_ref(), &[vault_bump]],
-            &crate::ID,
+    /// `commit_order` with an allocation class and a lock (ADR-0453, ADR-0454).
+    pub fn commit_order_ext<'info>(
+        ctx: Context<'info, CommitOrder<'info>>,
+        args: CommitOrderExtArgs,
+    ) -> Result<()> {
+        orders::commit(
+            ctx,
+            CommitOrderArgs {
+                nonce: args.nonce,
+                side: args.side,
+                escrow: args.escrow,
+                commitment: args.commitment,
+                price: args.price,
+                quantity: args.quantity,
+                order_bump: args.order_bump,
+            },
+            OrderExtra {
+                class: args.class,
+                lock_secs: args.lock_secs,
+            },
         )
-        .map_err(|_| CrossError::WrongVault)?;
-        require_keys_eq!(
-            ctx.accounts.escrow_vault.key(),
-            vault,
-            CrossError::WrongVault
-        );
-        token_interface::transfer_checked(
-            CpiContext::new(
-                program,
-                TransferChecked {
-                    from: ctx.accounts.owner_escrow.to_account_info(),
-                    mint: ctx.accounts.escrow_mint.to_account_info(),
-                    to: ctx.accounts.escrow_vault.to_account_info(),
-                    authority: ctx.accounts.owner.to_account_info(),
-                },
-            ),
-            escrow,
-            decimals,
-        )?;
-
-        emit!(OrderCommitted {
-            cross: cross_key,
-            order: ctx.accounts.order.key(),
-            owner: owner_key,
-            side,
-            escrow,
-            index,
-            sealed: c.disclosure == Disclosure::Sealed
-        });
-        Ok(())
     }
 
-    /// Withdraws an order during the call window. Full refund, no fee.
-    pub fn cancel_order(ctx: Context<CancelOrder>) -> Result<()> {
-        let now = Clock::get()?.unix_timestamp;
-        let c = &mut ctx.accounts.cross;
-        require!(
-            c.state == CrossState::Live && now < c.close_ts,
-            CrossError::NotInCallWindow
-        );
-        let o = &ctx.accounts.order;
-        if o.state == OrderState::Revealed {
-            let shard_acc = ctx
-                .accounts
-                .shard
-                .as_ref()
-                .ok_or(CrossError::ShardMissing)?;
-            let mut shard = shard_acc.load_mut()?;
-            let shard_ix = shard_of(&o.owner, o.nonce, c.shards);
-            require!(
-                usize::from(shard.index) == shard_ix && shard.cross == c.key(),
-                CrossError::WrongShard
-            );
-            shard.remove(
-                o.side,
-                c.tick_index(o.price).ok_or(CrossError::OffGrid)?,
-                o.quantity,
-            )?;
-        }
-        c.orders_open = c.orders_open.checked_sub(1).ok_or(CrossError::Overflow)?;
-        let (creator, id, bump) = (c.creator, c.cross_id.to_le_bytes(), [c.bump]);
-        let seeds: &[&[u8]] = &[CROSS_SEED, creator.as_ref(), &id, &bump];
-        let cross_info = c.to_account_info();
-        match o.side {
-            OrderSide::Buy => transfer_signed(
-                &ctx.accounts.quote_vault,
-                ctx.accounts
-                    .owner_quote
-                    .as_ref()
-                    .ok_or(CrossError::TokenAccountMissing)?,
-                &ctx.accounts.quote_mint,
-                &ctx.accounts.quote_token_program,
-                &cross_info,
-                seeds,
-                o.escrow,
-            )?,
-            OrderSide::Sell => transfer_signed(
-                &ctx.accounts.base_vault,
-                ctx.accounts
-                    .owner_base
-                    .as_ref()
-                    .ok_or(CrossError::TokenAccountMissing)?,
-                &ctx.accounts.base_mint,
-                &ctx.accounts.base_token_program,
-                &cross_info,
-                seeds,
-                o.escrow,
-            )?,
-        }
-        emit!(OrderCancelled {
-            cross: c.key(),
-            order: o.key(),
-            owner: o.owner
-        });
-        Ok(())
+    /// Withdraws an order during the call window. Full refund, no fee. Remaining accounts: the
+    /// applicant record, then the class book, when the rules call for them.
+    pub fn cancel_order<'info>(ctx: Context<'info, CancelOrder<'info>>) -> Result<()> {
+        orders::cancel(ctx)
     }
 
-    /// Reveals a sealed order during the reveal window and adds it to its shard.
-    pub fn reveal_order(
-        ctx: Context<RevealOrder>,
+    /// Reveals a sealed order during the reveal window and adds it to its shard. Remaining
+    /// accounts: the class book, when the cross has one.
+    pub fn reveal_order<'info>(
+        ctx: Context<'info, RevealOrder<'info>>,
         price: u64,
         quantity: u64,
         salt: [u8; 32],
     ) -> Result<()> {
-        let now = Clock::get()?.unix_timestamp;
-        let c = &ctx.accounts.cross;
-        require!(c.disclosure == Disclosure::Sealed, CrossError::NotSealed);
-        require!(
-            c.state == CrossState::Live && now >= c.close_ts && now < c.reveal_end_ts,
-            CrossError::NotInRevealWindow
-        );
-        let o = &mut ctx.accounts.order;
-        require!(
-            o.state == OrderState::Committed,
-            CrossError::AlreadyRevealed
-        );
-        require!(
-            commitment_of(&c.key(), &o.owner, o.nonce, o.side, price, quantity, &salt)
-                == o.commitment,
-            CrossError::CommitmentMismatch
-        );
-        validate_order(c, o.side, price, quantity, o.escrow)?;
-        let mut shard = ctx.accounts.shard.load_mut()?;
-        let shard_ix = shard_of(&o.owner, o.nonce, c.shards);
-        require!(
-            usize::from(shard.index) == shard_ix && shard.cross == c.key(),
-            CrossError::WrongShard
-        );
-        shard.add(
-            o.side,
-            c.tick_index(price).ok_or(CrossError::OffGrid)?,
-            quantity,
-        )?;
-        o.state = OrderState::Revealed;
-        o.price = price;
-        o.quantity = quantity;
-        emit!(OrderRevealed {
-            cross: c.key(),
-            order: o.key(),
-            side: o.side,
-            price,
-            quantity
-        });
-        Ok(())
+        orders::reveal(ctx, price, quantity, salt)
     }
 
     /// Adds one shard into the book. Permissionless; each shard merges exactly once.
@@ -731,17 +561,46 @@ pub mod cross_core {
         );
         let shard = ctx.accounts.shard.load()?;
         require!(shard.cross == c.key(), CrossError::WrongShard);
-        let bit = 1u32
-            .checked_shl(u32::from(shard.index))
-            .ok_or(CrossError::Overflow)?;
-        require!(c.merged_mask & bit == 0, CrossError::AlreadyMerged);
+        if shard.index < 32 {
+            let bit = 1u32
+                .checked_shl(u32::from(shard.index))
+                .ok_or(CrossError::Overflow)?;
+            require!(c.merged_mask & bit == 0, CrossError::AlreadyMerged);
+            ctx.accounts.book.load_mut()?.merge_from(&shard)?;
+            c.merged_mask |= bit;
+            return Ok(());
+        }
+        // Auxiliary shards: ending buckets and the extension window (ADR-0452).
+        let info = c.to_account_info();
+        let mut x = ext::read(&info)?;
+        require!(x.valid_shard_index(c, shard.index), CrossError::WrongShard);
+        let bit = ext::CrossExt::aux_bit(shard.index);
+        require!(x.draw.aux_merged & bit == 0, CrossError::AlreadyMerged);
+        if shard.index < ext::AUX_EXT_BASE {
+            // The drawn end decides which buckets count; a bucket after it never merges.
+            require!(
+                !x.ending.random_end || x.draw.end_bucket != ext::NO_BUCKET,
+                CrossError::DrawRequired
+            );
+            require!(
+                shard.index - ext::AUX_END_BASE <= x.last_bucket(),
+                CrossError::BucketExcluded
+            );
+        } else {
+            require!(x.draw.epoch > 0, CrossError::WrongShard);
+        }
         ctx.accounts.book.load_mut()?.merge_from(&shard)?;
-        c.merged_mask |= bit;
+        x.draw.aux_merged |= bit;
+        ext::write(&info, &x)?;
         Ok(())
     }
 
     /// Clears the cross once every shard is merged. Permissionless.
-    pub fn clear(ctx: Context<Clear>) -> Result<()> {
+    ///
+    /// Remaining accounts, in this order and only those the stored rules call for (ADR-0450):
+    /// the halt state, then the base mint (halt rule, or float and valuation rules without a
+    /// declared supply), then the lender print feed.
+    pub fn clear<'info>(ctx: Context<'info, Clear<'info>>) -> Result<()> {
         let c = &mut ctx.accounts.cross;
         require!(c.state == CrossState::Live, CrossError::WrongState);
         let all = if c.shards == 32 {
@@ -750,6 +609,31 @@ pub mod cross_core {
             (1u32 << c.shards).wrapping_sub(1)
         };
         require!(c.merged_mask == all, CrossError::ShardsNotMerged);
+        let info = c.to_account_info();
+        let mut x = ext::read(&info)?;
+        let now = Clock::get()?.unix_timestamp;
+        // An extension waiting for its draw holds the clear back; if nobody finishes the draw
+        // the cross is not stuck: after a grace period it clears as it stands.
+        let mut may_extend = x.ending.extension_max_secs > 0 && !x.draw.extension_used;
+        if x.draw.ext_pending {
+            require!(
+                now >= c.reveal_end_ts.saturating_add(EXTENSION_GRACE_SECS),
+                CrossError::ExtensionPending
+            );
+            may_extend = false;
+        }
+        if x.needs_draw() {
+            require!(
+                x.draw.seed_ready && x.draw.seed_epoch == x.draw.epoch,
+                CrossError::DrawRequired
+            );
+        }
+        let required = x.required_aux(c.shards);
+        require!(
+            x.draw.aux_merged & required == required,
+            CrossError::ShardsNotMerged
+        );
+        let aux = ClearAux::parse(&x, c, ctx.remaining_accounts)?;
 
         let book = ctx.accounts.book.load()?;
         let mut levels: Vec<clearing_core::Level> = Vec::new();
@@ -779,39 +663,49 @@ pub mod cross_core {
             tick: c.tick,
             ticks: c.ticks,
         };
-        let result = clearing_core::clear(&levels, c.reference_price, &grid)
+        let cap = (x.guards.max_matched > 0).then(|| u128::from(x.guards.max_matched));
+        let result = clearing_core::clear_with(&levels, c.reference_price, &grid, cap)
             .map_err(|_| CrossError::InvalidBook)?;
-        let guards = clearing_core::PrintGuards {
-            min_matched: u128::from(c.min_matched),
-            max_imbalance_bps: c.max_imbalance_bps,
-        };
-        match result {
-            None => {
-                c.state = CrossState::NoPrint;
-                c.no_print_reason = Some(NoPrintReason::NoCross);
+        let outcome = match result {
+            None => Err(NoPrintReason::NoCross),
+            Some(clearing) => {
+                match print_verdict(c, &x, &aux, &clearing, ctx.accounts.oracle_price.as_ref())? {
+                    Some(reason) => Err(reason),
+                    None => Ok(clearing),
+                }
             }
-            Some(clearing) => match guards.check(&clearing) {
-                Err(clearing_core::NoPrint::BelowMinimumVolume) => {
-                    c.state = CrossState::NoPrint;
-                    c.no_print_reason = Some(NoPrintReason::BelowMinimumVolume);
+        };
+        match outcome {
+            Err(reason) if may_extend => {
+                // One extension, by a drawn length, before the cross gives up (ADR-0452).
+                x.draw.ext_pending = true;
+                ext::write(&info, &x)?;
+                emit!(ExtensionPending {
+                    cross: c.key(),
+                    reason
+                });
+                return Ok(());
+            }
+            Err(reason) => {
+                c.state = CrossState::NoPrint;
+                c.no_print_reason = Some(reason);
+            }
+            Ok(clearing) => {
+                c.state = CrossState::Cleared;
+                c.clearing = Some(ClearingSummary::from_core(&clearing));
+                if x.rules_set {
+                    let (m, ub) = aux.marginal(&x, c, &clearing)?;
+                    x.clearing = ext::ClearingExt {
+                        class_qty: m.qty.map(|q| u64::try_from(q).unwrap_or(u64::MAX)),
+                        tickets: m.tickets,
+                        rho: m.rho,
+                        cleared_ts: now,
+                        insider_ub: u64::try_from(ub).unwrap_or(u64::MAX),
+                    };
+                    ext::write(&info, &x)?;
                 }
-                Err(clearing_core::NoPrint::ImbalanceTooHigh) => {
-                    c.state = CrossState::NoPrint;
-                    c.no_print_reason = Some(NoPrintReason::ImbalanceTooHigh);
-                }
-                Ok(()) => {
-                    match oracle_verdict(c, ctx.accounts.oracle_price.as_ref(), clearing.price)? {
-                        Some(reason) => {
-                            c.state = CrossState::NoPrint;
-                            c.no_print_reason = Some(reason);
-                        }
-                        None => {
-                            c.state = CrossState::Cleared;
-                            c.clearing = Some(ClearingSummary::from_core(&clearing));
-                        }
-                    }
-                }
-            },
+                aux.on_print(c, &x, &clearing)?;
+            }
         }
         emit!(CrossCleared {
             cross: c.key(),
@@ -823,137 +717,10 @@ pub mod cross_core {
     }
 
     /// Settles one order: pays its fill at the clearing price and refunds the rest. Anyone may
-    /// crank it; funds always go to the order owner. Closes the order account.
-    pub fn claim(ctx: Context<Claim>) -> Result<()> {
-        let c = &mut ctx.accounts.cross;
-        require!(
-            c.state == CrossState::Cleared || c.state == CrossState::NoPrint,
-            CrossError::WrongState
-        );
-        // A deferred-mint cross pays fills only once its adapter has bound the base mint.
-        require!(
-            c.state != CrossState::Cleared || c.base_bound,
-            CrossError::SettlementPending
-        );
-        let o = &ctx.accounts.order;
-        let cross_info = c.to_account_info();
-        let (creator, id, bump) = (c.creator, c.cross_id.to_le_bytes(), [c.bump]);
-        let seeds: &[&[u8]] = &[CROSS_SEED, creator.as_ref(), &id, &bump];
-
-        let summary = match (c.state, o.state) {
-            (CrossState::Cleared, OrderState::Revealed) => c.clearing,
-            _ => None,
-        };
-        let (fill, quote_out, base_out, fee) = match summary {
-            None => match o.side {
-                OrderSide::Buy => (0, o.escrow, 0, 0),
-                OrderSide::Sell => (0, 0, o.escrow, 0),
-            },
-            Some(s) => {
-                let clearing = s.to_core();
-                let fill = clearing_core::fill(o.side.into(), o.price, o.quantity, &clearing);
-                match o.side {
-                    OrderSide::Buy => {
-                        let pay = clearing_core::buyer_pays(fill, s.price, c.price_scale)
-                            .ok_or(CrossError::Overflow)?;
-                        c.buyer_paid = c.buyer_paid.checked_add(pay).ok_or(CrossError::Overflow)?;
-                        c.base_bought = c
-                            .base_bought
-                            .checked_add(fill)
-                            .ok_or(CrossError::Overflow)?;
-                        (
-                            fill,
-                            o.escrow.checked_sub(pay).ok_or(CrossError::Overflow)?,
-                            fill,
-                            0,
-                        )
-                    }
-                    OrderSide::Sell => {
-                        let gross = clearing_core::seller_receives(fill, s.price, c.price_scale)
-                            .ok_or(CrossError::Overflow)?;
-                        let fee = mul_bps(gross, c.total_fee_bps())?;
-                        c.base_sold = c.base_sold.checked_add(fill).ok_or(CrossError::Overflow)?;
-                        c.seller_paid = c
-                            .seller_paid
-                            .checked_add(gross)
-                            .ok_or(CrossError::Overflow)?;
-                        c.fees_accrued = c
-                            .fees_accrued
-                            .checked_add(fee)
-                            .ok_or(CrossError::Overflow)?;
-                        (
-                            fill,
-                            gross.checked_sub(fee).ok_or(CrossError::Overflow)?,
-                            o.escrow.checked_sub(fill).ok_or(CrossError::Overflow)?,
-                            fee,
-                        )
-                    }
-                }
-            }
-        };
-
-        if quote_out > 0 {
-            transfer_signed(
-                &ctx.accounts.quote_vault,
-                &ctx.accounts.owner_quote,
-                &ctx.accounts.quote_mint,
-                &ctx.accounts.quote_token_program,
-                &cross_info,
-                seeds,
-                quote_out,
-            )?;
-        }
-        if base_out > 0 {
-            let base_mint = ctx
-                .accounts
-                .base_mint
-                .as_ref()
-                .ok_or(CrossError::TokenAccountMissing)?;
-            let owner_base = ctx
-                .accounts
-                .owner_base
-                .as_ref()
-                .ok_or(CrossError::TokenAccountMissing)?;
-            if o.side == OrderSide::Buy && c.supply_mode.mints() {
-                token_interface::mint_to(
-                    CpiContext::new_with_signer(
-                        ctx.accounts.base_token_program.key(),
-                        MintTo {
-                            mint: base_mint.to_account_info(),
-                            to: owner_base.to_account_info(),
-                            authority: cross_info.clone(),
-                        },
-                        &[seeds],
-                    ),
-                    base_out,
-                )?;
-            } else {
-                transfer_signed(
-                    ctx.accounts
-                        .base_vault
-                        .as_ref()
-                        .ok_or(CrossError::TokenAccountMissing)?,
-                    owner_base,
-                    base_mint,
-                    &ctx.accounts.base_token_program,
-                    &cross_info,
-                    seeds,
-                    base_out,
-                )?;
-            }
-        }
-        c.orders_open = c.orders_open.checked_sub(1).ok_or(CrossError::Overflow)?;
-        emit!(OrderClaimed {
-            cross: c.key(),
-            order: o.key(),
-            owner: o.owner,
-            side: o.side,
-            fill,
-            quote_out,
-            base_out,
-            fee
-        });
-        Ok(())
+    /// crank it; funds always go to the order owner. Closes the order account. A locked fill goes
+    /// to the cross's lock vault; remaining accounts: the lock vault, then the lockup record.
+    pub fn claim<'info>(ctx: Context<'info, Claim<'info>>) -> Result<()> {
+        orders::claim(ctx)
     }
 
     /// Deferred-mint crosses: the registered settler binds the base mint it created after the
@@ -1029,13 +796,25 @@ pub mod cross_core {
     /// Distributes what is left once every order has been claimed: the issuer's proceeds and
     /// fees in mint mode, accrued fees in escrow mode, the dust and bond remainder to
     /// `proceeds_to`; then revokes the cross's mint authority in mint mode.
-    pub fn finalize(ctx: Context<Finalize>) -> Result<()> {
+    pub fn finalize<'info>(ctx: Context<'info, Finalize<'info>>) -> Result<()> {
         let c = &mut ctx.accounts.cross;
         require!(
             c.state == CrossState::Cleared || c.state == CrossState::NoPrint,
             CrossError::WrongState
         );
         require!(c.orders_open == 0, CrossError::OrdersOutstanding);
+        let x = ext::read(&c.to_account_info())?;
+        if c.state == CrossState::Cleared && x.neutrality.bond_quote > 0 {
+            // The insider bond is released with the proceeds only after its challenge window.
+            let closes = x
+                .clearing
+                .cleared_ts
+                .saturating_add(i64::from(x.neutrality.challenge_secs));
+            require!(
+                Clock::get()?.unix_timestamp >= closes && x.neutral_state.open_challenges == 0,
+                CrossError::ChallengesOutstanding
+            );
+        }
         // Escrow mode: rationing leaves `base_sold - base_bought` base atoms in the vault, which belong to
         // `proceeds_to` (ADR-0025). A call that omits the accounts to sweep them is refused rather than
         // finalizing and stranding them. A cross without dust may still omit them.
@@ -1065,7 +844,42 @@ pub mod cross_core {
             mul_div(fees, u64::from(c.protocol_fee_bps), total_bps)?
         };
         let integrator_fee = fees.checked_sub(protocol_fee).ok_or(CrossError::Overflow)?;
-        if protocol_fee > 0 {
+        // A referral is paid out of the protocol's fee and nothing else (ADR-0460).
+        let referral = if x.referral.share_bps > 0 && protocol_fee > 0 {
+            mul_div(protocol_fee, u64::from(x.referral.share_bps), BPS)?
+        } else {
+            0
+        };
+        if referral > 0 {
+            let to = ctx
+                .remaining_accounts
+                .first()
+                .ok_or(CrossError::ReferralAccountMissing)?;
+            let acc = InterfaceAccount::<TokenAccount>::try_from(to)
+                .map_err(|_| CrossError::ReferralAccountMissing)?;
+            require!(
+                acc.mint == c.quote_mint && acc.owner == x.referral.referrer,
+                CrossError::ReferralAccountMissing
+            );
+            token_interface::transfer_checked(
+                CpiContext::new_with_signer(
+                    ctx.accounts.quote_token_program.key(),
+                    TransferChecked {
+                        from: ctx.accounts.quote_vault.to_account_info(),
+                        mint: ctx.accounts.quote_mint.to_account_info(),
+                        to: to.clone(),
+                        authority: cross_info.clone(),
+                    },
+                    &[seeds],
+                ),
+                referral,
+                ctx.accounts.quote_mint.decimals,
+            )?;
+        }
+        let protocol_to_recipient = protocol_fee
+            .checked_sub(referral)
+            .ok_or(CrossError::Overflow)?;
+        if protocol_to_recipient > 0 {
             transfer_signed(
                 &ctx.accounts.quote_vault,
                 &ctx.accounts.fee_recipient_quote,
@@ -1073,7 +887,7 @@ pub mod cross_core {
                 &ctx.accounts.quote_token_program,
                 &cross_info,
                 seeds,
-                protocol_fee,
+                protocol_to_recipient,
             )?;
         }
         if integrator_fee > 0 {
@@ -1169,33 +983,329 @@ pub mod cross_core {
     }
 }
 
-/// Applies the oracle guard, if any. `Ok(Some(reason))` means the cross must not print.
+/// Accounts a rule-bearing cross needs at the clear, taken from the remaining accounts in the order
+/// the stored rules define (ADR-0450). A missing or wrong account is an error, never a skipped rule.
+struct ClearAux<'info> {
+    halt: Option<&'info AccountInfo<'info>>,
+    mint: Option<&'info AccountInfo<'info>>,
+    class_book: Option<&'info AccountInfo<'info>>,
+    feed: Option<&'info AccountInfo<'info>>,
+    /// The extra oracle accounts (ADR-0459), in the order of `oracle_set.extra_feeds`.
+    oracles: Vec<&'info AccountInfo<'info>>,
+    /// The cross's calendar, when the oracle band widens outside its sessions.
+    calendar: Option<&'info AccountInfo<'info>>,
+}
+
+impl<'info> ClearAux<'info> {
+    fn parse(
+        x: &ext::CrossExt,
+        c: &Account<Cross>,
+        remaining: &'info [AccountInfo<'info>],
+    ) -> Result<Self> {
+        let mut it = remaining.iter();
+        let mut aux = ClearAux {
+            halt: None,
+            mint: None,
+            class_book: None,
+            feed: None,
+            oracles: Vec::new(),
+            calendar: None,
+        };
+        if let Some(h) = x.guards.halt_source {
+            let acc = it.next().ok_or(CrossError::HaltMismatch)?;
+            require_keys_eq!(acc.key(), h, CrossError::HaltMismatch);
+            aux.halt = Some(acc);
+        }
+        if x.reads_mint_at_clear() {
+            let acc = it.next().ok_or(CrossError::WrongMint)?;
+            require_keys_eq!(acc.key(), c.base_mint, CrossError::WrongMint);
+            aux.mint = Some(acc);
+        }
+        if x.uses_class_book() {
+            aux.class_book = Some(it.next().ok_or(CrossError::ClassBookMissing)?);
+        }
+        if x.has(ext::FLAG_FEEDS_LENDERS) {
+            aux.feed = Some(it.next().ok_or(CrossError::FeedMismatch)?);
+        }
+        for _ in 0..x.oracle_set.extra_count {
+            aux.oracles
+                .push(it.next().ok_or(CrossError::OracleAccountMissing)?);
+        }
+        if x.oracle_set.off_hours_widen_bps > 0 {
+            let acc = it.next().ok_or(CrossError::CalendarMismatch)?;
+            require_keys_eq!(
+                acc.key(),
+                c.calendar.ok_or(CrossError::CalendarMismatch)?,
+                CrossError::CalendarMismatch
+            );
+            aux.calendar = Some(acc);
+        }
+        Ok(aux)
+    }
+
+    /// The class tallies at the clearing tick, the lottery start, and an upper bound on what
+    /// declared insiders were allocated (ADR-0453, ADR-0454).
+    fn marginal(
+        &self,
+        x: &ext::CrossExt,
+        c: &Account<Cross>,
+        cl: &clearing_core::Clearing,
+    ) -> Result<(clearing_core::Marginal, u128)> {
+        let Some(cb) = self.class_book else {
+            return Ok((clearing_core::Marginal::default(), 0));
+        };
+        let loader = classbook::loader(cb, &c.key())?;
+        let book = loader.load()?;
+        let t = c.tick_index(cl.price).ok_or(CrossError::OffGrid)?;
+        let mut m = clearing_core::Marginal {
+            qty: [
+                u128::from(book.qty[0][t]),
+                u128::from(book.qty[1][t]),
+                u128::from(book.qty[2][t]),
+            ],
+            tickets: book.tickets[t],
+            rho: 0,
+        };
+        if x.alloc.lottery_unit > 0 && m.tickets > 0 {
+            let r = u64::from_le_bytes(
+                x.draw.seed[16..24]
+                    .try_into()
+                    .map_err(|_| CrossError::Overflow)?,
+            )
+            .checked_rem(u64::from(m.tickets))
+            .ok_or(CrossError::Overflow)?;
+            m.rho = u32::try_from(r).map_err(|_| CrossError::Overflow)?;
+        }
+        let ub = if x.neutrality.insider_count > 0 {
+            let better = book
+                .insider_qty
+                .iter()
+                .skip(t.saturating_add(1))
+                .take(usize::from(c.ticks))
+                .fold(0u128, |a, q| a.saturating_add(u128::from(*q)));
+            clearing_core::class0_fill_upper_bound(
+                better,
+                u128::from(book.insider_qty[t]),
+                cl,
+                &x.policy(),
+                &m,
+            )
+        } else {
+            0
+        };
+        Ok((m, ub))
+    }
+
+    /// Declared supply, else the base mint's current supply.
+    fn total_supply(&self, x: &ext::CrossExt) -> Result<u64> {
+        if x.guards.total_supply > 0 {
+            return Ok(x.guards.total_supply);
+        }
+        let Some(m) = self.mint else { return Ok(0) };
+        let d = m.try_borrow_data()?;
+        // SPL and Token-2022 mints share the base layout: the supply follows the mint authority.
+        Ok(d.get(36..44)
+            .and_then(|b| <[u8; 8]>::try_from(b).ok())
+            .map_or(0, u64::from_le_bytes))
+    }
+
+    /// After a print: a resume cross lifts the halt; a publisher's sufficiently large print moves
+    /// the lender feed.
+    fn on_print(
+        &self,
+        c: &Account<Cross>,
+        x: &ext::CrossExt,
+        cl: &clearing_core::Clearing,
+    ) -> Result<()> {
+        let clock = Clock::get()?;
+        if let (Some(acc), true) = (self.halt, x.has(ext::FLAG_RESUMES_HALT)) {
+            let mut h = halt::load(acc, &c.base_mint)?;
+            h.resume(c.key(), cl.price, clock.unix_timestamp);
+            halt::store(acc, &h)?;
+            emit!(HaltChanged {
+                base_mint: c.base_mint,
+                halted: false,
+                reason: HaltReason::None
+            });
+        }
+        if let Some(acc) = self.feed {
+            let mut f = feed::load(acc, &c.base_mint, &c.quote_mint)?;
+            if f.accepts(&c.creator, cl.matched) {
+                f.price = cl.price;
+                f.price_scale = c.price_scale;
+                f.matched = u64::try_from(cl.matched).unwrap_or(u64::MAX);
+                f.cross = c.key();
+                f.ts = clock.unix_timestamp;
+                f.slot = clock.slot;
+                f.prints = f.prints.saturating_add(1);
+                feed::store(acc, &f)?;
+                emit!(PrintFed {
+                    base_mint: c.base_mint,
+                    cross: c.key(),
+                    price: cl.price,
+                    matched: f.matched
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Every guard on a cleared cross, in a fixed order: the pure guards (recomputable from the book
+/// by the verifier), then the state of the world (pause, halt, corporate action), then the
+/// oracle. `Ok(None)` means the cross prints.
+fn print_verdict(
+    c: &Account<Cross>,
+    x: &ext::CrossExt,
+    aux: &ClearAux,
+    clearing: &clearing_core::Clearing,
+    oracle_account: Option<&UncheckedAccount>,
+) -> Result<Option<NoPrintReason>> {
+    use clearing_core::PrintFailure as F;
+    let base = clearing_core::PrintGuards {
+        min_matched: u128::from(c.min_matched),
+        max_imbalance_bps: c.max_imbalance_bps,
+    };
+    let raise = clearing_core::RaiseGuards {
+        min_raise_quote: u128::from(x.guards.min_raise_quote),
+        price_scale: c.price_scale,
+        total_supply: u128::from(aux.total_supply(x)?),
+        min_float_bps: u32::from(x.guards.min_float_bps),
+        max_fdv_x100: u64::from(x.guards.max_fdv_x100),
+        anchor_price: x.guards.anchor_price,
+        move_bps: u32::from(x.guards.move_bps),
+    };
+    // Declared insiders' allocation does not count toward the minimum raise or the float.
+    let (_, insider_ub) = aux.marginal(x, c, clearing)?;
+    let counted = clearing.matched.saturating_sub(insider_ub);
+    if let Err(f) = clearing_core::check_all(&base, &raise, clearing, counted) {
+        return Ok(Some(match f {
+            F::BelowMinimumVolume => NoPrintReason::BelowMinimumVolume,
+            F::ImbalanceTooHigh => NoPrintReason::ImbalanceTooHigh,
+            F::BelowMinimumRaise => NoPrintReason::BelowMinimumRaise,
+            F::FloatTooLow => NoPrintReason::FloatTooLow,
+            F::FdvTooHigh => NoPrintReason::FdvTooHigh,
+            F::PriceMoved => NoPrintReason::PriceMoved,
+        }));
+    }
+    // A split or a dividend changes the mint's multiplier: the grid was drawn for the old one.
+    if x.has(ext::FLAG_GUARD_SCALED_UI) {
+        let mint = aux.mint.ok_or(CrossError::WrongMint)?;
+        let now = Clock::get()?.unix_timestamp;
+        let current = halt::scaled_ui_multiplier(&mint.try_borrow_data()?, now);
+        if current != Some(x.guards.multiplier_bits) {
+            return Ok(Some(NoPrintReason::CorporateAction));
+        }
+    }
+    if let Some(acc) = aux.halt {
+        let paused = aux.mint.is_some_and(|m| {
+            m.try_borrow_data()
+                .map(|d| halt::mint_is_paused(&d))
+                .unwrap_or(false)
+        });
+        if paused {
+            return Ok(Some(NoPrintReason::IssuerPaused));
+        }
+        let h = halt::load(acc, &c.base_mint)?;
+        if !x.has(ext::FLAG_RESUMES_HALT) {
+            if h.corporate_action {
+                return Ok(Some(NoPrintReason::CorporateAction));
+            }
+            if h.halted {
+                return Ok(Some(NoPrintReason::Halted));
+            }
+        }
+    }
+    oracle_verdict(c, x, aux, oracle_account, clearing.price)
+}
+
+/// One oracle's price in the cross's units, or `None` when the account is not a fresh, fully verified Pyth update for
+/// the feed it is supposed to carry.
+fn oracle_reference(
+    c: &Cross,
+    account: &AccountInfo,
+    feed_id: &[u8; 32],
+    max_staleness_secs: u32,
+    now: i64,
+) -> Option<u128> {
+    if !oracle::is_pyth_receiver(account.owner) {
+        return None;
+    }
+    let data = account.try_borrow_data().ok()?;
+    let o = oracle::parse_price_update(&data)?;
+    let fresh = now.saturating_sub(o.publish_time) <= i64::from(max_staleness_secs);
+    if &o.feed_id != feed_id || !o.fully_verified || !fresh {
+        return None;
+    }
+    oracle::to_cross_units(&o, c.quote_decimals, c.base_decimals, c.price_scale)
+}
+
+/// The median of one to three prices; of two, their mean (rounded down).
+fn median(values: &mut [u128]) -> Option<u128> {
+    values.sort_unstable();
+    match values {
+        [] => None,
+        [a] => Some(*a),
+        [a, b] => a.checked_add(*b).map(|s| s / 2),
+        [_, m, _] => Some(*m),
+        _ => None,
+    }
+}
+
+/// Applies the oracle guard, if any. `Ok(Some(reason))` means the cross must not print. With extra feeds
+/// (ADR-0459) the reference is the median of the usable prices, the guard needs its quorum of them, and outside the
+/// calendar's sessions the bound is wider; with none this is the single-feed guard of ADR-0005, unchanged.
 fn oracle_verdict(
     c: &Cross,
+    x: &ext::CrossExt,
+    aux: &ClearAux,
     account: Option<&UncheckedAccount>,
     price: u64,
 ) -> Result<Option<NoPrintReason>> {
     let Some(g) = c.oracle else { return Ok(None) };
     let account = account.ok_or(CrossError::OracleAccountMissing)?;
-    if !oracle::is_pyth_receiver(account.owner) {
-        return Ok(Some(NoPrintReason::OracleUnavailable));
-    }
-    let data = account.try_borrow_data()?;
-    let Some(o) = oracle::parse_price_update(&data) else {
-        return Ok(Some(NoPrintReason::OracleUnavailable));
-    };
     let now = Clock::get()?.unix_timestamp;
-    let fresh = now.saturating_sub(o.publish_time) <= i64::from(g.max_staleness_secs);
-    if o.feed_id != g.feed_id || !o.fully_verified || !fresh {
+    let os = &x.oracle_set;
+    let mut prices: Vec<u128> = Vec::with_capacity(3);
+    if let Some(p) = oracle_reference(c, account, &g.feed_id, g.max_staleness_secs, now) {
+        prices.push(p);
+    }
+    for (i, acc) in aux.oracles.iter().enumerate() {
+        let feed = os.extra_feeds.get(i).ok_or(CrossError::InvalidParams)?;
+        if let Some(p) = oracle_reference(c, acc, feed, g.max_staleness_secs, now) {
+            prices.push(p);
+        }
+    }
+    let quorum = usize::from(os.quorum.max(1));
+    if prices.len() < quorum {
         return Ok(Some(NoPrintReason::OracleUnavailable));
     }
-    let Some(reference) =
-        oracle::to_cross_units(&o, c.quote_decimals, c.base_decimals, c.price_scale)
-    else {
+    if os.max_spread_bps > 0 && prices.len() >= 2 {
+        let lo = prices.iter().copied().min().unwrap_or(0);
+        let hi = prices.iter().copied().max().unwrap_or(0);
+        let wide = hi.saturating_sub(lo).saturating_mul(10_000)
+            > lo.saturating_mul(u128::from(os.max_spread_bps));
+        if wide {
+            return Ok(Some(NoPrintReason::OracleDisagreement));
+        }
+    }
+    let Some(reference) = median(&mut prices) else {
         return Ok(Some(NoPrintReason::OracleUnavailable));
     };
-    Ok(oracle::diverges(price, reference, g.max_divergence_bps)
-        .then_some(NoPrintReason::OracleDivergence))
+    let mut bound = g.max_divergence_bps;
+    if let Some(cal) = aux.calendar {
+        let data = cal.try_borrow_data()?;
+        require_keys_eq!(*cal.owner, cross_calendar::ID, CrossError::CalendarMismatch);
+        let calendar = cross_calendar::Calendar::try_deserialize(&mut &data[..])?;
+        let open = calendar
+            .sessions
+            .iter()
+            .any(|s| s.start_ts <= now && now < s.end_ts);
+        if !open {
+            bound = bound.saturating_add(os.off_hours_widen_bps);
+        }
+    }
+    Ok(oracle::diverges(price, reference, bound).then_some(NoPrintReason::OracleDivergence))
 }
 
 fn validate_order(
@@ -1360,7 +1470,7 @@ pub struct CreateCross<'info> {
     pub creator: Signer<'info>,
     #[account(seeds = [PROTOCOL_SEED], bump = protocol.bump)]
     pub protocol: Box<Account<'info, Protocol>>,
-    #[account(init, payer = creator, space = 8 + Cross::INIT_SPACE, seeds = [CROSS_SEED, creator.key().as_ref(), &params.cross_id.to_le_bytes()], bump)]
+    #[account(init, payer = creator, space = CROSS_SPACE, seeds = [CROSS_SEED, creator.key().as_ref(), &params.cross_id.to_le_bytes()], bump)]
     pub cross: Box<Account<'info, Cross>>,
     #[account(init, payer = creator, space = Levels::SIZE, seeds = [BOOK_SEED, cross.key().as_ref()], bump)]
     pub book: AccountLoader<'info, Levels>,
@@ -1660,6 +1770,12 @@ pub struct CrossFinalized {
     pub dust_base: u64,
 }
 
+#[event]
+pub struct ExtensionPending {
+    pub cross: Pubkey,
+    pub reason: NoPrintReason,
+}
+
 #[error_code]
 pub enum CrossError {
     #[msg("Protocol is paused for new crosses and orders")]
@@ -1738,4 +1854,87 @@ pub enum CrossError {
     BaseDustAccountsMissing,
     #[msg("The settlement deadline has passed")]
     SettlementDeadlinePassed,
+    #[msg("This cross was created before the extension tail existed and cannot take rules")]
+    LegacyCross,
+    #[msg("Rules can only be set by the creator, in the creating slot, before any order")]
+    RulesLocked,
+    #[msg("The halt state does not belong to this cross's base mint")]
+    HaltMismatch,
+    #[msg("The lender print feed does not belong to this cross's base mint")]
+    FeedMismatch,
+    #[msg("The price grid does not follow the standard policy")]
+    GridPolicy,
+    #[msg("A fresh, fully verified oracle update for the registered feed is required")]
+    OracleUnavailable,
+    #[msg("Orders can no longer be cancelled")]
+    CancelClosed,
+    #[msg("The draw for this cross has not been finished")]
+    DrawRequired,
+    #[msg("That ending bucket falls after the drawn end and never counts")]
+    BucketExcluded,
+    #[msg("The extension is waiting for its draw")]
+    ExtensionPending,
+    #[msg("A draw is already in flight")]
+    DrawPending,
+    #[msg("There is nothing to draw now")]
+    NothingToDraw,
+    #[msg("The block hashes needed for the draw are no longer available; begin the draw again")]
+    DrawExpired,
+    #[msg("The applicant record is missing or does not match")]
+    ApplicantMismatch,
+    #[msg("This identity has reached its order or escrow limit")]
+    IdentityLimit,
+    #[msg("The class book is missing or does not match")]
+    ClassBookMissing,
+    #[msg("The order does not qualify for the class it asked for")]
+    ClassNotAllowed,
+    #[msg("A lottery order must be exactly one lot")]
+    LotSize,
+    #[msg("The lock vault or lockup record is missing or does not match")]
+    LockupMismatch,
+    #[msg("Nothing has vested yet")]
+    NothingToRelease,
+    #[msg("The challenge window has closed")]
+    ChallengeWindowClosed,
+    #[msg("The challenge record does not match")]
+    ChallengeMismatch,
+    #[msg("Insider challenges are still open, or their window has not passed")]
+    ChallengesOutstanding,
+    #[msg("The series is paused or has spawned all its crosses")]
+    SeriesInactive,
+    #[msg("The previous cross of the series is missing or has not resolved")]
+    SeriesPreviousMissing,
+    #[msg("The next cross is not due yet")]
+    SpawnTooEarly,
+    #[msg("The calendar has no session ahead")]
+    NoSessionAhead,
+    #[msg("The referrer's quote token account is missing or does not match")]
+    ReferralAccountMissing,
+    #[msg("This order has a fill; claim it instead")]
+    NotRefundOnly,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_median_of_one_two_and_three_prices() {
+        assert_eq!(median(&mut []), None);
+        assert_eq!(median(&mut [7]), Some(7));
+        assert_eq!(median(&mut [9, 3]), Some(6));
+        assert_eq!(median(&mut [10, 1, 5]), Some(5));
+        // An outlier does not move the middle value.
+        assert_eq!(median(&mut [1_000_000, 120, 121]), Some(121));
+        // Rounding of the mean of two is down, and cannot overflow.
+        assert_eq!(median(&mut [1, 2]), Some(1));
+        assert_eq!(median(&mut [u128::MAX, u128::MAX]), None);
+    }
+
+    #[test]
+    fn mul_div_rounds_down_and_refuses_overflow() {
+        assert_eq!(mul_div(10, 3, 4).unwrap(), 7);
+        assert!(mul_div(u64::MAX, u64::MAX, 1).is_err());
+        assert!(mul_div(1, 1, 0).is_err());
+    }
 }

@@ -18,6 +18,19 @@ use anchor_spl::token_interface::{
     self, Burn, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
+pub mod dist;
+pub mod ext;
+pub mod gov;
+pub mod grants;
+pub mod math;
+pub mod ops;
+
+pub use dist::*;
+pub use ext::{Ext, ExtParams};
+pub use gov::*;
+pub use grants::*;
+pub use ops::*;
+
 declare_id!("HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd");
 
 pub const TREASURY_SEED: &[u8] = b"treasury";
@@ -68,8 +81,15 @@ pub mod treasury {
     pub fn spend(ctx: Context<Spend>, amount: u64) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let key = ctx.accounts.treasury.key();
+        require!(
+            ctx.accounts.treasury.state == TreasuryState::Active,
+            TreasuryError::Liquidating
+        );
+        // An extended treasury (ADR-0470) adds its own conditions on team outflows.
+        if let Some(e) = ext::load(&ctx.accounts.treasury.to_account_info())? {
+            e.guard_team_outflow(now)?;
+        }
         let t = &mut ctx.accounts.treasury;
-        require!(t.state == TreasuryState::Active, TreasuryError::Liquidating);
         require!(
             attested(&ctx.accounts.attestation, t, &key, now)?,
             TreasuryError::NotAttested
@@ -173,6 +193,19 @@ pub mod treasury {
         t.state = TreasuryState::Liquidating;
         t.snapshot_vault = ctx.accounts.vault.amount;
         t.snapshot_supply = ctx.accounts.coin_mint.supply;
+        // An extended treasury excludes unvested team grants from the snapshot (they are burned
+        // by `expire_grant`, so no holder's share is stranded behind them) and starts the
+        // withdraw-only window (ADR-0470, ADR-0473, ADR-0474).
+        let info = t.to_account_info();
+        if let Some(mut e) = ext::load(&info)? {
+            t.snapshot_supply = t
+                .snapshot_supply
+                .checked_sub(e.grants_unreleased)
+                .ok_or(TreasuryError::Overflow)?;
+            e.wind_start = now;
+            e.nav_open = false;
+            ext::store(&info, &e)?;
+        }
         emit!(LiquidationStarted {
             treasury: t.key(),
             vault: t.snapshot_vault,
@@ -189,6 +222,10 @@ pub mod treasury {
             TreasuryError::NotLiquidating
         );
         require!(amount > 0, TreasuryError::InvalidParams);
+        // After the withdraw-only window the leftover was moved to the recovery account.
+        if let Some(e) = ext::load(&t.to_account_info())? {
+            require!(!e.swept, TreasuryError::WoundDown);
+        }
         let payout = u64::try_from(
             u128::from(t.snapshot_vault)
                 .checked_mul(u128::from(amount))
@@ -230,6 +267,96 @@ pub mod treasury {
             paid: payout
         });
         Ok(())
+    }
+
+    // ---------------------------------------------------------------- extension (ADR-0470 to 0474)
+
+    /// Grows a treasury by the extension tail and creates its coin and distribution vaults. Once.
+    pub fn init_ext(ctx: Context<InitExt>, params: ExtParams) -> Result<()> {
+        ops::init_ext_handler(ctx, params)
+    }
+
+    pub fn propose(
+        ctx: Context<Propose>,
+        id: u64,
+        kind: ProposalKind,
+        amount: u64,
+        destination: Pubkey,
+        desc_hash: [u8; 32],
+    ) -> Result<()> {
+        gov::propose_handler(ctx, id, kind, amount, destination, desc_hash)
+    }
+
+    pub fn vote(ctx: Context<Vote>, support: bool, amount: u64) -> Result<()> {
+        gov::vote_handler(ctx, support, amount)
+    }
+
+    pub fn reclaim_vote(ctx: Context<ReclaimVote>) -> Result<()> {
+        gov::reclaim_vote_handler(ctx)
+    }
+
+    pub fn execute_proposal(ctx: Context<ExecuteProposal>) -> Result<()> {
+        gov::execute_proposal_handler(ctx)
+    }
+
+    pub fn nav_redeem(ctx: Context<NavRedeem>, amount: u64) -> Result<()> {
+        gov::nav_redeem_handler(ctx, amount)
+    }
+
+    pub fn stake(ctx: Context<Stake>, amount: u64) -> Result<()> {
+        dist::stake_handler(ctx, amount)
+    }
+
+    pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
+        dist::unstake_handler(ctx, amount)
+    }
+
+    pub fn deposit_distribution(ctx: Context<DepositDistribution>, amount: u64) -> Result<()> {
+        dist::deposit_distribution_handler(ctx, amount)
+    }
+
+    pub fn claim_distribution(ctx: Context<ClaimDistribution>) -> Result<()> {
+        dist::claim_distribution_handler(ctx)
+    }
+
+    pub fn pay_round(ctx: Context<PayRound>, round: u64) -> Result<()> {
+        dist::pay_round_handler(ctx, round)
+    }
+
+    pub fn mark_missed(ctx: Context<MarkMissed>, round: u64) -> Result<()> {
+        dist::mark_missed_handler(ctx, round)
+    }
+
+    pub fn release_tranche(ctx: Context<ReleaseTranche>, round: u64) -> Result<()> {
+        dist::release_tranche_handler(ctx, round)
+    }
+
+    pub fn create_grant(ctx: Context<CreateGrant>, id: u64, params: GrantParams) -> Result<()> {
+        grants::create_grant_handler(ctx, id, params)
+    }
+
+    pub fn release_milestone(ctx: Context<ReleaseMilestone>, index: u8) -> Result<()> {
+        grants::release_milestone_handler(ctx, index)
+    }
+
+    pub fn expire_grant(ctx: Context<ExpireGrant>) -> Result<()> {
+        grants::expire_grant_handler(ctx)
+    }
+
+    pub fn post_disclosure(ctx: Context<PostDisclosure>, hash: [u8; 32]) -> Result<()> {
+        ops::post_disclosure_handler(ctx, hash)
+    }
+
+    pub fn request_disclosure(ctx: Context<RequestDisclosure>) -> Result<()> {
+        ops::request_disclosure_handler(ctx)
+    }
+
+    pub fn record_assignment(ctx: Context<RecordAssignment>) -> Result<()> {
+        ops::record_assignment_handler(ctx)
+    }
+
+    pub fn sweep_unclaimed(ctx: Context<SweepUnclaimed>) -> Result<()> {
+        ops::sweep_unclaimed_handler(ctx)
     }
 }
 
@@ -406,4 +533,82 @@ pub enum TreasuryError {
     GraceNotOver,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("This treasury has no extension: call init_ext first")]
+    NotExtended,
+    #[msg("This treasury is already extended")]
+    AlreadyExtended,
+    #[msg("This feature is not enabled for the treasury")]
+    Disabled,
+    #[msg("NAV mode is on: team spending is frozen while holders can redeem")]
+    NavMode,
+    #[msg("The IP and asset assignment has not been recorded")]
+    AssignmentRequired,
+    #[msg("The assignment is already recorded")]
+    AlreadyAssigned,
+    #[msg("A holder's disclosure request is overdue")]
+    DisclosureOverdue,
+    #[msg("Only a holder of enough coins may do this")]
+    NotHolder,
+    #[msg("The id must be the next one")]
+    WrongProposalId,
+    #[msg("That account does not belong to this proposal or treasury")]
+    WrongProposal,
+    #[msg("Voting on this proposal is closed")]
+    VotingClosed,
+    #[msg("Voting on this proposal is still open")]
+    VotingOpen,
+    #[msg("The timelock after the vote has not ended")]
+    TimelockPending,
+    #[msg("The proposal expired before it was executed")]
+    ProposalExpired,
+    #[msg("The proposal did not reach quorum and a majority")]
+    ProposalFailed,
+    #[msg("The proposal was already executed")]
+    AlreadyExecuted,
+    #[msg("The spend exceeds the share of the vault one proposal may move")]
+    OverProposalCap,
+    #[msg("The destination is not the one the proposal names")]
+    WrongDestination,
+    #[msg("The NAV window is not open")]
+    NavClosed,
+    #[msg("This period's NAV redemption limit is used up")]
+    NavLimit,
+    #[msg("Insiders cannot redeem at NAV")]
+    InsiderExcluded,
+    #[msg("The redemption would pay nothing")]
+    ZeroPayout,
+    #[msg("There is nothing to claim")]
+    NothingToClaim,
+    #[msg("The round has not ended yet")]
+    RoundOpen,
+    #[msg("The payment window for this round has closed")]
+    RoundClosed,
+    #[msg("The payment window for this round has not closed")]
+    RoundNotLate,
+    #[msg("The attestation's data is not a revenue figure")]
+    BadRevenueData,
+    #[msg("This round is not eligible for a tranche")]
+    TrancheNotEligible,
+    #[msg("The grant terms are invalid")]
+    GrantInvalid,
+    #[msg("The grant lockup is shorter than the treasury's minimum")]
+    LockupTooShort,
+    #[msg("The lockup has not ended")]
+    MilestoneNotReady,
+    #[msg("The milestone was already released")]
+    AlreadyReleased,
+    #[msg("The grant has expired or was burned")]
+    GrantExpired,
+    #[msg("The grant has not expired")]
+    GrantNotExpired,
+    #[msg("The coin account is not the grant's beneficiary")]
+    WrongBeneficiary,
+    #[msg("The withdraw-only window is still open")]
+    WindowOpen,
+    #[msg("The leftover was already swept")]
+    AlreadySwept,
+    #[msg("The recovery account does not match")]
+    WrongRecovery,
+    #[msg("The treasury was wound down and swept")]
+    WoundDown,
 }

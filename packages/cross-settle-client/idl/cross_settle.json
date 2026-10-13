@@ -110,6 +110,753 @@
       "args": []
     },
     {
+      "name": "claim_partner_fee",
+      "docs": [
+        "Claims the DBC partner's trading fees (the settler PDA is the partner) to an account owned by the",
+        "cross's protocol fee recipient. Permissionless: nobody chooses the destination (ADR-0480)."
+      ],
+      "discriminator": [
+        97,
+        206,
+        39,
+        105,
+        94,
+        94,
+        126,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "base_destination",
+          "docs": [
+            "Receives the partner's base-token fees; must belong to the fee recipient."
+          ],
+          "writable": true
+        },
+        {
+          "name": "quote_destination",
+          "docs": [
+            "Receives the partner's quote-token fees; must belong to the fee recipient."
+          ],
+          "writable": true
+        },
+        {
+          "name": "base_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_base",
+          "type": "u64"
+        },
+        {
+          "name": "max_quote",
+          "type": "u64"
+        },
+        {
+          "name": "hook",
+          "type": {
+            "defined": {
+              "name": "TransferHookAccountsInfo"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_partner_pool_creation_fee",
+      "docs": [
+        "Claims the pool-creation fee the partner is owed, in lamports, to the fee recipient's wallet."
+      ],
+      "discriminator": [
+        250,
+        238,
+        26,
+        4,
+        139,
+        10,
+        101,
+        248
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "fee_receiver",
+          "writable": true
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_pol_fees",
+      "docs": [
+        "Claims the fees of the protocol-owned DAMM v2 position a DBC migration leaves with the settler, to",
+        "accounts owned by the cross's `proceeds_to` (ADR-0482)."
+      ],
+      "discriminator": [
+        127,
+        170,
+        120,
+        147,
+        237,
+        183,
+        159,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "damm_pool_authority"
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "token_a_destination",
+          "docs": [
+            "Receives the pool's token-A fees; must belong to the cross's `proceeds_to`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_b_destination",
+          "docs": [
+            "Receives the pool's token-B fees; must belong to the cross's `proceeds_to`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_a_vault",
+          "writable": true
+        },
+        {
+          "name": "token_b_vault",
+          "writable": true
+        },
+        {
+          "name": "token_a_mint"
+        },
+        {
+          "name": "token_b_mint"
+        },
+        {
+          "name": "position_nft_account"
+        },
+        {
+          "name": "damm_event_authority"
+        },
+        {
+          "name": "damm_program",
+          "address": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"
+        },
+        {
+          "name": "token_a_program"
+        },
+        {
+          "name": "token_b_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_greenshoe",
+      "docs": [
+        "Commits a budget (at least 10% of what the cross raised) to standing bids under P* for a week (ADR-0487)."
+      ],
+      "discriminator": [
+        121,
+        10,
+        177,
+        243,
+        176,
+        195,
+        167,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "greenshoe",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "creator_quote",
+          "writable": true
+        },
+        {
+          "name": "lb_pair"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "budget",
+          "type": "u64"
+        },
+        {
+          "name": "start_ts",
+          "type": "i64"
+        },
+        {
+          "name": "period_secs",
+          "type": "i64"
+        },
+        {
+          "name": "period_cap",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deploy_greenshoe_bid",
+      "docs": [
+        "Places one level of the greenshoe as a DLMM limit order owned by the program. Permissionless."
+      ],
+      "discriminator": [
+        22,
+        102,
+        229,
+        43,
+        42,
+        39,
+        67,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "greenshoe",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe.cross",
+                "account": "Greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lb_pair",
+          "writable": true
+        },
+        {
+          "name": "bin_array_bitmap_extension",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "reserve_y",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "limit_order",
+          "docs": [
+            "The new limit-order account; it signs once so DLMM can create it."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "dlmm_event_authority"
+        },
+        {
+          "name": "dlmm_program",
+          "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "level",
+          "type": "u8"
+        },
+        {
+          "name": "bin_id",
+          "type": "i32"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "finish_greenshoe",
+      "docs": [
+        "Burns everything the bids bought and returns the unspent budget to the issuer's proceeds. Permissionless."
+      ],
+      "discriminator": [
+        237,
+        116,
+        147,
+        50,
+        144,
+        63,
+        220,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "relations": [
+            "greenshoe"
+          ]
+        },
+        {
+          "name": "greenshoe",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "proceeds_quote",
+          "docs": [
+            "Receives what the bids did not spend; must belong to the cross's `proceeds_to`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "open_dbc_pool",
       "docs": [
         "Step 1: create the DBC config and pool at the clearing price. Only the cross creator may",
@@ -274,6 +1021,161 @@
       ]
     },
     {
+      "name": "open_dbc_pool_locked",
+      "docs": [
+        "`open_dbc_pool` for the fair-launch design (ADR-0482): the same curve, but the program refuses a",
+        "config under which anyone could withdraw the opening liquidity, or whose migrated pool is not",
+        "compounding. Everything `open_dbc_pool` checks is checked here too. `args` is the Borsh encoding",
+        "of `open_dbc_pool`'s two arguments, `config_parameters` then `pool`, one after the other, so",
+        "`open_dbc_pool`'s own argument types stay what they were."
+      ],
+      "discriminator": [
+        194,
+        239,
+        234,
+        201,
+        48,
+        77,
+        249,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "leftover_receiver"
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "base_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        },
+        {
+          "name": "cross_gate_program",
+          "address": "2pE7gApapcdmbk6713VbrWNjEg1iFFrd15SLt1pQwWqr"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "token_2022_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "open_dlmm_pair",
       "docs": [
         "DLMM adapter: opens a Meteora DLMM pair for the cross's market whose active bin is the",
@@ -354,6 +1256,175 @@
               "name": "CustomizableParams"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "open_dlmm_pair_badged",
+      "docs": [
+        "`open_dlmm_pair` for a pair whose mints need a Meteora Token Badge (ADR-0485): tokenized stocks carry Token-2022 extensions",
+        "(a pausable mint, a permanent delegate) that DLMM refuses without a badge. The two badge accounts follow the usual accounts, in",
+        "order base then quote, each either the mint's `TokenBadge` PDA or the DLMM program id when that mint needs none. A batch window",
+        "of zero opens the pair at once; any other window applies the rules of `open_dlmm_pair_batched`.",
+        "`params` is the Borsh encoding of `open_dlmm_pair`'s argument."
+      ],
+      "discriminator": [
+        131,
+        74,
+        248,
+        169,
+        186,
+        79,
+        29,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "lb_pair",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "reserve_x",
+          "writable": true
+        },
+        {
+          "name": "reserve_y",
+          "writable": true
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "creator_base"
+        },
+        {
+          "name": "creator_quote"
+        },
+        {
+          "name": "dlmm_event_authority"
+        },
+        {
+          "name": "dlmm_program",
+          "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": "bytes"
+        },
+        {
+          "name": "window_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "open_dlmm_pair_batched",
+      "docs": [
+        "`open_dlmm_pair` for a batch-opened market (ADR-0483): the pair is created with a timestamp start at least",
+        "`window_secs` away, so it cannot trade until the crosses of the window have run (or, with `has_alpha_vault`, only an",
+        "Alpha Vault can buy before then), and the pair's creator can pause it.",
+        "`params` is the Borsh encoding of `open_dlmm_pair`'s argument."
+      ],
+      "discriminator": [
+        127,
+        89,
+        86,
+        58,
+        208,
+        134,
+        18,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "lb_pair",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "reserve_x",
+          "writable": true
+        },
+        {
+          "name": "reserve_y",
+          "writable": true
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "creator_base"
+        },
+        {
+          "name": "creator_quote"
+        },
+        {
+          "name": "dlmm_event_authority"
+        },
+        {
+          "name": "dlmm_program",
+          "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": "bytes"
+        },
+        {
+          "name": "window_secs",
+          "type": "i64"
         }
       ]
     },
@@ -485,6 +1556,134 @@
       ]
     },
     {
+      "name": "seed_damm_v2_batched",
+      "docs": [
+        "`seed_damm_v2` for a batch-opened market (ADR-0483): the pool refuses every swap until a start the program",
+        "checks is at least `window_secs` away, its fee decays from a higher opening fee, and its fees compound",
+        "back into the pool. During the window the market clears as a series of short crosses instead of trading",
+        "against the AMM; afterwards the pool opens at the price the last cross printed.",
+        "`params` is the Borsh encoding of `seed_damm_v2`'s argument."
+      ],
+      "discriminator": [
+        180,
+        92,
+        89,
+        144,
+        1,
+        25,
+        242,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "position_nft_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  109,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_account",
+          "writable": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "token_a_vault",
+          "writable": true
+        },
+        {
+          "name": "token_b_vault",
+          "writable": true
+        },
+        {
+          "name": "creator_base",
+          "writable": true
+        },
+        {
+          "name": "creator_quote",
+          "writable": true
+        },
+        {
+          "name": "damm_pool_authority"
+        },
+        {
+          "name": "damm_event_authority"
+        },
+        {
+          "name": "damm_program",
+          "address": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "token_2022_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": "bytes"
+        },
+        {
+          "name": "window_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "seed_raydium_cpmm",
       "docs": [
         "Raydium CPMM adapter: opens a Raydium constant-product pool for the cross's market whose",
@@ -599,6 +1798,397 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "settle_greenshoe_level",
+      "docs": [
+        "After the week: cancels a placed level, taking back the unspent quote and the base it bought. Permissionless."
+      ],
+      "discriminator": [
+        97,
+        225,
+        74,
+        46,
+        118,
+        255,
+        23,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "rent_receiver",
+          "writable": true
+        },
+        {
+          "name": "greenshoe",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe.cross",
+                "account": "Greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  101,
+                  101,
+                  110,
+                  115,
+                  104,
+                  111,
+                  101,
+                  95,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "greenshoe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lb_pair",
+          "writable": true
+        },
+        {
+          "name": "bin_array_bitmap_extension",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "reserve_x",
+          "writable": true
+        },
+        {
+          "name": "reserve_y",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "limit_order",
+          "writable": true
+        },
+        {
+          "name": "memo_program"
+        },
+        {
+          "name": "dlmm_event_authority"
+        },
+        {
+          "name": "dlmm_program",
+          "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "level",
+          "type": "u8"
+        },
+        {
+          "name": "hook",
+          "type": {
+            "defined": {
+              "name": "RemainingAccountsInfo"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_partner_migration_fee",
+      "docs": [
+        "Withdraws the partner's slice of the DBC migration fee to an account owned by the fee recipient."
+      ],
+      "discriminator": [
+        231,
+        153,
+        49,
+        23,
+        96,
+        193,
+        193,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Receives the quote; must belong to the cross's `proceeds_to` (surplus) or its fee recipient",
+            "(migration fee)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_partner_surplus",
+      "docs": [
+        "Withdraws the partner's share of the surplus quote above the migration threshold to an account",
+        "owned by the cross's `proceeds_to` (the issuer's capital, ADR-0481)."
+      ],
+      "discriminator": [
+        32,
+        213,
+        118,
+        46,
+        195,
+        122,
+        13,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        },
+        {
+          "name": "settler",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  98,
+                  99,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Receives the quote; must belong to the cross's `proceeds_to` (surplus) or its fee recipient",
+            "(migration fee)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Greenshoe",
+      "discriminator": [
+        67,
+        202,
+        26,
+        128,
+        229,
+        207,
+        165,
+        37
+      ]
     }
   ],
   "events": [
@@ -652,6 +2242,123 @@
         126,
         130,
         161
+      ]
+    },
+    {
+      "name": "GreenshoeBidPlaced",
+      "discriminator": [
+        213,
+        127,
+        191,
+        131,
+        198,
+        216,
+        12,
+        67
+      ]
+    },
+    {
+      "name": "GreenshoeCreated",
+      "discriminator": [
+        52,
+        178,
+        63,
+        141,
+        70,
+        244,
+        107,
+        36
+      ]
+    },
+    {
+      "name": "GreenshoeFinished",
+      "discriminator": [
+        117,
+        157,
+        222,
+        137,
+        52,
+        128,
+        197,
+        169
+      ]
+    },
+    {
+      "name": "GreenshoeLevelSettled",
+      "discriminator": [
+        106,
+        151,
+        224,
+        224,
+        205,
+        67,
+        154,
+        98
+      ]
+    },
+    {
+      "name": "PartnerFeeClaimed",
+      "discriminator": [
+        84,
+        143,
+        45,
+        159,
+        174,
+        77,
+        17,
+        24
+      ]
+    },
+    {
+      "name": "PartnerMigrationFeeWithdrawn",
+      "discriminator": [
+        52,
+        169,
+        246,
+        202,
+        88,
+        236,
+        84,
+        148
+      ]
+    },
+    {
+      "name": "PartnerPoolCreationFeeClaimed",
+      "discriminator": [
+        239,
+        5,
+        34,
+        50,
+        236,
+        196,
+        141,
+        136
+      ]
+    },
+    {
+      "name": "PartnerSurplusWithdrawn",
+      "discriminator": [
+        132,
+        144,
+        161,
+        146,
+        175,
+        1,
+        71,
+        158
+      ]
+    },
+    {
+      "name": "PolFeesClaimed",
+      "discriminator": [
+        209,
+        65,
+        250,
+        3,
+        141,
+        134,
+        58,
+        82
       ]
     },
     {
@@ -718,6 +2425,101 @@
       "code": 6009,
       "name": "Overflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6010,
+      "name": "WrongDestination",
+      "msg": "The destination does not belong to the account the cross names for this payout"
+    },
+    {
+      "code": 6011,
+      "name": "DesignMigration",
+      "msg": "The locked design requires migration into DAMM v2"
+    },
+    {
+      "code": 6012,
+      "name": "DesignNotCompounding",
+      "msg": "The locked design requires a compounding migrated pool with a compounding fee"
+    },
+    {
+      "code": 6013,
+      "name": "DesignUnlockedLiquidity",
+      "msg": "The locked design leaves liquidity withdrawable at migration"
+    },
+    {
+      "code": 6014,
+      "name": "DesignPartnerVesting",
+      "msg": "The settler cannot vest liquidity: partner liquidity may only be locked permanently"
+    },
+    {
+      "code": 6015,
+      "name": "DesignLockTooLow",
+      "msg": "The locked design requires at least 20% of the liquidity locked permanently"
+    },
+    {
+      "code": 6016,
+      "name": "WrongPair",
+      "msg": "Not a DLMM pair of this cross's mints that is open for trading"
+    },
+    {
+      "code": 6017,
+      "name": "GreenshoeBudget",
+      "msg": "The greenshoe budget is below 10% of what the cross raised, above a level's share, or exceeds the budget"
+    },
+    {
+      "code": 6018,
+      "name": "GreenshoeWindow",
+      "msg": "Bids are only accepted inside the greenshoe week, and the period and window parameters must be sane"
+    },
+    {
+      "code": 6019,
+      "name": "GreenshoeLevel",
+      "msg": "That greenshoe level is invalid, already placed, not placed, or already settled"
+    },
+    {
+      "code": 6020,
+      "name": "GreenshoeBin",
+      "msg": "The bid must sit in the bin nearest its level, strictly below the active bin"
+    },
+    {
+      "code": 6021,
+      "name": "GreenshoeRateLimit",
+      "msg": "This period's greenshoe deployment cap is used up"
+    },
+    {
+      "code": 6022,
+      "name": "GreenshoeNotExpired",
+      "msg": "The greenshoe week has not ended"
+    },
+    {
+      "code": 6023,
+      "name": "BadArgs",
+      "msg": "The argument bytes are not the Borsh encoding of the expected parameters"
+    },
+    {
+      "code": 6024,
+      "name": "BadgeAccounts",
+      "msg": "Pass exactly two badge accounts: base then quote, or the DLMM program id for none"
+    },
+    {
+      "code": 6025,
+      "name": "BatchWindow",
+      "msg": "A batch window must be between 30 seconds and 7 days"
+    },
+    {
+      "code": 6026,
+      "name": "BatchActivation",
+      "msg": "A batch-opened pool needs a timestamp start at least the window away"
+    },
+    {
+      "code": 6027,
+      "name": "BatchNotCompounding",
+      "msg": "A batch-opened DAMM v2 pool must compound its fees"
+    },
+    {
+      "code": 6028,
+      "name": "BatchFeeNotDecaying",
+      "msg": "A batch-opened DAMM v2 pool must open with a fee that decays over time"
     }
   ],
   "types": [
@@ -1050,6 +2852,224 @@
       }
     },
     {
+      "name": "Greenshoe",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "lb_pair",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "reference_price",
+            "docs": [
+              "P* and its scale, copied from the cross so the bids never depend on a later read."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "price_scale",
+            "type": "u64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          },
+          {
+            "name": "budget",
+            "docs": [
+              "Quote committed at creation; nothing can be added and nothing leaves except as bids, refunds at expiry or burns."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deployed",
+            "type": "u64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "period_cap",
+            "type": "u64"
+          },
+          {
+            "name": "period_start",
+            "type": "i64"
+          },
+          {
+            "name": "period_deployed",
+            "type": "u64"
+          },
+          {
+            "name": "orders",
+            "type": {
+              "array": [
+                "pubkey",
+                3
+              ]
+            }
+          },
+          {
+            "name": "bins",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "amounts",
+            "type": {
+              "array": [
+                "u64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "level_settled",
+            "type": {
+              "array": [
+                "bool",
+                3
+              ]
+            }
+          },
+          {
+            "name": "finished",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "base_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GreenshoeBidPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "greenshoe",
+            "type": "pubkey"
+          },
+          {
+            "name": "level",
+            "type": "u8"
+          },
+          {
+            "name": "bin_id",
+            "type": "i32"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "limit_order",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GreenshoeCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "greenshoe",
+            "type": "pubkey"
+          },
+          {
+            "name": "budget",
+            "type": "u64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GreenshoeFinished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "greenshoe",
+            "type": "pubkey"
+          },
+          {
+            "name": "burned",
+            "type": "u64"
+          },
+          {
+            "name": "returned",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GreenshoeLevelSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "greenshoe",
+            "type": "pubkey"
+          },
+          {
+            "name": "level",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeCustomizablePoolParameters",
       "type": {
         "kind": "struct",
@@ -1252,6 +3272,138 @@
       }
     },
     {
+      "name": "PartnerFeeClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "base",
+            "type": "u64"
+          },
+          {
+            "name": "quote",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PartnerMigrationFeeWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PartnerPoolCreationFeeClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PartnerSurplusWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolFeesClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_a",
+            "type": "u64"
+          },
+          {
+            "name": "token_b",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "RaydiumCpmmSeeded",
       "type": {
         "kind": "struct",
@@ -1280,6 +3432,24 @@
       }
     },
     {
+      "name": "RemainingAccountsInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slices",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "cross_settle::lb_clmm::types::RemainingAccountsSlice"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "TokenSupplyParams",
       "type": {
         "kind": "struct",
@@ -1291,6 +3461,24 @@
           {
             "name": "post_migration_token_supply",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferHookAccountsInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slices",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "cross_settle::dynamic_bonding_curve::types::RemainingAccountsSlice"
+                }
+              }
+            }
           }
         ]
       }
@@ -1386,6 +3574,23 @@
       }
     },
     {
+      "name": "cross_settle::dynamic_bonding_curve::types::AccountsType",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TransferHookBase"
+          },
+          {
+            "name": "TransferHookBaseReferral"
+          }
+        ]
+      }
+    },
+    {
       "name": "cross_settle::dynamic_bonding_curve::types::BaseFeeParameters",
       "type": {
         "kind": "struct",
@@ -1474,6 +3679,72 @@
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::dynamic_bonding_curve::types::RemainingAccountsSlice",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accounts_type",
+            "type": {
+              "defined": {
+                "name": "cross_settle::dynamic_bonding_curve::types::AccountsType"
+              }
+            }
+          },
+          {
+            "name": "length",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::lb_clmm::types::AccountsType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TransferHookX"
+          },
+          {
+            "name": "TransferHookY"
+          },
+          {
+            "name": "TransferHookReward"
+          },
+          {
+            "name": "TransferHookMultiReward",
+            "fields": [
+              "u8"
+            ]
+          },
+          {
+            "name": "TransferHookReferral"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross_settle::lb_clmm::types::RemainingAccountsSlice",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accounts_type",
+            "type": {
+              "defined": {
+                "name": "cross_settle::lb_clmm::types::AccountsType"
+              }
+            }
+          },
+          {
+            "name": "length",
+            "type": "u8"
           }
         ]
       }

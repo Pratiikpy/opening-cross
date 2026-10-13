@@ -103,6 +103,23 @@ pub enum NoPrintReason {
     OracleDivergence,
     /// No fresh, fully verified oracle price was available at the clear.
     OracleUnavailable,
+    /// The matched volume, at the clearing price, raised less than the published minimum.
+    BelowMinimumRaise,
+    /// The matched volume is too small a share of the declared supply (ADR-0451).
+    FloatTooLow,
+    /// The declared supply is too large a multiple of the matched volume (ADR-0451).
+    FdvTooHigh,
+    /// The clearing price moved further from the published anchor than the cross allows; buyers
+    /// must place new orders in a follow-up cross (ADR-0451).
+    PriceMoved,
+    /// The asset is halted; only a resume cross may print (ADR-0455).
+    Halted,
+    /// A corporate action is flagged, or the mint's multiplier changed during the call.
+    CorporateAction,
+    /// The base mint is paused by its issuer.
+    IssuerPaused,
+    /// The oracles the cross names disagree with one another by more than its bound (ADR-0459).
+    OracleDisagreement,
 }
 
 /// Pyth price guard: the cross does not print if P* differs from the oracle by more than

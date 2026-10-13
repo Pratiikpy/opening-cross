@@ -9,6 +9,246 @@
   },
   "instructions": [
     {
+      "name": "claim_distribution",
+      "discriminator": [
+        204,
+        156,
+        94,
+        85,
+        2,
+        125,
+        232,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_quote",
+          "writable": true
+        },
+        {
+          "name": "dist_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_grant",
+      "discriminator": [
+        19,
+        119,
+        176,
+        223,
+        45,
+        142,
+        225,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "authority_coin",
+          "writable": true
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "grant",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "GrantParams"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "create_treasury",
       "discriminator": [
         254,
@@ -97,6 +337,1055 @@
           }
         }
       ]
+    },
+    {
+      "name": "deposit_distribution",
+      "discriminator": [
+        96,
+        87,
+        121,
+        0,
+        169,
+        204,
+        217,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "depositor_quote",
+          "writable": true
+        },
+        {
+          "name": "dist_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "execute_proposal",
+      "discriminator": [
+        186,
+        60,
+        116,
+        133,
+        108,
+        128,
+        111,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "proposal"
+          ]
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Receives a spend; ignored by the NAV kinds (pass any quote account)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_grant",
+      "discriminator": [
+        79,
+        102,
+        144,
+        86,
+        253,
+        70,
+        154,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "grant"
+          ]
+        },
+        {
+          "name": "grant",
+          "writable": true
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_ext",
+      "docs": [
+        "Grows a treasury by the extension tail and creates its coin and distribution vaults. Once."
+      ],
+      "discriminator": [
+        64,
+        67,
+        67,
+        113,
+        219,
+        202,
+        61,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "ExtParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mark_missed",
+      "discriminator": [
+        143,
+        84,
+        126,
+        192,
+        57,
+        168,
+        227,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "round_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "arg",
+                "path": "round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "nav_redeem",
+      "discriminator": [
+        66,
+        220,
+        169,
+        81,
+        197,
+        43,
+        237,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "holder_coin",
+          "writable": true
+        },
+        {
+          "name": "holder_quote",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "pay_round",
+      "discriminator": [
+        88,
+        109,
+        196,
+        46,
+        199,
+        222,
+        90,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "payer_quote",
+          "writable": true
+        },
+        {
+          "name": "dist_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "docs": [
+            "`sas_attestation::is_valid` against the nonce derived from the treasury and the round."
+          ]
+        },
+        {
+          "name": "round_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "arg",
+                "path": "round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "post_disclosure",
+      "discriminator": [
+        56,
+        44,
+        128,
+        27,
+        181,
+        102,
+        199,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose",
+      "discriminator": [
+        93,
+        253,
+        82,
+        168,
+        118,
+        33,
+        102,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "proposer_coin"
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ProposalKind"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "destination",
+          "type": "pubkey"
+        },
+        {
+          "name": "desc_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "reclaim_vote",
+      "discriminator": [
+        54,
+        249,
+        247,
+        137,
+        93,
+        95,
+        134,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vote_record"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "proposal"
+          ]
+        },
+        {
+          "name": "proposal",
+          "relations": [
+            "vote_record"
+          ]
+        },
+        {
+          "name": "vote_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "voter_coin",
+          "writable": true
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "record_assignment",
+      "discriminator": [
+        233,
+        91,
+        157,
+        228,
+        74,
+        251,
+        214,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "docs": [
+            "`sas_attestation::is_valid`."
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "record_attested",
@@ -297,6 +1586,277 @@
       ]
     },
     {
+      "name": "release_milestone",
+      "discriminator": [
+        56,
+        2,
+        199,
+        164,
+        184,
+        108,
+        167,
+        222
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "grant"
+          ]
+        },
+        {
+          "name": "grant",
+          "writable": true
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary_coin",
+          "writable": true
+        },
+        {
+          "name": "attestation",
+          "docs": [
+            "checked by `sas_attestation::is_valid`. Pass any account for a carve-out."
+          ]
+        },
+        {
+          "name": "coin_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "release_tranche",
+      "discriminator": [
+        156,
+        137,
+        159,
+        5,
+        80,
+        38,
+        133,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "round_record"
+          ]
+        },
+        {
+          "name": "round_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "arg",
+                "path": "round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "round",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "request_disclosure",
+      "discriminator": [
+        108,
+        50,
+        251,
+        21,
+        123,
+        69,
+        244,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "holder_coin"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "spend",
       "docs": [
         "The team spends within the period's allowance, only while the attestation is live."
@@ -392,6 +1952,200 @@
       ]
     },
     {
+      "name": "stake",
+      "discriminator": [
+        206,
+        176,
+        202,
+        18,
+        200,
+        209,
+        179,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_coin",
+          "writable": true
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "sweep_unclaimed",
+      "discriminator": [
+        64,
+        168,
+        221,
+        224,
+        42,
+        216,
+        138,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recovery_quote",
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "trigger_liquidation",
       "docs": [
         "After a lapse longer than the grace period, anyone moves the treasury into liquidation."
@@ -462,9 +2216,306 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "unstake",
+      "discriminator": [
+        90,
+        95,
+        107,
+        42,
+        205,
+        124,
+        50,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_coin",
+          "writable": true
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "vote",
+      "discriminator": [
+        227,
+        110,
+        155,
+        23,
+        136,
+        126,
+        172,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.coin_mint",
+                "account": "Treasury"
+              }
+            ]
+          },
+          "relations": [
+            "proposal"
+          ]
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "vote_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "voter_coin",
+          "writable": true
+        },
+        {
+          "name": "coin_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "support",
+          "type": "bool"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "Grant",
+      "discriminator": [
+        161,
+        166,
+        11,
+        205,
+        204,
+        135,
+        205,
+        54
+      ]
+    },
+    {
+      "name": "Position",
+      "discriminator": [
+        170,
+        188,
+        143,
+        228,
+        122,
+        64,
+        247,
+        208
+      ]
+    },
+    {
+      "name": "Proposal",
+      "discriminator": [
+        26,
+        94,
+        189,
+        187,
+        116,
+        136,
+        53,
+        33
+      ]
+    },
+    {
+      "name": "RoundRecord",
+      "discriminator": [
+        147,
+        5,
+        169,
+        78,
+        138,
+        208,
+        76,
+        193
+      ]
+    },
     {
       "name": "Treasury",
       "discriminator": [
@@ -477,9 +2528,35 @@
         168,
         253
       ]
+    },
+    {
+      "name": "VoteRecord",
+      "discriminator": [
+        112,
+        9,
+        123,
+        165,
+        234,
+        9,
+        157,
+        167
+      ]
     }
   ],
   "events": [
+    {
+      "name": "AssignmentRecorded",
+      "discriminator": [
+        86,
+        194,
+        150,
+        81,
+        168,
+        37,
+        178,
+        49
+      ]
+    },
     {
       "name": "AttestationLapsed",
       "discriminator": [
@@ -491,6 +2568,84 @@
         254,
         13,
         32
+      ]
+    },
+    {
+      "name": "DisclosurePosted",
+      "discriminator": [
+        27,
+        99,
+        231,
+        34,
+        215,
+        34,
+        114,
+        89
+      ]
+    },
+    {
+      "name": "DisclosureRequested",
+      "discriminator": [
+        56,
+        252,
+        93,
+        206,
+        134,
+        210,
+        51,
+        186
+      ]
+    },
+    {
+      "name": "DistributionClaimed",
+      "discriminator": [
+        28,
+        224,
+        98,
+        55,
+        240,
+        215,
+        209,
+        4
+      ]
+    },
+    {
+      "name": "DistributionDeposited",
+      "discriminator": [
+        214,
+        198,
+        183,
+        205,
+        56,
+        196,
+        27,
+        162
+      ]
+    },
+    {
+      "name": "GrantCreated",
+      "discriminator": [
+        162,
+        254,
+        131,
+        56,
+        65,
+        214,
+        85,
+        6
+      ]
+    },
+    {
+      "name": "GrantExpired",
+      "discriminator": [
+        253,
+        77,
+        239,
+        73,
+        217,
+        30,
+        106,
+        176
       ]
     },
     {
@@ -507,6 +2662,58 @@
       ]
     },
     {
+      "name": "MilestoneReleased",
+      "discriminator": [
+        49,
+        225,
+        91,
+        223,
+        34,
+        165,
+        109,
+        181
+      ]
+    },
+    {
+      "name": "NavRedeemed",
+      "discriminator": [
+        229,
+        198,
+        232,
+        253,
+        62,
+        17,
+        177,
+        137
+      ]
+    },
+    {
+      "name": "ProposalCreated",
+      "discriminator": [
+        186,
+        8,
+        160,
+        108,
+        81,
+        13,
+        51,
+        206
+      ]
+    },
+    {
+      "name": "ProposalExecuted",
+      "discriminator": [
+        92,
+        213,
+        189,
+        201,
+        101,
+        83,
+        111,
+        83
+      ]
+    },
+    {
       "name": "Redeemed",
       "discriminator": [
         14,
@@ -517,6 +2724,32 @@
         165,
         107,
         38
+      ]
+    },
+    {
+      "name": "RoundMissed",
+      "discriminator": [
+        135,
+        129,
+        166,
+        79,
+        180,
+        50,
+        235,
+        36
+      ]
+    },
+    {
+      "name": "RoundPaid",
+      "discriminator": [
+        225,
+        220,
+        210,
+        19,
+        148,
+        21,
+        127,
+        154
       ]
     },
     {
@@ -533,6 +2766,32 @@
       ]
     },
     {
+      "name": "Staked",
+      "discriminator": [
+        11,
+        146,
+        45,
+        205,
+        230,
+        58,
+        213,
+        240
+      ]
+    },
+    {
+      "name": "TrancheReleased",
+      "discriminator": [
+        225,
+        25,
+        37,
+        246,
+        224,
+        183,
+        193,
+        249
+      ]
+    },
+    {
       "name": "TreasuryCreated",
       "discriminator": [
         190,
@@ -543,6 +2802,71 @@
         234,
         21,
         199
+      ]
+    },
+    {
+      "name": "TreasuryExtended",
+      "discriminator": [
+        226,
+        222,
+        36,
+        78,
+        110,
+        154,
+        209,
+        103
+      ]
+    },
+    {
+      "name": "UnclaimedSwept",
+      "discriminator": [
+        20,
+        92,
+        19,
+        237,
+        135,
+        103,
+        255,
+        168
+      ]
+    },
+    {
+      "name": "Unstaked",
+      "discriminator": [
+        27,
+        179,
+        156,
+        215,
+        47,
+        71,
+        195,
+        7
+      ]
+    },
+    {
+      "name": "VoteReclaimed",
+      "discriminator": [
+        58,
+        198,
+        33,
+        254,
+        109,
+        38,
+        248,
+        127
+      ]
+    },
+    {
+      "name": "Voted",
+      "discriminator": [
+        189,
+        74,
+        101,
+        127,
+        109,
+        214,
+        95,
+        130
       ]
     }
   ],
@@ -606,9 +2930,216 @@
       "code": 6011,
       "name": "Overflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6012,
+      "name": "NotExtended",
+      "msg": "This treasury has no extension: call init_ext first"
+    },
+    {
+      "code": 6013,
+      "name": "AlreadyExtended",
+      "msg": "This treasury is already extended"
+    },
+    {
+      "code": 6014,
+      "name": "Disabled",
+      "msg": "This feature is not enabled for the treasury"
+    },
+    {
+      "code": 6015,
+      "name": "NavMode",
+      "msg": "NAV mode is on: team spending is frozen while holders can redeem"
+    },
+    {
+      "code": 6016,
+      "name": "AssignmentRequired",
+      "msg": "The IP and asset assignment has not been recorded"
+    },
+    {
+      "code": 6017,
+      "name": "AlreadyAssigned",
+      "msg": "The assignment is already recorded"
+    },
+    {
+      "code": 6018,
+      "name": "DisclosureOverdue",
+      "msg": "A holder's disclosure request is overdue"
+    },
+    {
+      "code": 6019,
+      "name": "NotHolder",
+      "msg": "Only a holder of enough coins may do this"
+    },
+    {
+      "code": 6020,
+      "name": "WrongProposalId",
+      "msg": "The id must be the next one"
+    },
+    {
+      "code": 6021,
+      "name": "WrongProposal",
+      "msg": "That account does not belong to this proposal or treasury"
+    },
+    {
+      "code": 6022,
+      "name": "VotingClosed",
+      "msg": "Voting on this proposal is closed"
+    },
+    {
+      "code": 6023,
+      "name": "VotingOpen",
+      "msg": "Voting on this proposal is still open"
+    },
+    {
+      "code": 6024,
+      "name": "TimelockPending",
+      "msg": "The timelock after the vote has not ended"
+    },
+    {
+      "code": 6025,
+      "name": "ProposalExpired",
+      "msg": "The proposal expired before it was executed"
+    },
+    {
+      "code": 6026,
+      "name": "ProposalFailed",
+      "msg": "The proposal did not reach quorum and a majority"
+    },
+    {
+      "code": 6027,
+      "name": "AlreadyExecuted",
+      "msg": "The proposal was already executed"
+    },
+    {
+      "code": 6028,
+      "name": "OverProposalCap",
+      "msg": "The spend exceeds the share of the vault one proposal may move"
+    },
+    {
+      "code": 6029,
+      "name": "WrongDestination",
+      "msg": "The destination is not the one the proposal names"
+    },
+    {
+      "code": 6030,
+      "name": "NavClosed",
+      "msg": "The NAV window is not open"
+    },
+    {
+      "code": 6031,
+      "name": "NavLimit",
+      "msg": "This period's NAV redemption limit is used up"
+    },
+    {
+      "code": 6032,
+      "name": "InsiderExcluded",
+      "msg": "Insiders cannot redeem at NAV"
+    },
+    {
+      "code": 6033,
+      "name": "ZeroPayout",
+      "msg": "The redemption would pay nothing"
+    },
+    {
+      "code": 6034,
+      "name": "NothingToClaim",
+      "msg": "There is nothing to claim"
+    },
+    {
+      "code": 6035,
+      "name": "RoundOpen",
+      "msg": "The round has not ended yet"
+    },
+    {
+      "code": 6036,
+      "name": "RoundClosed",
+      "msg": "The payment window for this round has closed"
+    },
+    {
+      "code": 6037,
+      "name": "RoundNotLate",
+      "msg": "The payment window for this round has not closed"
+    },
+    {
+      "code": 6038,
+      "name": "BadRevenueData",
+      "msg": "The attestation's data is not a revenue figure"
+    },
+    {
+      "code": 6039,
+      "name": "TrancheNotEligible",
+      "msg": "This round is not eligible for a tranche"
+    },
+    {
+      "code": 6040,
+      "name": "GrantInvalid",
+      "msg": "The grant terms are invalid"
+    },
+    {
+      "code": 6041,
+      "name": "LockupTooShort",
+      "msg": "The grant lockup is shorter than the treasury's minimum"
+    },
+    {
+      "code": 6042,
+      "name": "MilestoneNotReady",
+      "msg": "The lockup has not ended"
+    },
+    {
+      "code": 6043,
+      "name": "AlreadyReleased",
+      "msg": "The milestone was already released"
+    },
+    {
+      "code": 6044,
+      "name": "GrantExpired",
+      "msg": "The grant has expired or was burned"
+    },
+    {
+      "code": 6045,
+      "name": "GrantNotExpired",
+      "msg": "The grant has not expired"
+    },
+    {
+      "code": 6046,
+      "name": "WrongBeneficiary",
+      "msg": "The coin account is not the grant's beneficiary"
+    },
+    {
+      "code": 6047,
+      "name": "WindowOpen",
+      "msg": "The withdraw-only window is still open"
+    },
+    {
+      "code": 6048,
+      "name": "AlreadySwept",
+      "msg": "The leftover was already swept"
+    },
+    {
+      "code": 6049,
+      "name": "WrongRecovery",
+      "msg": "The recovery account does not match"
+    },
+    {
+      "code": 6050,
+      "name": "WoundDown",
+      "msg": "The treasury was wound down and swept"
     }
   ],
   "types": [
+    {
+      "name": "AssignmentRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "AttestationLapsed",
       "type": {
@@ -621,6 +3152,389 @@
           {
             "name": "at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisclosurePosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          },
+          {
+            "name": "count",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisclosureRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "open_since",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DistributionClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DistributionDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtParams",
+      "docs": [
+        "What the team chooses when it extends a treasury. Every field is fixed afterwards."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vote_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "timelock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "quorum_bps",
+            "type": "u16"
+          },
+          {
+            "name": "threshold_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_proposal_bps",
+            "type": "u16"
+          },
+          {
+            "name": "proposer_min_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_lockup_secs",
+            "type": "i64"
+          },
+          {
+            "name": "nav_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "nav_cap_bps",
+            "type": "u16"
+          },
+          {
+            "name": "insiders",
+            "type": {
+              "array": [
+                "pubkey",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stream_secs",
+            "type": "i64"
+          },
+          {
+            "name": "rev_share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "rev_credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "rev_schema",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_secs",
+            "type": "i64"
+          },
+          {
+            "name": "rev_start",
+            "type": "i64"
+          },
+          {
+            "name": "pay_grace_secs",
+            "type": "i64"
+          },
+          {
+            "name": "tranche_min_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "tranche_amount",
+            "type": "u64"
+          },
+          {
+            "name": "disclosure_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "request_min_bps",
+            "type": "u16"
+          },
+          {
+            "name": "assign_required",
+            "type": "bool"
+          },
+          {
+            "name": "assign_credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "assign_schema",
+            "type": "pubkey"
+          },
+          {
+            "name": "window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "recovery",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Grant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "beneficiary",
+            "type": "pubkey"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "released",
+            "type": "u64"
+          },
+          {
+            "name": "lockup_end",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          },
+          {
+            "name": "milestones",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Milestone"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "schema",
+            "type": "pubkey"
+          },
+          {
+            "name": "burned",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GrantCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "grant",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "beneficiary",
+            "type": "pubkey"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "lockup_end",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GrantExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grant",
+            "type": "pubkey"
+          },
+          {
+            "name": "burned",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GrantParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "beneficiary",
+            "type": "pubkey"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "lockup_end",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          },
+          {
+            "name": "milestones",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Milestone"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "credential",
+            "type": "pubkey"
+          },
+          {
+            "name": "schema",
+            "type": "pubkey"
           }
         ]
       }
@@ -641,6 +3555,281 @@
           {
             "name": "supply",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Milestone",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bps",
+            "docs": [
+              "Share of the grant this milestone releases, in basis points."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "requires_attestation",
+            "docs": [
+              "False: a carve-out, released when the lockup ends. True: an earn-out, released only against",
+              "a live attestation at `milestone_nonce(grant, index)` under the grant's credential and schema."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "released",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grant",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NavRedeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "burned",
+            "type": "u64"
+          },
+          {
+            "name": "paid",
+            "type": "u64"
+          },
+          {
+            "name": "period_burned",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Position",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "debt",
+            "docs": [
+              "`floor(amount * acc / PREC)` as of the last change; pending reward is the growth since."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending",
+            "docs": [
+              "Reward settled but not yet claimed."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Proposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "ProposalKind"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "desc_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "created_ts",
+            "type": "i64"
+          },
+          {
+            "name": "vote_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "executable_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          },
+          {
+            "name": "yes",
+            "type": "u64"
+          },
+          {
+            "name": "no",
+            "type": "u64"
+          },
+          {
+            "name": "executed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "ProposalKind"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote_end_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "ProposalKind"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Spend"
+          },
+          {
+            "name": "OpenNav"
+          },
+          {
+            "name": "CloseNav"
           }
         ]
       }
@@ -670,6 +3859,90 @@
       }
     },
     {
+      "name": "RoundMissed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u64"
+          },
+          {
+            "name": "nav_open",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundPaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u64"
+          },
+          {
+            "name": "revenue",
+            "type": "u64"
+          },
+          {
+            "name": "due",
+            "type": "u64"
+          },
+          {
+            "name": "payer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u64"
+          },
+          {
+            "name": "revenue",
+            "type": "u64"
+          },
+          {
+            "name": "due",
+            "type": "u64"
+          },
+          {
+            "name": "missed",
+            "type": "bool"
+          },
+          {
+            "name": "tranche_released",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "Spent",
       "type": {
         "kind": "struct",
@@ -688,6 +3961,50 @@
           },
           {
             "name": "spent_in_period",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Staked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TrancheReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           }
         ]
@@ -804,6 +4121,42 @@
       }
     },
     {
+      "name": "TreasuryExtended",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "governance",
+            "type": "bool"
+          },
+          {
+            "name": "nav",
+            "type": "bool"
+          },
+          {
+            "name": "revenue",
+            "type": "bool"
+          },
+          {
+            "name": "disclosure",
+            "type": "bool"
+          },
+          {
+            "name": "assignment_required",
+            "type": "bool"
+          },
+          {
+            "name": "wind_down",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "TreasuryParams",
       "type": {
         "kind": "struct",
@@ -850,6 +4203,130 @@
           },
           {
             "name": "Liquidating"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnclaimedSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Unstaked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteReclaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes",
+            "type": "u64"
+          },
+          {
+            "name": "no",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Voted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "support",
+            "type": "bool"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "yes",
+            "type": "u64"
+          },
+          {
+            "name": "no",
+            "type": "u64"
           }
         ]
       }

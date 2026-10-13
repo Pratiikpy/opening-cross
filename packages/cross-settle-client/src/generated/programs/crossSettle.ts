@@ -6,14 +6,23 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithPayer, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
-import { addSelfPlanAndSendFunctions, type SelfPlanAndSendFunctions } from '@solana/program-client-core';
-import { getBindDbcMintInstructionAsync, getOpenDbcPoolInstructionAsync, getOpenDlmmPairInstruction, getSeedDammV2InstructionAsync, getSeedRaydiumCpmmInstruction, parseBindDbcMintInstruction, parseOpenDbcPoolInstruction, parseOpenDlmmPairInstruction, parseSeedDammV2Instruction, parseSeedRaydiumCpmmInstruction, type BindDbcMintAsyncInput, type OpenDbcPoolAsyncInput, type OpenDlmmPairInput, type ParsedBindDbcMintInstruction, type ParsedOpenDbcPoolInstruction, type ParsedOpenDlmmPairInstruction, type ParsedSeedDammV2Instruction, type ParsedSeedRaydiumCpmmInstruction, type SeedDammV2AsyncInput, type SeedRaydiumCpmmInput } from '../instructions/index.js';
-import { findBaseMintPda, findDbcConfigPda, findPositionNftMintPda, findSettlerPda } from '../pdas/index.js';
+import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithPayer, type ClientWithRpc, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type GetAccountInfoApi, type GetMultipleAccountsApi, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
+import { addSelfFetchFunctions, addSelfPlanAndSendFunctions, type SelfFetchFunctions, type SelfPlanAndSendFunctions } from '@solana/program-client-core';
+import { getGreenshoeCodec, type Greenshoe, type GreenshoeArgs } from '../accounts/index.js';
+import { getBindDbcMintInstructionAsync, getClaimPartnerFeeInstructionAsync, getClaimPartnerPoolCreationFeeInstructionAsync, getClaimPolFeesInstructionAsync, getCreateGreenshoeInstructionAsync, getDeployGreenshoeBidInstructionAsync, getFinishGreenshoeInstructionAsync, getOpenDbcPoolInstructionAsync, getOpenDbcPoolLockedInstructionAsync, getOpenDlmmPairBadgedInstruction, getOpenDlmmPairBatchedInstruction, getOpenDlmmPairInstruction, getSeedDammV2BatchedInstructionAsync, getSeedDammV2InstructionAsync, getSeedRaydiumCpmmInstruction, getSettleGreenshoeLevelInstructionAsync, getWithdrawPartnerMigrationFeeInstructionAsync, getWithdrawPartnerSurplusInstructionAsync, parseBindDbcMintInstruction, parseClaimPartnerFeeInstruction, parseClaimPartnerPoolCreationFeeInstruction, parseClaimPolFeesInstruction, parseCreateGreenshoeInstruction, parseDeployGreenshoeBidInstruction, parseFinishGreenshoeInstruction, parseOpenDbcPoolInstruction, parseOpenDbcPoolLockedInstruction, parseOpenDlmmPairBadgedInstruction, parseOpenDlmmPairBatchedInstruction, parseOpenDlmmPairInstruction, parseSeedDammV2BatchedInstruction, parseSeedDammV2Instruction, parseSeedRaydiumCpmmInstruction, parseSettleGreenshoeLevelInstruction, parseWithdrawPartnerMigrationFeeInstruction, parseWithdrawPartnerSurplusInstruction, type BindDbcMintAsyncInput, type ClaimPartnerFeeAsyncInput, type ClaimPartnerPoolCreationFeeAsyncInput, type ClaimPolFeesAsyncInput, type CreateGreenshoeAsyncInput, type DeployGreenshoeBidAsyncInput, type FinishGreenshoeAsyncInput, type OpenDbcPoolAsyncInput, type OpenDbcPoolLockedAsyncInput, type OpenDlmmPairBadgedInput, type OpenDlmmPairBatchedInput, type OpenDlmmPairInput, type ParsedBindDbcMintInstruction, type ParsedClaimPartnerFeeInstruction, type ParsedClaimPartnerPoolCreationFeeInstruction, type ParsedClaimPolFeesInstruction, type ParsedCreateGreenshoeInstruction, type ParsedDeployGreenshoeBidInstruction, type ParsedFinishGreenshoeInstruction, type ParsedOpenDbcPoolInstruction, type ParsedOpenDbcPoolLockedInstruction, type ParsedOpenDlmmPairBadgedInstruction, type ParsedOpenDlmmPairBatchedInstruction, type ParsedOpenDlmmPairInstruction, type ParsedSeedDammV2BatchedInstruction, type ParsedSeedDammV2Instruction, type ParsedSeedRaydiumCpmmInstruction, type ParsedSettleGreenshoeLevelInstruction, type ParsedWithdrawPartnerMigrationFeeInstruction, type ParsedWithdrawPartnerSurplusInstruction, type SeedDammV2AsyncInput, type SeedDammV2BatchedAsyncInput, type SeedRaydiumCpmmInput, type SettleGreenshoeLevelAsyncInput, type WithdrawPartnerMigrationFeeAsyncInput, type WithdrawPartnerSurplusAsyncInput } from '../instructions/index.js';
+import { findBaseAccountPda, findBaseMintPda, findDbcConfigPda, findGreenshoePda, findPositionNftMintPda, findSettlerPda, findVaultPda } from '../pdas/index.js';
 
 export const CROSS_SETTLE_PROGRAM_ADDRESS = '2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ' as Address<'2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ'>;
 
-export enum CrossSettleEvent { DammV2Seeded, DbcMintBound, DbcPoolOpened, DlmmPairOpened, RaydiumCpmmSeeded }
+export enum CrossSettleAccount { Greenshoe }
+
+export function identifyCrossSettleAccount(account: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleAccount {
+    const data = 'data' in account ? account.data : account;
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([67, 202, 26, 128, 229, 207, 165, 37])), 0)) { return CrossSettleAccount.Greenshoe; }
+    throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, { accountData: data, programName: "crossSettle" });
+}
+
+export enum CrossSettleEvent { DammV2Seeded, DbcMintBound, DbcPoolOpened, DlmmPairOpened, GreenshoeBidPlaced, GreenshoeCreated, GreenshoeFinished, GreenshoeLevelSettled, PartnerFeeClaimed, PartnerMigrationFeeWithdrawn, PartnerPoolCreationFeeClaimed, PartnerSurplusWithdrawn, PolFeesClaimed, RaydiumCpmmSeeded }
 
 export function identifyCrossSettleEvent(event: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleEvent {
     const data = 'data' in event ? event.data : event;
@@ -21,28 +30,63 @@ export function identifyCrossSettleEvent(event: { data: ReadonlyUint8Array } | R
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([75, 243, 26, 251, 150, 153, 172, 164])), 0)) { return CrossSettleEvent.DbcMintBound; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([142, 90, 156, 187, 193, 205, 225, 165])), 0)) { return CrossSettleEvent.DbcPoolOpened; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([90, 64, 105, 60, 182, 126, 130, 161])), 0)) { return CrossSettleEvent.DlmmPairOpened; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([213, 127, 191, 131, 198, 216, 12, 67])), 0)) { return CrossSettleEvent.GreenshoeBidPlaced; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([52, 178, 63, 141, 70, 244, 107, 36])), 0)) { return CrossSettleEvent.GreenshoeCreated; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([117, 157, 222, 137, 52, 128, 197, 169])), 0)) { return CrossSettleEvent.GreenshoeFinished; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([106, 151, 224, 224, 205, 67, 154, 98])), 0)) { return CrossSettleEvent.GreenshoeLevelSettled; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([84, 143, 45, 159, 174, 77, 17, 24])), 0)) { return CrossSettleEvent.PartnerFeeClaimed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([52, 169, 246, 202, 88, 236, 84, 148])), 0)) { return CrossSettleEvent.PartnerMigrationFeeWithdrawn; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([239, 5, 34, 50, 236, 196, 141, 136])), 0)) { return CrossSettleEvent.PartnerPoolCreationFeeClaimed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([132, 144, 161, 146, 175, 1, 71, 158])), 0)) { return CrossSettleEvent.PartnerSurplusWithdrawn; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([209, 65, 250, 3, 141, 134, 58, 82])), 0)) { return CrossSettleEvent.PolFeesClaimed; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([65, 101, 205, 223, 81, 166, 189, 27])), 0)) { return CrossSettleEvent.RaydiumCpmmSeeded; }
     throw new Error('The provided event could not be identified as a crossSettle event.');
 }
 
-export enum CrossSettleInstruction { BindDbcMint, OpenDbcPool, OpenDlmmPair, SeedDammV2, SeedRaydiumCpmm }
+export enum CrossSettleInstruction { BindDbcMint, ClaimPartnerFee, ClaimPartnerPoolCreationFee, ClaimPolFees, CreateGreenshoe, DeployGreenshoeBid, FinishGreenshoe, OpenDbcPool, OpenDbcPoolLocked, OpenDlmmPair, OpenDlmmPairBadged, OpenDlmmPairBatched, SeedDammV2, SeedDammV2Batched, SeedRaydiumCpmm, SettleGreenshoeLevel, WithdrawPartnerMigrationFee, WithdrawPartnerSurplus }
 
 export function identifyCrossSettleInstruction(instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossSettleInstruction {
     const data = 'data' in instruction ? instruction.data : instruction;
     if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([92, 76, 70, 132, 49, 66, 16, 16])), 0)) { return CrossSettleInstruction.BindDbcMint; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([97, 206, 39, 105, 94, 94, 126, 148])), 0)) { return CrossSettleInstruction.ClaimPartnerFee; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([250, 238, 26, 4, 139, 10, 101, 248])), 0)) { return CrossSettleInstruction.ClaimPartnerPoolCreationFee; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([127, 170, 120, 147, 237, 183, 159, 246])), 0)) { return CrossSettleInstruction.ClaimPolFees; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([121, 10, 177, 243, 176, 195, 167, 8])), 0)) { return CrossSettleInstruction.CreateGreenshoe; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([22, 102, 229, 43, 42, 39, 67, 53])), 0)) { return CrossSettleInstruction.DeployGreenshoeBid; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([237, 116, 147, 50, 144, 63, 220, 245])), 0)) { return CrossSettleInstruction.FinishGreenshoe; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([68, 14, 121, 181, 116, 193, 225, 178])), 0)) { return CrossSettleInstruction.OpenDbcPool; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([194, 239, 234, 201, 48, 77, 249, 95])), 0)) { return CrossSettleInstruction.OpenDbcPoolLocked; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([166, 194, 182, 98, 172, 176, 29, 20])), 0)) { return CrossSettleInstruction.OpenDlmmPair; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([131, 74, 248, 169, 186, 79, 29, 41])), 0)) { return CrossSettleInstruction.OpenDlmmPairBadged; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([127, 89, 86, 58, 208, 134, 18, 101])), 0)) { return CrossSettleInstruction.OpenDlmmPairBatched; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([10, 132, 97, 55, 204, 60, 73, 85])), 0)) { return CrossSettleInstruction.SeedDammV2; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([180, 92, 89, 144, 1, 25, 242, 232])), 0)) { return CrossSettleInstruction.SeedDammV2Batched; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([249, 188, 198, 127, 151, 212, 14, 104])), 0)) { return CrossSettleInstruction.SeedRaydiumCpmm; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([97, 225, 74, 46, 118, 255, 23, 1])), 0)) { return CrossSettleInstruction.SettleGreenshoeLevel; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([231, 153, 49, 23, 96, 193, 193, 41])), 0)) { return CrossSettleInstruction.WithdrawPartnerMigrationFee; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([32, 213, 118, 46, 195, 122, 13, 201])), 0)) { return CrossSettleInstruction.WithdrawPartnerSurplus; }
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, { instructionData: data, programName: "crossSettle" });
 }
 
 export type ParsedCrossSettleInstruction<TProgram extends string = '2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ'> =
 | { instructionType: CrossSettleInstruction.BindDbcMint } & ParsedBindDbcMintInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.ClaimPartnerFee } & ParsedClaimPartnerFeeInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.ClaimPartnerPoolCreationFee } & ParsedClaimPartnerPoolCreationFeeInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.ClaimPolFees } & ParsedClaimPolFeesInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.CreateGreenshoe } & ParsedCreateGreenshoeInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.DeployGreenshoeBid } & ParsedDeployGreenshoeBidInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.FinishGreenshoe } & ParsedFinishGreenshoeInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.OpenDbcPool } & ParsedOpenDbcPoolInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.OpenDbcPoolLocked } & ParsedOpenDbcPoolLockedInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.OpenDlmmPair } & ParsedOpenDlmmPairInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.OpenDlmmPairBadged } & ParsedOpenDlmmPairBadgedInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.OpenDlmmPairBatched } & ParsedOpenDlmmPairBatchedInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.SeedDammV2 } & ParsedSeedDammV2Instruction<TProgram>
+| { instructionType: CrossSettleInstruction.SeedDammV2Batched } & ParsedSeedDammV2BatchedInstruction<TProgram>
 | { instructionType: CrossSettleInstruction.SeedRaydiumCpmm } & ParsedSeedRaydiumCpmmInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.SettleGreenshoeLevel } & ParsedSettleGreenshoeLevelInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.WithdrawPartnerMigrationFee } & ParsedWithdrawPartnerMigrationFeeInstruction<TProgram>
+| { instructionType: CrossSettleInstruction.WithdrawPartnerSurplus } & ParsedWithdrawPartnerSurplusInstruction<TProgram>
 
 
         export function parseCrossSettleInstruction<TProgram extends string>(
@@ -53,29 +97,57 @@ export type ParsedCrossSettleInstruction<TProgram extends string = '2EVpoks9zhL6
             switch (instructionType) {
                 case CrossSettleInstruction.BindDbcMint: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.BindDbcMint, ...parseBindDbcMintInstruction(instruction) }; }
+case CrossSettleInstruction.ClaimPartnerFee: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.ClaimPartnerFee, ...parseClaimPartnerFeeInstruction(instruction) }; }
+case CrossSettleInstruction.ClaimPartnerPoolCreationFee: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.ClaimPartnerPoolCreationFee, ...parseClaimPartnerPoolCreationFeeInstruction(instruction) }; }
+case CrossSettleInstruction.ClaimPolFees: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.ClaimPolFees, ...parseClaimPolFeesInstruction(instruction) }; }
+case CrossSettleInstruction.CreateGreenshoe: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.CreateGreenshoe, ...parseCreateGreenshoeInstruction(instruction) }; }
+case CrossSettleInstruction.DeployGreenshoeBid: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.DeployGreenshoeBid, ...parseDeployGreenshoeBidInstruction(instruction) }; }
+case CrossSettleInstruction.FinishGreenshoe: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.FinishGreenshoe, ...parseFinishGreenshoeInstruction(instruction) }; }
 case CrossSettleInstruction.OpenDbcPool: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.OpenDbcPool, ...parseOpenDbcPoolInstruction(instruction) }; }
+case CrossSettleInstruction.OpenDbcPoolLocked: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.OpenDbcPoolLocked, ...parseOpenDbcPoolLockedInstruction(instruction) }; }
 case CrossSettleInstruction.OpenDlmmPair: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.OpenDlmmPair, ...parseOpenDlmmPairInstruction(instruction) }; }
+case CrossSettleInstruction.OpenDlmmPairBadged: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.OpenDlmmPairBadged, ...parseOpenDlmmPairBadgedInstruction(instruction) }; }
+case CrossSettleInstruction.OpenDlmmPairBatched: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.OpenDlmmPairBatched, ...parseOpenDlmmPairBatchedInstruction(instruction) }; }
 case CrossSettleInstruction.SeedDammV2: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.SeedDammV2, ...parseSeedDammV2Instruction(instruction) }; }
+case CrossSettleInstruction.SeedDammV2Batched: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.SeedDammV2Batched, ...parseSeedDammV2BatchedInstruction(instruction) }; }
 case CrossSettleInstruction.SeedRaydiumCpmm: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: CrossSettleInstruction.SeedRaydiumCpmm, ...parseSeedRaydiumCpmmInstruction(instruction) }; }
+case CrossSettleInstruction.SettleGreenshoeLevel: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.SettleGreenshoeLevel, ...parseSettleGreenshoeLevelInstruction(instruction) }; }
+case CrossSettleInstruction.WithdrawPartnerMigrationFee: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.WithdrawPartnerMigrationFee, ...parseWithdrawPartnerMigrationFeeInstruction(instruction) }; }
+case CrossSettleInstruction.WithdrawPartnerSurplus: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: CrossSettleInstruction.WithdrawPartnerSurplus, ...parseWithdrawPartnerSurplusInstruction(instruction) }; }
                 default: throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, { instructionType: instructionType as string, programName: "crossSettle" });
             }
         }
 
-export type CrossSettlePlugin = { instructions: CrossSettlePluginInstructions; pdas: CrossSettlePluginPdas; identifyInstruction: typeof identifyCrossSettleInstruction; parseInstruction: typeof parseCrossSettleInstruction; }
+export type CrossSettlePlugin = { accounts: CrossSettlePluginAccounts; instructions: CrossSettlePluginInstructions; pdas: CrossSettlePluginPdas; identifyAccount: typeof identifyCrossSettleAccount; identifyInstruction: typeof identifyCrossSettleInstruction; parseInstruction: typeof parseCrossSettleInstruction; }
 
-export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; openDlmmPair: (input: OpenDlmmPairInput) => ReturnType<typeof getOpenDlmmPairInstruction> & SelfPlanAndSendFunctions; seedDammV2: (input: SeedDammV2AsyncInput) => ReturnType<typeof getSeedDammV2InstructionAsync> & SelfPlanAndSendFunctions; seedRaydiumCpmm: (input: SeedRaydiumCpmmInput) => ReturnType<typeof getSeedRaydiumCpmmInstruction> & SelfPlanAndSendFunctions; }
+export type CrossSettlePluginAccounts = { greenshoe: ReturnType<typeof getGreenshoeCodec> & SelfFetchFunctions<GreenshoeArgs, Greenshoe>; }
 
-export type CrossSettlePluginPdas = { settler: typeof findSettlerPda; baseMint: typeof findBaseMintPda; dbcConfig: typeof findDbcConfigPda; positionNftMint: typeof findPositionNftMintPda; }
+export type CrossSettlePluginInstructions = { bindDbcMint: (input: MakeOptional<BindDbcMintAsyncInput, "payer">) => ReturnType<typeof getBindDbcMintInstructionAsync> & SelfPlanAndSendFunctions; claimPartnerFee: (input: ClaimPartnerFeeAsyncInput) => ReturnType<typeof getClaimPartnerFeeInstructionAsync> & SelfPlanAndSendFunctions; claimPartnerPoolCreationFee: (input: ClaimPartnerPoolCreationFeeAsyncInput) => ReturnType<typeof getClaimPartnerPoolCreationFeeInstructionAsync> & SelfPlanAndSendFunctions; claimPolFees: (input: ClaimPolFeesAsyncInput) => ReturnType<typeof getClaimPolFeesInstructionAsync> & SelfPlanAndSendFunctions; createGreenshoe: (input: CreateGreenshoeAsyncInput) => ReturnType<typeof getCreateGreenshoeInstructionAsync> & SelfPlanAndSendFunctions; deployGreenshoeBid: (input: MakeOptional<DeployGreenshoeBidAsyncInput, "payer">) => ReturnType<typeof getDeployGreenshoeBidInstructionAsync> & SelfPlanAndSendFunctions; finishGreenshoe: (input: FinishGreenshoeAsyncInput) => ReturnType<typeof getFinishGreenshoeInstructionAsync> & SelfPlanAndSendFunctions; openDbcPool: (input: OpenDbcPoolAsyncInput) => ReturnType<typeof getOpenDbcPoolInstructionAsync> & SelfPlanAndSendFunctions; openDbcPoolLocked: (input: OpenDbcPoolLockedAsyncInput) => ReturnType<typeof getOpenDbcPoolLockedInstructionAsync> & SelfPlanAndSendFunctions; openDlmmPair: (input: OpenDlmmPairInput) => ReturnType<typeof getOpenDlmmPairInstruction> & SelfPlanAndSendFunctions; openDlmmPairBadged: (input: OpenDlmmPairBadgedInput) => ReturnType<typeof getOpenDlmmPairBadgedInstruction> & SelfPlanAndSendFunctions; openDlmmPairBatched: (input: OpenDlmmPairBatchedInput) => ReturnType<typeof getOpenDlmmPairBatchedInstruction> & SelfPlanAndSendFunctions; seedDammV2: (input: SeedDammV2AsyncInput) => ReturnType<typeof getSeedDammV2InstructionAsync> & SelfPlanAndSendFunctions; seedDammV2Batched: (input: SeedDammV2BatchedAsyncInput) => ReturnType<typeof getSeedDammV2BatchedInstructionAsync> & SelfPlanAndSendFunctions; seedRaydiumCpmm: (input: SeedRaydiumCpmmInput) => ReturnType<typeof getSeedRaydiumCpmmInstruction> & SelfPlanAndSendFunctions; settleGreenshoeLevel: (input: SettleGreenshoeLevelAsyncInput) => ReturnType<typeof getSettleGreenshoeLevelInstructionAsync> & SelfPlanAndSendFunctions; withdrawPartnerMigrationFee: (input: WithdrawPartnerMigrationFeeAsyncInput) => ReturnType<typeof getWithdrawPartnerMigrationFeeInstructionAsync> & SelfPlanAndSendFunctions; withdrawPartnerSurplus: (input: WithdrawPartnerSurplusAsyncInput) => ReturnType<typeof getWithdrawPartnerSurplusInstructionAsync> & SelfPlanAndSendFunctions; }
 
-export type CrossSettlePluginRequirements = ClientWithPayer & ClientWithTransactionPlanning & ClientWithTransactionSending
+export type CrossSettlePluginPdas = { settler: typeof findSettlerPda; baseMint: typeof findBaseMintPda; dbcConfig: typeof findDbcConfigPda; greenshoe: typeof findGreenshoePda; vault: typeof findVaultPda; baseAccount: typeof findBaseAccountPda; positionNftMint: typeof findPositionNftMintPda; }
+
+export type CrossSettlePluginRequirements = ClientWithRpc<GetAccountInfoApi & GetMultipleAccountsApi> & ClientWithPayer & ClientWithTransactionPlanning & ClientWithTransactionSending
 
 export function crossSettleProgram() {
     return <T extends CrossSettlePluginRequirements>(client: T): ExtendedClient<T, { crossSettle: CrossSettlePlugin }> => {
-        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)), openDlmmPair: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairInstruction(input)), seedDammV2: input => addSelfPlanAndSendFunctions(client, getSeedDammV2InstructionAsync(input)), seedRaydiumCpmm: input => addSelfPlanAndSendFunctions(client, getSeedRaydiumCpmmInstruction(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda, positionNftMint: findPositionNftMintPda }, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
+        return extendClient(client, { crossSettle: <CrossSettlePlugin>{ accounts: { greenshoe: addSelfFetchFunctions(client, getGreenshoeCodec()) }, instructions: { bindDbcMint: input => addSelfPlanAndSendFunctions(client, getBindDbcMintInstructionAsync({ ...input, payer: input.payer ?? client.payer })), claimPartnerFee: input => addSelfPlanAndSendFunctions(client, getClaimPartnerFeeInstructionAsync(input)), claimPartnerPoolCreationFee: input => addSelfPlanAndSendFunctions(client, getClaimPartnerPoolCreationFeeInstructionAsync(input)), claimPolFees: input => addSelfPlanAndSendFunctions(client, getClaimPolFeesInstructionAsync(input)), createGreenshoe: input => addSelfPlanAndSendFunctions(client, getCreateGreenshoeInstructionAsync(input)), deployGreenshoeBid: input => addSelfPlanAndSendFunctions(client, getDeployGreenshoeBidInstructionAsync({ ...input, payer: input.payer ?? client.payer })), finishGreenshoe: input => addSelfPlanAndSendFunctions(client, getFinishGreenshoeInstructionAsync(input)), openDbcPool: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolInstructionAsync(input)), openDbcPoolLocked: input => addSelfPlanAndSendFunctions(client, getOpenDbcPoolLockedInstructionAsync(input)), openDlmmPair: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairInstruction(input)), openDlmmPairBadged: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairBadgedInstruction(input)), openDlmmPairBatched: input => addSelfPlanAndSendFunctions(client, getOpenDlmmPairBatchedInstruction(input)), seedDammV2: input => addSelfPlanAndSendFunctions(client, getSeedDammV2InstructionAsync(input)), seedDammV2Batched: input => addSelfPlanAndSendFunctions(client, getSeedDammV2BatchedInstructionAsync(input)), seedRaydiumCpmm: input => addSelfPlanAndSendFunctions(client, getSeedRaydiumCpmmInstruction(input)), settleGreenshoeLevel: input => addSelfPlanAndSendFunctions(client, getSettleGreenshoeLevelInstructionAsync(input)), withdrawPartnerMigrationFee: input => addSelfPlanAndSendFunctions(client, getWithdrawPartnerMigrationFeeInstructionAsync(input)), withdrawPartnerSurplus: input => addSelfPlanAndSendFunctions(client, getWithdrawPartnerSurplusInstructionAsync(input)) }, pdas: { settler: findSettlerPda, baseMint: findBaseMintPda, dbcConfig: findDbcConfigPda, greenshoe: findGreenshoePda, vault: findVaultPda, baseAccount: findBaseAccountPda, positionNftMint: findPositionNftMintPda }, identifyAccount: identifyCrossSettleAccount, identifyInstruction: identifyCrossSettleInstruction, parseInstruction: parseCrossSettleInstruction } });
     };
 }
 

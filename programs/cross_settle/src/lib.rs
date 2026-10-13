@@ -15,7 +15,7 @@
 #![allow(clippy::diverging_sub_expression)]
 
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, Mint, SetAuthority, TokenInterface};
+use anchor_spl::token_interface::{self, Mint, SetAuthority, TokenAccount, TokenInterface};
 
 declare_program!(dynamic_bonding_curve);
 declare_program!(cross_core);
@@ -25,6 +25,15 @@ declare_program!(lb_clmm);
 declare_program!(raydium_cp_swap);
 
 use cross_core::accounts::Cross;
+
+mod batch;
+mod design;
+mod greenshoe;
+mod partner;
+mod pol;
+pub use greenshoe::*;
+pub use partner::*;
+pub use pol::*;
 
 #[cfg(not(feature = "devnet-raydium"))]
 declare_id!("2EVpoks9zhL6VMCE4CryQPyzhSUSxpaGMqaDPKPyJ9WQ");
@@ -51,6 +60,8 @@ pub const DAMM_POSITION_SEED: &[u8] = b"damm_position";
 const PARTNER_UPDATE_AND_MINT_AUTHORITY: u8 = 4;
 /// DBC token type for Token-2022 base mints.
 const TOKEN_TYPE_TOKEN_2022: u8 = 1;
+/// `withdraw_migration_fee` flag for the partner (DBC `SenderFlag::Partner`).
+const PARTNER_MIGRATION_FEE_FLAG: u8 = 0;
 
 #[program]
 pub mod cross_settle {
@@ -63,97 +74,24 @@ pub mod cross_settle {
         config_parameters: dynamic_bonding_curve::types::ConfigParameters,
         pool: dynamic_bonding_curve::types::InitializePoolParameters,
     ) -> Result<()> {
-        let cross = read_cross(&ctx.accounts.cross)?;
-        require_keys_eq!(
-            cross.creator,
-            ctx.accounts.creator.key(),
-            SettleError::NotCreator
-        );
-        require!(!cross.base_bound, SettleError::AlreadyBound);
-        require!(
-            cross.settler == Some(ctx.accounts.settler.key()),
-            SettleError::WrongSettler
-        );
-        require_keys_eq!(
-            cross.quote_mint,
-            ctx.accounts.quote_mint.key(),
-            SettleError::WrongMint
-        );
-        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+        open_pool(ctx.accounts, &ctx.bumps, config_parameters, pool)
+    }
 
-        require!(
-            config_parameters.token_type == TOKEN_TYPE_TOKEN_2022,
-            SettleError::BadConfig
-        );
-        require!(
-            config_parameters.token_update_authority == PARTNER_UPDATE_AND_MINT_AUTHORITY,
-            SettleError::BadConfig
-        );
-        let expected =
-            sqrt_price_q64(clearing.price, cross.price_scale).ok_or(SettleError::Overflow)?;
-        require!(
-            config_parameters.sqrt_start_price.abs_diff(expected) <= 1,
-            SettleError::StartPriceNotClearingPrice
-        );
-
-        let cross_key = ctx.accounts.cross.key();
-        let config_bump = [ctx.bumps.dbc_config];
-        let config_seeds: &[&[u8]] = &[DBC_CONFIG_SEED, cross_key.as_ref(), &config_bump];
-        dynamic_bonding_curve::cpi::create_config_with_transfer_hook(
-            CpiContext::new_with_signer(
-                ctx.accounts.dbc_program.key(),
-                dynamic_bonding_curve::cpi::accounts::CreateConfigWithTransferHook {
-                    config: ctx.accounts.dbc_config.to_account_info(),
-                    fee_claimer: ctx.accounts.settler.to_account_info(),
-                    leftover_receiver: ctx.accounts.leftover_receiver.to_account_info(),
-                    quote_mint: ctx.accounts.quote_mint.to_account_info(),
-                    transfer_hook_program: ctx.accounts.cross_gate_program.to_account_info(),
-                    payer: ctx.accounts.creator.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                    event_authority: ctx.accounts.dbc_event_authority.to_account_info(),
-                    program: ctx.accounts.dbc_program.to_account_info(),
-                },
-                &[config_seeds],
-            ),
-            config_parameters,
-        )?;
-
-        let mint_bump = [ctx.bumps.base_mint];
-        let mint_seeds: &[&[u8]] = &[BASE_MINT_SEED, cross_key.as_ref(), &mint_bump];
-        dynamic_bonding_curve::cpi::initialize_virtual_pool_with_token2022_transfer_hook(
-            CpiContext::new_with_signer(
-                ctx.accounts.dbc_program.key(),
-                dynamic_bonding_curve::cpi::accounts::InitializeVirtualPoolWithToken2022TransferHook {
-                    config: ctx.accounts.dbc_config.to_account_info(),
-                    pool_authority: ctx.accounts.dbc_pool_authority.to_account_info(),
-                    creator: ctx.accounts.creator.to_account_info(),
-                    base_mint: ctx.accounts.base_mint.to_account_info(),
-                    quote_mint: ctx.accounts.quote_mint.to_account_info(),
-                    pool: ctx.accounts.pool.to_account_info(),
-                    base_vault: ctx.accounts.base_vault.to_account_info(),
-                    quote_vault: ctx.accounts.quote_vault.to_account_info(),
-                    transfer_hook_program: ctx.accounts.cross_gate_program.to_account_info(),
-                    payer: ctx.accounts.creator.to_account_info(),
-                    token_quote_program: ctx.accounts.quote_token_program.to_account_info(),
-                    token_program: ctx.accounts.token_2022_program.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                    event_authority: ctx.accounts.dbc_event_authority.to_account_info(),
-                    program: ctx.accounts.dbc_program.to_account_info(),
-                },
-                &[mint_seeds],
-            ),
-            pool,
-        )?;
-
-        emit!(DbcPoolOpened {
-            cross: cross_key,
-            config: ctx.accounts.dbc_config.key(),
-            pool: ctx.accounts.pool.key(),
-            base_mint: ctx.accounts.base_mint.key(),
-            clearing_price: clearing.price,
-            sqrt_start_price: expected,
-        });
-        Ok(())
+    /// `open_dbc_pool` for the fair-launch design (ADR-0482): the same curve, but the program refuses a
+    /// config under which anyone could withdraw the opening liquidity, or whose migrated pool is not
+    /// compounding. Everything `open_dbc_pool` checks is checked here too. `args` is the Borsh encoding
+    /// of `open_dbc_pool`'s two arguments, `config_parameters` then `pool`, one after the other, so
+    /// `open_dbc_pool`'s own argument types stay what they were.
+    pub fn open_dbc_pool_locked(ctx: Context<OpenDbcPool>, args: Vec<u8>) -> Result<()> {
+        let mut rest = &args[..];
+        let config_parameters =
+            dynamic_bonding_curve::types::ConfigParameters::deserialize(&mut rest)
+                .map_err(|_| SettleError::BadArgs)?;
+        let pool = dynamic_bonding_curve::types::InitializePoolParameters::deserialize(&mut rest)
+            .map_err(|_| SettleError::BadArgs)?;
+        require!(rest.is_empty(), SettleError::BadArgs);
+        design::check_locked_design(&config_parameters)?;
+        open_pool(ctx.accounts, &ctx.bumps, config_parameters, pool)
     }
 
     /// Step 2: install the open-mode hook config, hand the mint authority to the cross and bind
@@ -253,72 +191,24 @@ pub mod cross_settle {
         ctx: Context<SeedDammV2>,
         params: cp_amm::types::InitializeCustomizablePoolParameters,
     ) -> Result<()> {
-        let cross = read_cross(&ctx.accounts.cross)?;
-        require_keys_eq!(
-            cross.creator,
-            ctx.accounts.creator.key(),
-            SettleError::NotCreator
-        );
-        require!(cross.base_bound, SettleError::PoolNotOpened);
-        require_keys_eq!(
-            cross.base_mint,
-            ctx.accounts.base_mint.key(),
-            SettleError::WrongMint
-        );
-        require_keys_eq!(
-            cross.quote_mint,
-            ctx.accounts.quote_mint.key(),
-            SettleError::WrongMint
-        );
-        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
-        let expected =
-            sqrt_price_q64(clearing.price, cross.price_scale).ok_or(SettleError::Overflow)?;
-        require!(
-            params.sqrt_price.abs_diff(expected) <= 1,
-            SettleError::StartPriceNotClearingPrice
-        );
-
-        let cross_key = ctx.accounts.cross.key();
-        let nft_bump = [ctx.bumps.position_nft_mint];
-        let nft_seeds: &[&[u8]] = &[DAMM_POSITION_SEED, cross_key.as_ref(), &nft_bump];
-        let liquidity = params.liquidity;
-        cp_amm::cpi::initialize_customizable_pool(
-            CpiContext::new_with_signer(
-                ctx.accounts.damm_program.key(),
-                cp_amm::cpi::accounts::InitializeCustomizablePool {
-                    creator: ctx.accounts.creator.to_account_info(),
-                    position_nft_mint: ctx.accounts.position_nft_mint.to_account_info(),
-                    position_nft_account: ctx.accounts.position_nft_account.to_account_info(),
-                    payer: ctx.accounts.creator.to_account_info(),
-                    pool_authority: ctx.accounts.damm_pool_authority.to_account_info(),
-                    pool: ctx.accounts.pool.to_account_info(),
-                    position: ctx.accounts.position.to_account_info(),
-                    token_a_mint: ctx.accounts.base_mint.to_account_info(),
-                    token_b_mint: ctx.accounts.quote_mint.to_account_info(),
-                    token_a_vault: ctx.accounts.token_a_vault.to_account_info(),
-                    token_b_vault: ctx.accounts.token_b_vault.to_account_info(),
-                    payer_token_a: ctx.accounts.creator_base.to_account_info(),
-                    payer_token_b: ctx.accounts.creator_quote.to_account_info(),
-                    token_a_program: ctx.accounts.base_token_program.to_account_info(),
-                    token_b_program: ctx.accounts.quote_token_program.to_account_info(),
-                    token_2022_program: ctx.accounts.token_2022_program.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                    event_authority: ctx.accounts.damm_event_authority.to_account_info(),
-                    program: ctx.accounts.damm_program.to_account_info(),
-                },
-                &[nft_seeds],
-            ),
-            params,
-        )?;
-        emit!(DammV2Seeded {
-            cross: cross_key,
-            pool: ctx.accounts.pool.key(),
-            clearing_price: clearing.price,
-            sqrt_price: expected,
-            liquidity
-        });
-        Ok(())
+        seed_damm(ctx.accounts, &ctx.bumps, params)
     }
+
+    /// `seed_damm_v2` for a batch-opened market (ADR-0483): the pool refuses every swap until a start the program
+    /// checks is at least `window_secs` away, its fee decays from a higher opening fee, and its fees compound
+    /// back into the pool. During the window the market clears as a series of short crosses instead of trading
+    /// against the AMM; afterwards the pool opens at the price the last cross printed.
+    /// `params` is the Borsh encoding of `seed_damm_v2`'s argument.
+    pub fn seed_damm_v2_batched(
+        ctx: Context<SeedDammV2>,
+        params: Vec<u8>,
+        window_secs: i64,
+    ) -> Result<()> {
+        let params = decode_args::<cp_amm::types::InitializeCustomizablePoolParameters>(&params)?;
+        batch::check_batched_pool(&params, Clock::get()?.unix_timestamp, window_secs)?;
+        seed_damm(ctx.accounts, &ctx.bumps, params)
+    }
+
     /// DLMM adapter: opens a Meteora DLMM pair for the cross's market whose active bin is the
     /// bin nearest P* (within half a bin step). Token X is the base asset and token Y the quote,
     /// so a bin's price (Y per X) is in the cross's units. Liquidity is added afterwards by the
@@ -327,69 +217,48 @@ pub mod cross_settle {
         ctx: Context<OpenDlmmPair>,
         params: lb_clmm::types::CustomizableParams,
     ) -> Result<()> {
-        let cross = read_cross(&ctx.accounts.cross)?;
-        require_keys_eq!(
-            cross.creator,
-            ctx.accounts.creator.key(),
-            SettleError::NotCreator
-        );
-        require!(cross.base_bound, SettleError::PoolNotOpened);
-        require_keys_eq!(
-            cross.base_mint,
-            ctx.accounts.base_mint.key(),
-            SettleError::WrongMint
-        );
-        require_keys_eq!(
-            cross.quote_mint,
-            ctx.accounts.quote_mint.key(),
-            SettleError::WrongMint
-        );
-        let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
-        require!(
-            bin_contains(
-                params.active_id,
-                params.bin_step,
-                clearing.price,
-                cross.price_scale
-            )
-            .ok_or(SettleError::Overflow)?,
-            SettleError::StartPriceNotClearingPrice
-        );
-        let (active_id, bin_step) = (params.active_id, params.bin_step);
-        lb_clmm::cpi::initialize_customizable_permissionless_lb_pair2(
-            CpiContext::new(
-                ctx.accounts.dlmm_program.key(),
-                lb_clmm::cpi::accounts::InitializeCustomizablePermissionlessLbPair2 {
-                    lb_pair: ctx.accounts.lb_pair.to_account_info(),
-                    bin_array_bitmap_extension: None,
-                    token_mint_x: ctx.accounts.base_mint.to_account_info(),
-                    token_mint_y: ctx.accounts.quote_mint.to_account_info(),
-                    reserve_x: ctx.accounts.reserve_x.to_account_info(),
-                    reserve_y: ctx.accounts.reserve_y.to_account_info(),
-                    oracle: ctx.accounts.oracle.to_account_info(),
-                    user_token_x: ctx.accounts.creator_base.to_account_info(),
-                    funder: ctx.accounts.creator.to_account_info(),
-                    token_badge_x: None,
-                    token_badge_y: None,
-                    token_program_x: ctx.accounts.base_token_program.to_account_info(),
-                    token_program_y: ctx.accounts.quote_token_program.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                    user_token_y: ctx.accounts.creator_quote.to_account_info(),
-                    event_authority: ctx.accounts.dlmm_event_authority.to_account_info(),
-                    program: ctx.accounts.dlmm_program.to_account_info(),
-                },
-            ),
-            params,
-        )?;
-        emit!(DlmmPairOpened {
-            cross: ctx.accounts.cross.key(),
-            lb_pair: ctx.accounts.lb_pair.key(),
-            clearing_price: clearing.price,
-            active_id,
-            bin_step
-        });
-        Ok(())
+        open_pair(ctx.accounts, params, [None, None])
     }
+
+    /// `open_dlmm_pair` for a batch-opened market (ADR-0483): the pair is created with a timestamp start at least
+    /// `window_secs` away, so it cannot trade until the crosses of the window have run (or, with `has_alpha_vault`, only an
+    /// Alpha Vault can buy before then), and the pair's creator can pause it.
+    /// `params` is the Borsh encoding of `open_dlmm_pair`'s argument.
+    pub fn open_dlmm_pair_batched(
+        ctx: Context<OpenDlmmPair>,
+        params: Vec<u8>,
+        window_secs: i64,
+    ) -> Result<()> {
+        let params = decode_args::<lb_clmm::types::CustomizableParams>(&params)?;
+        batch::check_batched_pair(&params, Clock::get()?.unix_timestamp, window_secs)?;
+        open_pair(ctx.accounts, params, [None, None])
+    }
+
+    /// `open_dlmm_pair` for a pair whose mints need a Meteora Token Badge (ADR-0485): tokenized stocks carry Token-2022 extensions
+    /// (a pausable mint, a permanent delegate) that DLMM refuses without a badge. The two badge accounts follow the usual accounts, in
+    /// order base then quote, each either the mint's `TokenBadge` PDA or the DLMM program id when that mint needs none. A batch window
+    /// of zero opens the pair at once; any other window applies the rules of `open_dlmm_pair_batched`.
+    /// `params` is the Borsh encoding of `open_dlmm_pair`'s argument.
+    pub fn open_dlmm_pair_badged<'info>(
+        ctx: Context<'info, OpenDlmmPair<'info>>,
+        params: Vec<u8>,
+        window_secs: i64,
+    ) -> Result<()> {
+        let params = decode_args::<lb_clmm::types::CustomizableParams>(&params)?;
+        require!(
+            ctx.remaining_accounts.len() == 2,
+            SettleError::BadgeAccounts
+        );
+        if window_secs != 0 {
+            batch::check_batched_pair(&params, Clock::get()?.unix_timestamp, window_secs)?;
+        }
+        let badge = |i: usize| {
+            let info = &ctx.remaining_accounts[i];
+            (info.key() != lb_clmm::ID).then(|| info.clone())
+        };
+        open_pair(ctx.accounts, params, [badge(0), badge(1)])
+    }
+
     /// Raydium CPMM adapter: opens a Raydium constant-product pool for the cross's market whose
     /// opening price — the ratio of the two initial deposits — is P* to within one quote atom.
     /// Raydium orders the pool's mints by key, so the base may be token 0 or token 1.
@@ -476,6 +345,304 @@ pub mod cross_settle {
         });
         Ok(())
     }
+
+    /// Claims the DBC partner's trading fees (the settler PDA is the partner) to an account owned by the
+    /// cross's protocol fee recipient. Permissionless: nobody chooses the destination (ADR-0480).
+    pub fn claim_partner_fee<'info>(
+        ctx: Context<'info, ClaimPartnerFee<'info>>,
+        max_base: u64,
+        max_quote: u64,
+        hook: dynamic_bonding_curve::types::TransferHookAccountsInfo,
+    ) -> Result<()> {
+        ctx.accounts.run(
+            ctx.bumps.settler,
+            ctx.remaining_accounts,
+            max_base,
+            max_quote,
+            hook,
+        )
+    }
+
+    /// Withdraws the partner's share of the surplus quote above the migration threshold to an account
+    /// owned by the cross's `proceeds_to` (the issuer's capital, ADR-0481).
+    pub fn withdraw_partner_surplus(ctx: Context<WithdrawPartnerSurplus>) -> Result<()> {
+        ctx.accounts.surplus(ctx.bumps.settler)
+    }
+
+    /// Withdraws the partner's slice of the DBC migration fee to an account owned by the fee recipient.
+    pub fn withdraw_partner_migration_fee(ctx: Context<WithdrawPartnerSurplus>) -> Result<()> {
+        ctx.accounts.migration_fee(ctx.bumps.settler)
+    }
+
+    /// Commits a budget (at least 10% of what the cross raised) to standing bids under P* for a week (ADR-0487).
+    pub fn create_greenshoe(
+        ctx: Context<CreateGreenshoe>,
+        budget: u64,
+        start_ts: i64,
+        period_secs: i64,
+        period_cap: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .run(&ctx.bumps, budget, start_ts, period_secs, period_cap)
+    }
+
+    /// Places one level of the greenshoe as a DLMM limit order owned by the program. Permissionless.
+    pub fn deploy_greenshoe_bid<'info>(
+        ctx: Context<'info, DeployGreenshoeBid<'info>>,
+        level: u8,
+        bin_id: i32,
+        amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .run(ctx.remaining_accounts, level, bin_id, amount)
+    }
+
+    /// After the week: cancels a placed level, taking back the unspent quote and the base it bought. Permissionless.
+    pub fn settle_greenshoe_level<'info>(
+        ctx: Context<'info, SettleGreenshoeLevel<'info>>,
+        level: u8,
+        hook: lb_clmm::types::RemainingAccountsInfo,
+    ) -> Result<()> {
+        ctx.accounts.run(level, ctx.remaining_accounts, hook)
+    }
+
+    /// Burns everything the bids bought and returns the unspent budget to the issuer's proceeds. Permissionless.
+    pub fn finish_greenshoe(ctx: Context<FinishGreenshoe>) -> Result<()> {
+        ctx.accounts.run()
+    }
+
+    /// Claims the fees of the protocol-owned DAMM v2 position a DBC migration leaves with the settler, to
+    /// accounts owned by the cross's `proceeds_to` (ADR-0482).
+    pub fn claim_pol_fees(ctx: Context<ClaimPolFees>) -> Result<()> {
+        ctx.accounts.run(ctx.bumps.settler)
+    }
+
+    /// Claims the pool-creation fee the partner is owed, in lamports, to the fee recipient's wallet.
+    pub fn claim_partner_pool_creation_fee(
+        ctx: Context<ClaimPartnerPoolCreationFee>,
+    ) -> Result<()> {
+        ctx.accounts.run(ctx.bumps.settler)
+    }
+}
+
+/// The body shared by `open_dbc_pool` and `open_dbc_pool_locked`.
+fn open_pool(
+    a: &OpenDbcPool,
+    bumps: &OpenDbcPoolBumps,
+    config_parameters: dynamic_bonding_curve::types::ConfigParameters,
+    pool: dynamic_bonding_curve::types::InitializePoolParameters,
+) -> Result<()> {
+    let cross = read_cross(&a.cross)?;
+    require_keys_eq!(cross.creator, a.creator.key(), SettleError::NotCreator);
+    require!(!cross.base_bound, SettleError::AlreadyBound);
+    require!(
+        cross.settler == Some(a.settler.key()),
+        SettleError::WrongSettler
+    );
+    require_keys_eq!(cross.quote_mint, a.quote_mint.key(), SettleError::WrongMint);
+    let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+
+    require!(
+        config_parameters.token_type == TOKEN_TYPE_TOKEN_2022,
+        SettleError::BadConfig
+    );
+    require!(
+        config_parameters.token_update_authority == PARTNER_UPDATE_AND_MINT_AUTHORITY,
+        SettleError::BadConfig
+    );
+    let expected =
+        sqrt_price_q64(clearing.price, cross.price_scale).ok_or(SettleError::Overflow)?;
+    require!(
+        config_parameters.sqrt_start_price.abs_diff(expected) <= 1,
+        SettleError::StartPriceNotClearingPrice
+    );
+
+    let cross_key = a.cross.key();
+    let config_bump = [bumps.dbc_config];
+    let config_seeds: &[&[u8]] = &[DBC_CONFIG_SEED, cross_key.as_ref(), &config_bump];
+    dynamic_bonding_curve::cpi::create_config_with_transfer_hook(
+        CpiContext::new_with_signer(
+            a.dbc_program.key(),
+            dynamic_bonding_curve::cpi::accounts::CreateConfigWithTransferHook {
+                config: a.dbc_config.to_account_info(),
+                fee_claimer: a.settler.to_account_info(),
+                leftover_receiver: a.leftover_receiver.to_account_info(),
+                quote_mint: a.quote_mint.to_account_info(),
+                transfer_hook_program: a.cross_gate_program.to_account_info(),
+                payer: a.creator.to_account_info(),
+                system_program: a.system_program.to_account_info(),
+                event_authority: a.dbc_event_authority.to_account_info(),
+                program: a.dbc_program.to_account_info(),
+            },
+            &[config_seeds],
+        ),
+        config_parameters,
+    )?;
+
+    let mint_bump = [bumps.base_mint];
+    let mint_seeds: &[&[u8]] = &[BASE_MINT_SEED, cross_key.as_ref(), &mint_bump];
+    dynamic_bonding_curve::cpi::initialize_virtual_pool_with_token2022_transfer_hook(
+        CpiContext::new_with_signer(
+            a.dbc_program.key(),
+            dynamic_bonding_curve::cpi::accounts::InitializeVirtualPoolWithToken2022TransferHook {
+                config: a.dbc_config.to_account_info(),
+                pool_authority: a.dbc_pool_authority.to_account_info(),
+                creator: a.creator.to_account_info(),
+                base_mint: a.base_mint.to_account_info(),
+                quote_mint: a.quote_mint.to_account_info(),
+                pool: a.pool.to_account_info(),
+                base_vault: a.base_vault.to_account_info(),
+                quote_vault: a.quote_vault.to_account_info(),
+                transfer_hook_program: a.cross_gate_program.to_account_info(),
+                payer: a.creator.to_account_info(),
+                token_quote_program: a.quote_token_program.to_account_info(),
+                token_program: a.token_2022_program.to_account_info(),
+                system_program: a.system_program.to_account_info(),
+                event_authority: a.dbc_event_authority.to_account_info(),
+                program: a.dbc_program.to_account_info(),
+            },
+            &[mint_seeds],
+        ),
+        pool,
+    )?;
+
+    emit!(DbcPoolOpened {
+        cross: cross_key,
+        config: a.dbc_config.key(),
+        pool: a.pool.key(),
+        base_mint: a.base_mint.key(),
+        clearing_price: clearing.price,
+        sqrt_start_price: expected,
+    });
+    Ok(())
+}
+
+/// The body shared by `seed_damm_v2` and `seed_damm_v2_batched`.
+fn seed_damm(
+    a: &SeedDammV2,
+    bumps: &SeedDammV2Bumps,
+    params: cp_amm::types::InitializeCustomizablePoolParameters,
+) -> Result<()> {
+    let cross = read_cross(&a.cross)?;
+    require_keys_eq!(cross.creator, a.creator.key(), SettleError::NotCreator);
+    require!(cross.base_bound, SettleError::PoolNotOpened);
+    require_keys_eq!(cross.base_mint, a.base_mint.key(), SettleError::WrongMint);
+    require_keys_eq!(cross.quote_mint, a.quote_mint.key(), SettleError::WrongMint);
+    let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+    let expected =
+        sqrt_price_q64(clearing.price, cross.price_scale).ok_or(SettleError::Overflow)?;
+    require!(
+        params.sqrt_price.abs_diff(expected) <= 1,
+        SettleError::StartPriceNotClearingPrice
+    );
+
+    let cross_key = a.cross.key();
+    let nft_bump = [bumps.position_nft_mint];
+    let nft_seeds: &[&[u8]] = &[DAMM_POSITION_SEED, cross_key.as_ref(), &nft_bump];
+    let liquidity = params.liquidity;
+    cp_amm::cpi::initialize_customizable_pool(
+        CpiContext::new_with_signer(
+            a.damm_program.key(),
+            cp_amm::cpi::accounts::InitializeCustomizablePool {
+                creator: a.creator.to_account_info(),
+                position_nft_mint: a.position_nft_mint.to_account_info(),
+                position_nft_account: a.position_nft_account.to_account_info(),
+                payer: a.creator.to_account_info(),
+                pool_authority: a.damm_pool_authority.to_account_info(),
+                pool: a.pool.to_account_info(),
+                position: a.position.to_account_info(),
+                token_a_mint: a.base_mint.to_account_info(),
+                token_b_mint: a.quote_mint.to_account_info(),
+                token_a_vault: a.token_a_vault.to_account_info(),
+                token_b_vault: a.token_b_vault.to_account_info(),
+                payer_token_a: a.creator_base.to_account_info(),
+                payer_token_b: a.creator_quote.to_account_info(),
+                token_a_program: a.base_token_program.to_account_info(),
+                token_b_program: a.quote_token_program.to_account_info(),
+                token_2022_program: a.token_2022_program.to_account_info(),
+                system_program: a.system_program.to_account_info(),
+                event_authority: a.damm_event_authority.to_account_info(),
+                program: a.damm_program.to_account_info(),
+            },
+            &[nft_seeds],
+        ),
+        params,
+    )?;
+    emit!(DammV2Seeded {
+        cross: cross_key,
+        pool: a.pool.key(),
+        clearing_price: clearing.price,
+        sqrt_price: expected,
+        liquidity
+    });
+    Ok(())
+}
+
+/// Decodes a Borsh argument carried as bytes and refuses trailing data.
+fn decode_args<T: AnchorDeserialize>(bytes: &[u8]) -> Result<T> {
+    let mut rest = bytes;
+    let value = T::deserialize(&mut rest).map_err(|_| SettleError::BadArgs)?;
+    require!(rest.is_empty(), SettleError::BadArgs);
+    Ok(value)
+}
+
+/// The body shared by `open_dlmm_pair` and `open_dlmm_pair_batched`.
+fn open_pair<'info>(
+    a: &OpenDlmmPair<'info>,
+    params: lb_clmm::types::CustomizableParams,
+    badges: [Option<AccountInfo<'info>>; 2],
+) -> Result<()> {
+    let [badge_x, badge_y] = badges;
+    let cross = read_cross(&a.cross)?;
+    require_keys_eq!(cross.creator, a.creator.key(), SettleError::NotCreator);
+    require!(cross.base_bound, SettleError::PoolNotOpened);
+    require_keys_eq!(cross.base_mint, a.base_mint.key(), SettleError::WrongMint);
+    require_keys_eq!(cross.quote_mint, a.quote_mint.key(), SettleError::WrongMint);
+    let clearing = cross.clearing.ok_or(SettleError::NotCleared)?;
+    require!(
+        bin_contains(
+            params.active_id,
+            params.bin_step,
+            clearing.price,
+            cross.price_scale
+        )
+        .ok_or(SettleError::Overflow)?,
+        SettleError::StartPriceNotClearingPrice
+    );
+    let (active_id, bin_step) = (params.active_id, params.bin_step);
+    lb_clmm::cpi::initialize_customizable_permissionless_lb_pair2(
+        CpiContext::new(
+            a.dlmm_program.key(),
+            lb_clmm::cpi::accounts::InitializeCustomizablePermissionlessLbPair2 {
+                lb_pair: a.lb_pair.to_account_info(),
+                bin_array_bitmap_extension: None,
+                token_mint_x: a.base_mint.to_account_info(),
+                token_mint_y: a.quote_mint.to_account_info(),
+                reserve_x: a.reserve_x.to_account_info(),
+                reserve_y: a.reserve_y.to_account_info(),
+                oracle: a.oracle.to_account_info(),
+                user_token_x: a.creator_base.to_account_info(),
+                funder: a.creator.to_account_info(),
+                token_badge_x: badge_x,
+                token_badge_y: badge_y,
+                token_program_x: a.base_token_program.to_account_info(),
+                token_program_y: a.quote_token_program.to_account_info(),
+                system_program: a.system_program.to_account_info(),
+                user_token_y: a.creator_quote.to_account_info(),
+                event_authority: a.dlmm_event_authority.to_account_info(),
+                program: a.dlmm_program.to_account_info(),
+            },
+        ),
+        params,
+    )?;
+    emit!(DlmmPairOpened {
+        cross: a.cross.key(),
+        lb_pair: a.lb_pair.key(),
+        clearing_price: clearing.price,
+        active_id,
+        bin_step
+    });
+    Ok(())
 }
 
 /// `floor(sqrt(price / price_scale) · 2⁶⁴)` — DBC's Q64.64 square-root price for a price given
@@ -841,6 +1008,44 @@ pub enum SettleError {
     PoolNotOpened,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("The destination does not belong to the account the cross names for this payout")]
+    WrongDestination,
+    #[msg("The locked design requires migration into DAMM v2")]
+    DesignMigration,
+    #[msg("The locked design requires a compounding migrated pool with a compounding fee")]
+    DesignNotCompounding,
+    #[msg("The locked design leaves liquidity withdrawable at migration")]
+    DesignUnlockedLiquidity,
+    #[msg("The settler cannot vest liquidity: partner liquidity may only be locked permanently")]
+    DesignPartnerVesting,
+    #[msg("The locked design requires at least 20% of the liquidity locked permanently")]
+    DesignLockTooLow,
+    #[msg("Not a DLMM pair of this cross's mints that is open for trading")]
+    WrongPair,
+    #[msg("The greenshoe budget is below 10% of what the cross raised, above a level's share, or exceeds the budget")]
+    GreenshoeBudget,
+    #[msg("Bids are only accepted inside the greenshoe week, and the period and window parameters must be sane")]
+    GreenshoeWindow,
+    #[msg("That greenshoe level is invalid, already placed, not placed, or already settled")]
+    GreenshoeLevel,
+    #[msg("The bid must sit in the bin nearest its level, strictly below the active bin")]
+    GreenshoeBin,
+    #[msg("This period's greenshoe deployment cap is used up")]
+    GreenshoeRateLimit,
+    #[msg("The greenshoe week has not ended")]
+    GreenshoeNotExpired,
+    #[msg("The argument bytes are not the Borsh encoding of the expected parameters")]
+    BadArgs,
+    #[msg("Pass exactly two badge accounts: base then quote, or the DLMM program id for none")]
+    BadgeAccounts,
+    #[msg("A batch window must be between 30 seconds and 7 days")]
+    BatchWindow,
+    #[msg("A batch-opened pool needs a timestamp start at least the window away")]
+    BatchActivation,
+    #[msg("A batch-opened DAMM v2 pool must compound its fees")]
+    BatchNotCompounding,
+    #[msg("A batch-opened DAMM v2 pool must open with a fee that decays over time")]
+    BatchFeeNotDecaying,
 }
 
 #[cfg(test)]

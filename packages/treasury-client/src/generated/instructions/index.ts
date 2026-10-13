@@ -6,9 +6,29 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './claimDistribution.js';
+export * from './createGrant.js';
 export * from './createTreasury.js';
+export * from './depositDistribution.js';
+export * from './executeProposal.js';
+export * from './expireGrant.js';
+export * from './initExt.js';
+export * from './markMissed.js';
+export * from './navRedeem.js';
+export * from './payRound.js';
+export * from './postDisclosure.js';
+export * from './propose.js';
+export * from './reclaimVote.js';
+export * from './recordAssignment.js';
 export * from './recordAttested.js';
 export * from './recordLapse.js';
 export * from './redeem.js';
+export * from './releaseMilestone.js';
+export * from './releaseTranche.js';
+export * from './requestDisclosure.js';
 export * from './spend.js';
+export * from './stake.js';
+export * from './sweepUnclaimed.js';
 export * from './triggerLiquidation.js';
+export * from './unstake.js';
+export * from './vote.js';

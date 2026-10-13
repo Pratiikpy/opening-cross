@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { AccountRole, type Address, type Instruction, type TransactionSigner, address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 import { getOpenDlmmPairInstruction } from '@opening-cross/cross-settle-client';
+import { i64le, rewrapInstruction } from './rewrap.js';
 import { type CrossView, ata } from '@opening-cross/sdk';
 
 export const DLMM_PROGRAM_ADDRESS = address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
@@ -67,7 +68,23 @@ export type OpenDlmmInput = {
   /** DLMM base factor: base fee = baseFactor · binStep · 10 · 10^baseFeePowerFactor (in 1e9 units). */
   baseFactor: number;
   baseFeePowerFactor?: number;
+  /**
+   * Open the pair closed for a batch window (ADR-0483): it cannot trade before `activationPoint` (unix seconds, at least `windowSecs`
+   * after the clock when the transaction lands). With `alphaVault`, only an Alpha Vault bound to the pair can buy before then, and
+   * the pair creator keeps the right to pause it.
+   */
+  batch?: { windowSecs: number; activationPoint: bigint; alphaVault?: boolean };
+  /**
+   * Meteora Token Badges for mints that carry Token-2022 extensions DLMM refuses without one (tokenized stocks: pausable, permanent
+   * delegate, scaled amount; ADR-0485). Pass `true` for a mint that has a badge; the badge address is derived. Only Meteora issues badges.
+   */
+  badges?: { base?: boolean; quote?: boolean };
 };
+
+/** The `TokenBadge` PDA DLMM looks for a mint (seeds `token_badge`, mint). */
+export function dlmmTokenBadgeAddress(mint: Address): Address {
+  return toKit(pda([Buffer.from('token_badge'), new PublicKey(mint).toBuffer()]));
+}
 
 export async function buildOpenDlmmPair(input: OpenDlmmInput): Promise<{ instruction: Instruction; activeId: number; addresses: ReturnType<typeof dlmmAddresses> }> {
   const c = input.cross.data;
@@ -76,7 +93,7 @@ export async function buildOpenDlmmPair(input: OpenDlmmInput): Promise<{ instruc
   const activeId = activeIdForPrice(c.clearing.value.price, c.priceScale, input.binStep);
   const a = dlmmAddresses(c.baseMint, c.quoteMint);
   void BN;
-  const instruction = getOpenDlmmPairInstruction({
+  const original = getOpenDlmmPairInstruction({
     creator: input.creator,
     cross: input.cross.address,
     lbPair: a.lbPair,
@@ -94,14 +111,26 @@ export async function buildOpenDlmmPair(input: OpenDlmmInput): Promise<{ instruc
     binStep: input.binStep,
     baseFactor: input.baseFactor,
     activationType: 1,
-    hasAlphaVault: false,
-    activationPoint: null,
-    creatorPoolOnOffControl: false,
+    hasAlphaVault: input.batch?.alphaVault ?? false,
+    activationPoint: input.batch ? input.batch.activationPoint : null,
+    creatorPoolOnOffControl: input.batch ? true : false,
     baseFeePowerFactor: input.baseFeePowerFactor ?? 0,
     concreteFunctionType: 0,
     collectFeeMode: 0,
     padding: new Uint8Array(60),
-  });
+  
+  } as Parameters<typeof getOpenDlmmPairInstruction>[0]);
+  const window = i64le(input.batch?.windowSecs ?? 0);
+  const instruction = input.badges ? rewrapInstruction(original, 'open_dlmm_pair_badged', window) : input.batch ? rewrapInstruction(original, 'open_dlmm_pair_batched', window) : original;
+  if (input.badges) {
+    // The badge instruction reads two remaining accounts, base then quote: the mint's badge, or the DLMM program for none.
+    const slot = (has: boolean | undefined, mint: Address): Address => (has ? dlmmTokenBadgeAddress(mint) : DLMM_PROGRAM_ADDRESS);
+    return {
+      instruction: { ...instruction, accounts: [...(instruction.accounts ?? []), { address: slot(input.badges.base, c.baseMint), role: AccountRole.READONLY }, { address: slot(input.badges.quote, c.quoteMint), role: AccountRole.READONLY }] } as Instruction,
+      activeId,
+      addresses: a,
+    };
+  }
   return { instruction, activeId, addresses: a };
 }
 

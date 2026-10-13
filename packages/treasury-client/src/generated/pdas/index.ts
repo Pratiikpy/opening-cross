@@ -6,5 +6,12 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './coinVault.js';
+export * from './distVault.js';
+export * from './grant.js';
+export * from './position.js';
+export * from './proposal.js';
+export * from './roundRecord.js';
 export * from './treasury.js';
 export * from './vault.js';
+export * from './voteRecord.js';

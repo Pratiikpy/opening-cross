@@ -33,6 +33,7 @@ import {
 } from '@opening-cross/cross-settle-client';
 import { CROSS_GATE_PROGRAM_ADDRESS } from '@opening-cross/cross-gate-client';
 import type { CrossView } from '@opening-cross/sdk';
+import { rewrapInstruction } from './rewrap.js';
 
 export const DBC_PROGRAM_ADDRESS = address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN');
 export const TOKEN_2022 = address('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
@@ -158,6 +159,8 @@ export type OpenPoolInput = {
   name: string;
   symbol: string;
   uri: string;
+  /** Use `open_dbc_pool_locked`: the program also refuses a config whose liquidity is withdrawable or whose migrated pool is not compounding (ADR-0482). */
+  locked?: boolean;
 };
 
 /** Settlement step 1 (creator only): DBC config and pool at P*. */
@@ -166,7 +169,7 @@ export async function buildOpenDbcPool(input: OpenPoolInput): Promise<{ instruct
   if (c.clearing.__option !== 'Some') throw new Error('cross has not cleared');
   const config = buildContinuationConfig(c.clearing.value.price, c.priceScale, input.design);
   const a = await continuationAddresses(input.cross.address, c.quoteMint);
-  const instruction = getOpenDbcPoolInstruction({
+  const original = getOpenDbcPoolInstruction({
     creator: input.creator,
     cross: input.cross.address,
     settler: a.settler,
@@ -185,6 +188,7 @@ export async function buildOpenDbcPool(input: OpenPoolInput): Promise<{ instruct
     symbol: input.symbol,
     uri: input.uri,
   } as Parameters<typeof getOpenDbcPoolInstruction>[0]);
+  const instruction = input.locked ? rewrapInstruction(original, 'open_dbc_pool_locked') : original;
   return { instruction, config, addresses: a };
 }
 
@@ -206,3 +210,19 @@ export * from './fees.js';
 export * from './dlmm.js';
 export * from './raydium.js';
 export * from './feeshare.js';
+export * from './partner.js';
+
+/**
+ * Both settlement legs as one atomic transaction: `open_dbc_pool_locked` (or `open_dbc_pool` with `locked: false`) followed by
+ * `bind_dbc_mint`. Either both land or neither does, so no cross is left with a pool but no bound mint. The creator signs and pays.
+ */
+export async function buildLaunchTransaction(input: OpenPoolInput): Promise<{ instructions: [Instruction, Instruction]; config: ConfigParameters; addresses: Awaited<ReturnType<typeof continuationAddresses>> }> {
+  const open = await buildOpenDbcPool({ ...input, locked: input.locked ?? true });
+  const bind = await buildBindDbcMint(input.cross, input.creator);
+  return { instructions: [open.instruction, bind], config: open.config, addresses: open.addresses };
+}
+export * from './metlock.js';
+export * from './alphavault.js';
+export * from './health.js';
+export * from './greenshoe.js';
+export * from './rewrap.js';

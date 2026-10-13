@@ -47,6 +47,8 @@ export const DAMM_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.m
 export const DFS_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_fee_sharing.so`;
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+/** Directory holding the built programs. `OC_DEPLOY_DIR` lets a build in progress be tested without touching `target/deploy`. */
+const DEPLOY = process.env.OC_DEPLOY_DIR ? `${process.env.OC_DEPLOY_DIR.replace(/\/$/, '')}/` : `${ROOT}target/deploy/`;
 export const T0 = 1_800_000_000n;
 
 /** A transaction the harness landed, in the shape an indexer receives it from an RPC node. */
@@ -58,11 +60,11 @@ export class Harness {
   readonly landed: LandedTx[] = [];
   constructor() {
     this.svm = new LiteSVM();
-    this.svm.addProgramFromFile(CROSS_CORE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_core.so`);
-    this.svm.addProgramFromFile(CROSS_GATE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_gate.so`);
-    this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${ROOT}target/deploy/cross_settle.so`);
-    this.svm.addProgramFromFile(address('CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN'), `${ROOT}target/deploy/cross_calendar.so`);
-    this.svm.addProgramFromFile(TREASURY_PROGRAM_ADDRESS, `${ROOT}target/deploy/treasury.so`);
+    this.svm.addProgramFromFile(CROSS_CORE_PROGRAM_ADDRESS, `${DEPLOY}cross_core.so`);
+    this.svm.addProgramFromFile(CROSS_GATE_PROGRAM_ADDRESS, `${DEPLOY}cross_gate.so`);
+    this.svm.addProgramFromFile(CROSS_SETTLE_PROGRAM_ADDRESS, `${DEPLOY}cross_settle.so`);
+    this.svm.addProgramFromFile(address('CxtZKYwS4AoqzLhRfjvBTf6NQgDzb2GQhS3u5iB9XLCN'), `${DEPLOY}cross_calendar.so`);
+    this.svm.addProgramFromFile(TREASURY_PROGRAM_ADDRESS, `${DEPLOY}treasury.so`);
     // Meteora DBC, dumped from mainnet by tests/fixtures/fetch.sh (not redistributed).
     if (existsSync(DBC_FIXTURE)) this.svm.addProgramFromFile(address('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'), DBC_FIXTURE);
     if (existsSync(DLMM_FIXTURE)) this.svm.addProgramFromFile(address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'), DLMM_FIXTURE);

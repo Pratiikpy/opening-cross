@@ -15,7 +15,11 @@ const CLIENTS = [
   { program: 'treasury', pkg: 'treasury-client' },
 ];
 
+// ONLY=cross_core,treasury regenerates just those clients.
+const only = process.env.ONLY?.split(',').filter(Boolean);
+
 for (const { program, pkg } of CLIENTS) {
+  if (only && !only.includes(program)) continue;
   const dir = fileURLToPath(new URL(`../${pkg}/`, import.meta.url));
   const idl = JSON.parse(readFileSync(`${dir}idl/${program}.json`, 'utf8'));
   rmSync(`${dir}src/generated`, { recursive: true, force: true });

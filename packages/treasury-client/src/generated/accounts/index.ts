@@ -6,4 +6,9 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './grant.js';
+export * from './position.js';
+export * from './proposal.js';
+export * from './roundRecord.js';
 export * from './treasury.js';
+export * from './voteRecord.js';

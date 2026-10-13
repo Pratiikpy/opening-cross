@@ -1,0 +1,19 @@
+[package]
+name = "mollusk-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Instruction-level tests of the Opening Cross programs on Mollusk, against the built SBF binaries in target/deploy."
+
+# A workspace of its own: Mollusk 0.16 needs a newer compiler than the repository pin (see README.md), and this crate must not
+# change what the programs themselves are built with.
+[workspace]
+
+[dev-dependencies]
+mollusk-svm = "0.16"
+solana-account = "4"
+solana-instruction = "3"
+solana-pubkey = "4"
+solana-sdk-ids = "3"
+sha2 = "0.10"
+solana-program-error = "3"

@@ -6,7 +6,15 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './applicant.js';
+export * from './arbiterRegistry.js';
+export * from './challenge.js';
+export * from './classBook.js';
 export * from './cross.js';
+export * from './haltState.js';
 export * from './levels.js';
+export * from './lockup.js';
 export * from './order.js';
+export * from './printFeed.js';
 export * from './protocol.js';
+export * from './series.js';

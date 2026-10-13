@@ -8,5 +8,11 @@
 
 export * from './baseVault.js';
 export * from './book.js';
+export * from './classBook.js';
+export * from './feed.js';
+export * from './halt.js';
+export * from './lockVault.js';
 export * from './protocol.js';
 export * from './quoteVault.js';
+export * from './registry.js';
+export * from './series.js';

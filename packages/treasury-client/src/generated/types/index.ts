@@ -6,4 +6,6 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './milestone.js';
+export * from './proposalKind.js';
 export * from './treasuryState.js';

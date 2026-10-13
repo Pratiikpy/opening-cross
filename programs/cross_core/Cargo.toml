@@ -27,5 +27,8 @@ cross_gate = { path = "../cross_gate", features = ["no-entrypoint"] }
 cross_calendar = { path = "../cross_calendar", features = ["no-entrypoint"] }
 solana-sha256-hasher = "3"
 
+[dev-dependencies]
+proptest = "1.11.0"
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

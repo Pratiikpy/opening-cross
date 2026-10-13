@@ -110,7 +110,8 @@
     {
       "name": "cancel_order",
       "docs": [
-        "Withdraws an order during the call window. Full refund, no fee."
+        "Withdraws an order during the call window. Full refund, no fee. Remaining accounts: the",
+        "applicant record, then the class book, when the rules call for them."
       ],
       "discriminator": [
         95,
@@ -228,10 +229,61 @@
       "args": []
     },
     {
+      "name": "challenge_insider",
+      "docs": [
+        "Alleges that `subject` was an undeclared insider; posts a deposit (ADR-0454)."
+      ],
+      "discriminator": [
+        50,
+        179,
+        139,
+        114,
+        13,
+        194,
+        225,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "challenger",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "challenge",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "subject",
+          "type": "pubkey"
+        },
+        {
+          "name": "evidence",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "claim",
       "docs": [
         "Settles one order: pays its fill at the clearing price and refunds the rest. Anyone may",
-        "crank it; funds always go to the order owner. Closes the order account."
+        "crank it; funds always go to the order owner. Closes the order account. A locked fill goes",
+        "to the cross's lock vault; remaining accounts: the lock vault, then the lockup record."
       ],
       "discriminator": [
         62,
@@ -425,7 +477,11 @@
     {
       "name": "clear",
       "docs": [
-        "Clears the cross once every shard is merged. Permissionless."
+        "Clears the cross once every shard is merged. Permissionless.",
+        "",
+        "Remaining accounts, in this order and only those the stored rules call for (ADR-0450):",
+        "the halt state, then the base mint (halt rule, or float and valuation rules without a",
+        "declared supply), then the lender print feed."
       ],
       "discriminator": [
         250,
@@ -474,10 +530,50 @@
       "args": []
     },
     {
+      "name": "close_applicant",
+      "docs": [
+        "Returns an applicant record's rent to its owner once the cross is finalized."
+      ],
+      "discriminator": [
+        117,
+        187,
+        217,
+        193,
+        76,
+        110,
+        112,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "relations": [
+            "applicant"
+          ]
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "relations": [
+            "applicant"
+          ]
+        },
+        {
+          "name": "applicant",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "commit_order",
       "docs": [
         "Places an order and escrows its funds. Sealed crosses take a commitment; open crosses",
-        "take the plaintext `price` and `quantity` and add them to the book immediately."
+        "take the plaintext `price` and `quantity` and add them to the book immediately.",
+        "",
+        "Remaining accounts, only those the cross's rules call for and in this order (ADR-0450):",
+        "the applicant record (identity limits), the class book (classes, insiders), the priority",
+        "pass (class 3 outside the early window)."
       ],
       "discriminator": [
         106,
@@ -572,6 +668,109 @@
           "type": {
             "defined": {
               "name": "CommitOrderArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "commit_order_ext",
+      "docs": [
+        "`commit_order` with an allocation class and a lock (ADR-0453, ADR-0454)."
+      ],
+      "discriminator": [
+        27,
+        95,
+        75,
+        120,
+        238,
+        71,
+        74,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "docs": [
+            "client-supplied bump, which `create_program_address` verifies (no bump search)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "docs": [
+            "Required for open disclosure (the order's shard); omitted for sealed crosses."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "pass",
+          "optional": true
+        },
+        {
+          "name": "escrow_mint",
+          "docs": [
+            "cross in the handler, decimals come from the cross."
+          ]
+        },
+        {
+          "name": "escrow_vault",
+          "docs": [
+            "handler and by the token program on transfer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "owner_escrow",
+          "docs": [
+            "owner signs for it and that its mint matches."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CommitOrderExtArgs"
             }
           }
         }
@@ -759,6 +958,172 @@
       ]
     },
     {
+      "name": "create_series",
+      "docs": [
+        "Creates a recurring series of escrow crosses (ADR-0456)."
+      ],
+      "discriminator": [
+        181,
+        9,
+        52,
+        120,
+        197,
+        221,
+        42,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "series",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  114,
+                  105,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "series_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "series_id",
+          "type": "u64"
+        },
+        {
+          "name": "config",
+          "type": {
+            "defined": {
+              "name": "SeriesConfig"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "draw_begin",
+      "docs": [
+        "Starts the draw that closes an epoch or sets the extension length (ADR-0452). Anyone may",
+        "call it once the call, and any reveal window, is over."
+      ],
+      "discriminator": [
+        236,
+        190,
+        208,
+        254,
+        173,
+        253,
+        189,
+        43
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "draw_finish",
+      "docs": [
+        "Finishes a draw from the block hashes that followed `draw_begin`, and applies it."
+      ],
+      "discriminator": [
+        36,
+        145,
+        201,
+        110,
+        207,
+        106,
+        152,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_challenge",
+      "docs": [
+        "Anyone closes an insider challenge the arbiter has not ruled on within fourteen days; the",
+        "challenger's deposit returns and the bond is untouched."
+      ],
+      "discriminator": [
+        73,
+        82,
+        20,
+        227,
+        216,
+        66,
+        58,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true,
+          "relations": [
+            "challenge"
+          ]
+        },
+        {
+          "name": "challenge",
+          "writable": true
+        },
+        {
+          "name": "challenger",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "finalize",
       "docs": [
         "Distributes what is left once every order has been claimed: the issuer's proceeds and",
@@ -897,6 +1262,307 @@
       "args": []
     },
     {
+      "name": "init_class_book",
+      "docs": [
+        "Creates the class book a cross with allocation classes or declared insiders needs."
+      ],
+      "discriminator": [
+        181,
+        10,
+        27,
+        115,
+        49,
+        235,
+        174,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "class_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  115,
+                  115,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_halt_state",
+      "docs": [
+        "Registers the halt state of a base mint (ADR-0455). Signed by the mint authority or the",
+        "protocol admin."
+      ],
+      "discriminator": [
+        125,
+        99,
+        250,
+        183,
+        96,
+        46,
+        166,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "halt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "venue_signer",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "breaker",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "BreakerSetup"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "init_lock_vault",
+      "docs": [
+        "Creates the vault that holds the cross's locked tokens."
+      ],
+      "discriminator": [
+        32,
+        29,
+        7,
+        189,
+        255,
+        199,
+        66,
+        171
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_print_feed",
+      "docs": [
+        "Registers the lender price feed of a base mint (ADR-0451)."
+      ],
+      "discriminator": [
+        81,
+        222,
+        180,
+        241,
+        115,
+        31,
+        115,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feed",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "publishers",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "min_matched",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "init_protocol",
       "discriminator": [
         3,
@@ -998,6 +1664,28 @@
       ]
     },
     {
+      "name": "log_ext",
+      "docs": [
+        "Emits the cross's extension tail as an event (permissionless, read-only)."
+      ],
+      "discriminator": [
+        163,
+        206,
+        8,
+        121,
+        159,
+        138,
+        98,
+        33
+      ],
+      "accounts": [
+        {
+          "name": "cross"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "merge_shard",
       "docs": [
         "Adds one shard into the book. Permissionless; each shard merges exactly once."
@@ -1082,6 +1770,32 @@
       "args": []
     },
     {
+      "name": "observe_price",
+      "docs": [
+        "Anyone feeds a verified oracle update to the asset's circuit breaker."
+      ],
+      "discriminator": [
+        147,
+        178,
+        4,
+        21,
+        14,
+        213,
+        81,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "halt",
+          "writable": true
+        },
+        {
+          "name": "price_update"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "propose_admin",
       "docs": [
         "First step of an admin handover (e.g. to a multisig vault). Nothing changes until the",
@@ -1137,9 +1851,291 @@
       ]
     },
     {
+      "name": "push_refunds",
+      "docs": [
+        "Refunds up to twelve orders that are owed nothing but their escrow (a cross that did not print, or orders",
+        "that were not filled) in one transaction, to their owners' own token accounts. Anyone may call it."
+      ],
+      "discriminator": [
+        227,
+        8,
+        61,
+        26,
+        173,
+        222,
+        199,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "docs": [
+            "Omitted only for a deferred-mint cross whose mint was never bound (no sells exist then)."
+          ],
+          "optional": true
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "base_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_locked",
+      "docs": [
+        "Pays the vested part of a lockup to its owner. Anyone may call it."
+      ],
+      "discriminator": [
+        67,
+        175,
+        135,
+        238,
+        23,
+        191,
+        130,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "relations": [
+            "lockup"
+          ]
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "relations": [
+            "lockup"
+          ]
+        },
+        {
+          "name": "lockup",
+          "writable": true
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "owner_base",
+          "writable": true
+        },
+        {
+          "name": "base_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolve_challenge",
+      "docs": [
+        "The arbiter rules on a challenge, slashing part of the bond when it is upheld."
+      ],
+      "discriminator": [
+        81,
+        191,
+        124,
+        119,
+        131,
+        248,
+        157,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "arbiter",
+          "signer": true
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "writable": true,
+          "relations": [
+            "challenge"
+          ]
+        },
+        {
+          "name": "challenge",
+          "writable": true
+        },
+        {
+          "name": "challenger",
+          "writable": true
+        },
+        {
+          "name": "fee_recipient",
+          "writable": true
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenger_quote",
+          "writable": true
+        },
+        {
+          "name": "fee_recipient_quote",
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "upheld",
+          "type": "bool"
+        },
+        {
+          "name": "slash",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "reveal_order",
       "docs": [
-        "Reveals a sealed order during the reveal window and adds it to its shard."
+        "Reveals a sealed order during the reveal window and adds it to its shard. Remaining",
+        "accounts: the class book, when the cross has one."
       ],
       "discriminator": [
         25,
@@ -1195,6 +2191,203 @@
       ]
     },
     {
+      "name": "series_withdraw",
+      "docs": [
+        "The series' authority withdraws tokens the series holds."
+      ],
+      "discriminator": [
+        114,
+        246,
+        108,
+        166,
+        208,
+        240,
+        170,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "series"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "from",
+          "writable": true
+        },
+        {
+          "name": "to",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_arbiter",
+      "docs": [
+        "The protocol admin names the arbiter that rules on insider challenges."
+      ],
+      "discriminator": [
+        15,
+        205,
+        194,
+        180,
+        172,
+        213,
+        113,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "arbiter",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_corporate_action",
+      "docs": [
+        "The issuer authority flags or unflags a corporate action."
+      ],
+      "discriminator": [
+        92,
+        10,
+        104,
+        154,
+        43,
+        48,
+        196,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "halt",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "flag",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_feed_publishers",
+      "docs": [
+        "Changes who may publish to a lender price feed, and the minimum print size."
+      ],
+      "discriminator": [
+        119,
+        111,
+        145,
+        211,
+        73,
+        15,
+        157,
+        154
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "feed"
+          ]
+        },
+        {
+          "name": "feed",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "publishers",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "min_matched",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "set_guardian",
       "docs": [
         "The admin may rotate the guardian (the key allowed to pause new activity)."
@@ -1245,6 +2438,34 @@
           "type": "pubkey"
         }
       ]
+    },
+    {
+      "name": "set_halt",
+      "docs": [
+        "The issuer authority or the venue signer halts the asset. Only a printing resume cross",
+        "lifts the halt."
+      ],
+      "discriminator": [
+        212,
+        192,
+        179,
+        66,
+        23,
+        73,
+        197,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "halt",
+          "writable": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "set_paused",
@@ -1356,9 +2577,352 @@
           }
         }
       ]
+    },
+    {
+      "name": "set_rules",
+      "docs": [
+        "Fixes the rules of a cross (ADR-0450): the creator, in the slot the cross was created in,",
+        "before any order exists. Remaining accounts: the lender print feed when the cross feeds it."
+      ],
+      "discriminator": [
+        66,
+        148,
+        196,
+        43,
+        232,
+        210,
+        174,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "input",
+          "type": {
+            "defined": {
+              "name": "CompactRules"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_series_active",
+      "docs": [
+        "The series' authority pauses or resumes spawning."
+      ],
+      "discriminator": [
+        47,
+        164,
+        3,
+        201,
+        177,
+        212,
+        159,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "series",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "active",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "spawn_next",
+      "docs": [
+        "Spawns the next cross of a series when it is due. Permissionless. Remaining accounts: the",
+        "lender print feed, when the series' rules feed it."
+      ],
+      "discriminator": [
+        0,
+        84,
+        115,
+        33,
+        228,
+        224,
+        65,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Pays the new cross's rent; anyone may."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "cross",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  111,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              },
+              {
+                "kind": "account",
+                "path": "series.next_index",
+                "account": "Series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "series_quote",
+          "docs": [
+            "The series' quote account: it pays the dust bond."
+          ],
+          "writable": true
+        },
+        {
+          "name": "previous",
+          "docs": [
+            "The previous cross; required from the second cross on."
+          ],
+          "optional": true
+        },
+        {
+          "name": "calendar_account",
+          "optional": true
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "sync_pause",
+      "docs": [
+        "Anyone copies the mint's pause state into its halt state."
+      ],
+      "discriminator": [
+        64,
+        100,
+        208,
+        204,
+        155,
+        132,
+        49,
+        42
+      ],
+      "accounts": [
+        {
+          "name": "halt",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "halt"
+          ]
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "Applicant",
+      "discriminator": [
+        166,
+        97,
+        159,
+        46,
+        61,
+        241,
+        243,
+        206
+      ]
+    },
+    {
+      "name": "ArbiterRegistry",
+      "discriminator": [
+        246,
+        145,
+        231,
+        105,
+        213,
+        48,
+        97,
+        27
+      ]
+    },
+    {
+      "name": "Challenge",
+      "discriminator": [
+        119,
+        250,
+        161,
+        121,
+        119,
+        81,
+        22,
+        208
+      ]
+    },
+    {
+      "name": "ClassBook",
+      "discriminator": [
+        173,
+        238,
+        207,
+        52,
+        180,
+        8,
+        155,
+        122
+      ]
+    },
     {
       "name": "Cross",
       "discriminator": [
@@ -1370,6 +2934,19 @@
         205,
         171,
         235
+      ]
+    },
+    {
+      "name": "HaltState",
+      "discriminator": [
+        174,
+        63,
+        178,
+        196,
+        73,
+        150,
+        43,
+        64
       ]
     },
     {
@@ -1386,6 +2963,19 @@
       ]
     },
     {
+      "name": "Lockup",
+      "discriminator": [
+        1,
+        45,
+        32,
+        32,
+        57,
+        81,
+        88,
+        67
+      ]
+    },
+    {
       "name": "Order",
       "discriminator": [
         134,
@@ -1399,6 +2989,19 @@
       ]
     },
     {
+      "name": "PrintFeed",
+      "discriminator": [
+        113,
+        39,
+        41,
+        127,
+        129,
+        209,
+        132,
+        218
+      ]
+    },
+    {
       "name": "Protocol",
       "discriminator": [
         45,
@@ -1409,6 +3012,19 @@
         72,
         131,
         40
+      ]
+    },
+    {
+      "name": "Series",
+      "discriminator": [
+        240,
+        97,
+        8,
+        183,
+        139,
+        77,
+        250,
+        162
       ]
     }
   ],
@@ -1453,6 +3069,32 @@
       ]
     },
     {
+      "name": "ChallengeExpired",
+      "discriminator": [
+        8,
+        175,
+        9,
+        64,
+        0,
+        48,
+        124,
+        120
+      ]
+    },
+    {
+      "name": "ChallengeResolved",
+      "discriminator": [
+        100,
+        153,
+        38,
+        123,
+        172,
+        250,
+        166,
+        105
+      ]
+    },
+    {
       "name": "CrossCleared",
       "discriminator": [
         169,
@@ -1479,6 +3121,19 @@
       ]
     },
     {
+      "name": "CrossExtSnapshot",
+      "discriminator": [
+        158,
+        64,
+        110,
+        10,
+        11,
+        43,
+        131,
+        158
+      ]
+    },
+    {
       "name": "CrossFinalized",
       "discriminator": [
         192,
@@ -1489,6 +3144,97 @@
         135,
         97,
         133
+      ]
+    },
+    {
+      "name": "DrawFinished",
+      "discriminator": [
+        61,
+        18,
+        38,
+        132,
+        176,
+        67,
+        51,
+        210
+      ]
+    },
+    {
+      "name": "DrawStarted",
+      "discriminator": [
+        101,
+        184,
+        241,
+        165,
+        221,
+        79,
+        19,
+        122
+      ]
+    },
+    {
+      "name": "ExtensionPending",
+      "discriminator": [
+        39,
+        89,
+        211,
+        157,
+        205,
+        163,
+        1,
+        151
+      ]
+    },
+    {
+      "name": "HaltChanged",
+      "discriminator": [
+        152,
+        118,
+        17,
+        65,
+        125,
+        156,
+        41,
+        128
+      ]
+    },
+    {
+      "name": "InsiderChallenged",
+      "discriminator": [
+        97,
+        92,
+        248,
+        238,
+        101,
+        198,
+        144,
+        186
+      ]
+    },
+    {
+      "name": "LockCreated",
+      "discriminator": [
+        244,
+        216,
+        59,
+        77,
+        83,
+        47,
+        61,
+        196
+      ]
+    },
+    {
+      "name": "LockReleased",
+      "discriminator": [
+        188,
+        240,
+        15,
+        169,
+        219,
+        184,
+        26,
+        111
       ]
     },
     {
@@ -1531,6 +3277,19 @@
       ]
     },
     {
+      "name": "OrderPlacement",
+      "discriminator": [
+        248,
+        252,
+        51,
+        111,
+        113,
+        183,
+        206,
+        133
+      ]
+    },
+    {
       "name": "OrderRevealed",
       "discriminator": [
         241,
@@ -1554,6 +3313,58 @@
         209,
         178,
         218
+      ]
+    },
+    {
+      "name": "PrintFed",
+      "discriminator": [
+        150,
+        182,
+        103,
+        41,
+        43,
+        204,
+        197,
+        26
+      ]
+    },
+    {
+      "name": "RulesSet",
+      "discriminator": [
+        202,
+        104,
+        215,
+        176,
+        23,
+        71,
+        106,
+        72
+      ]
+    },
+    {
+      "name": "SeriesCreated",
+      "discriminator": [
+        2,
+        164,
+        54,
+        38,
+        24,
+        181,
+        233,
+        180
+      ]
+    },
+    {
+      "name": "SeriesSpawned",
+      "discriminator": [
+        212,
+        40,
+        181,
+        204,
+        118,
+        59,
+        220,
+        38
       ]
     }
   ],
@@ -1747,6 +3558,151 @@
       "code": 6037,
       "name": "SettlementDeadlinePassed",
       "msg": "The settlement deadline has passed"
+    },
+    {
+      "code": 6038,
+      "name": "LegacyCross",
+      "msg": "This cross was created before the extension tail existed and cannot take rules"
+    },
+    {
+      "code": 6039,
+      "name": "RulesLocked",
+      "msg": "Rules can only be set by the creator, in the creating slot, before any order"
+    },
+    {
+      "code": 6040,
+      "name": "HaltMismatch",
+      "msg": "The halt state does not belong to this cross's base mint"
+    },
+    {
+      "code": 6041,
+      "name": "FeedMismatch",
+      "msg": "The lender print feed does not belong to this cross's base mint"
+    },
+    {
+      "code": 6042,
+      "name": "GridPolicy",
+      "msg": "The price grid does not follow the standard policy"
+    },
+    {
+      "code": 6043,
+      "name": "OracleUnavailable",
+      "msg": "A fresh, fully verified oracle update for the registered feed is required"
+    },
+    {
+      "code": 6044,
+      "name": "CancelClosed",
+      "msg": "Orders can no longer be cancelled"
+    },
+    {
+      "code": 6045,
+      "name": "DrawRequired",
+      "msg": "The draw for this cross has not been finished"
+    },
+    {
+      "code": 6046,
+      "name": "BucketExcluded",
+      "msg": "That ending bucket falls after the drawn end and never counts"
+    },
+    {
+      "code": 6047,
+      "name": "ExtensionPending",
+      "msg": "The extension is waiting for its draw"
+    },
+    {
+      "code": 6048,
+      "name": "DrawPending",
+      "msg": "A draw is already in flight"
+    },
+    {
+      "code": 6049,
+      "name": "NothingToDraw",
+      "msg": "There is nothing to draw now"
+    },
+    {
+      "code": 6050,
+      "name": "DrawExpired",
+      "msg": "The block hashes needed for the draw are no longer available; begin the draw again"
+    },
+    {
+      "code": 6051,
+      "name": "ApplicantMismatch",
+      "msg": "The applicant record is missing or does not match"
+    },
+    {
+      "code": 6052,
+      "name": "IdentityLimit",
+      "msg": "This identity has reached its order or escrow limit"
+    },
+    {
+      "code": 6053,
+      "name": "ClassBookMissing",
+      "msg": "The class book is missing or does not match"
+    },
+    {
+      "code": 6054,
+      "name": "ClassNotAllowed",
+      "msg": "The order does not qualify for the class it asked for"
+    },
+    {
+      "code": 6055,
+      "name": "LotSize",
+      "msg": "A lottery order must be exactly one lot"
+    },
+    {
+      "code": 6056,
+      "name": "LockupMismatch",
+      "msg": "The lock vault or lockup record is missing or does not match"
+    },
+    {
+      "code": 6057,
+      "name": "NothingToRelease",
+      "msg": "Nothing has vested yet"
+    },
+    {
+      "code": 6058,
+      "name": "ChallengeWindowClosed",
+      "msg": "The challenge window has closed"
+    },
+    {
+      "code": 6059,
+      "name": "ChallengeMismatch",
+      "msg": "The challenge record does not match"
+    },
+    {
+      "code": 6060,
+      "name": "ChallengesOutstanding",
+      "msg": "Insider challenges are still open, or their window has not passed"
+    },
+    {
+      "code": 6061,
+      "name": "SeriesInactive",
+      "msg": "The series is paused or has spawned all its crosses"
+    },
+    {
+      "code": 6062,
+      "name": "SeriesPreviousMissing",
+      "msg": "The previous cross of the series is missing or has not resolved"
+    },
+    {
+      "code": 6063,
+      "name": "SpawnTooEarly",
+      "msg": "The next cross is not due yet"
+    },
+    {
+      "code": 6064,
+      "name": "NoSessionAhead",
+      "msg": "The calendar has no session ahead"
+    },
+    {
+      "code": 6065,
+      "name": "ReferralAccountMissing",
+      "msg": "The referrer's quote token account is missing or does not match"
+    },
+    {
+      "code": 6066,
+      "name": "NotRefundOnly",
+      "msg": "This order has a fill; claim it instead"
     }
   ],
   "types": [
@@ -1785,6 +3741,139 @@
       }
     },
     {
+      "name": "AllocationRules",
+      "docs": [
+        "How the volume at the margin is shared (ADR-0453)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "reserve_bps",
+            "docs": [
+              "Shares of the marginal volume reserved for classes 1, 2 and 3, in basis points."
+            ],
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
+            "name": "small_cap_quote",
+            "docs": [
+              "Class 1 (identity-verified small orders): an order's escrow may not exceed this."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lottery_unit",
+            "docs": [
+              "Class 1 lottery: base atoms per lot (0 = pro-rata within the class). Every class-1 order",
+              "is then exactly one lot."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "min_lock_secs",
+            "docs": [
+              "Class 2 (locked orders): the shortest lock a buyer may choose."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "lock_vest_secs",
+            "docs": [
+              "Class 2: linear vesting after the lock, in seconds (0 = everything unlocks at once)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "early_until_ts",
+            "docs": [
+              "Class 3 by early commitment: orders placed before this time qualify (0 = off)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "priority_gate",
+            "docs": [
+              "Class 3 by status: the gate mint whose pass qualifies a wallet (a holder or supporter",
+              "credential)."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "class1_cliff_secs",
+            "docs": [
+              "Class 1 vesting (identity-bound vesting): fills unlock after this cliff..."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "class1_vest_secs",
+            "docs": [
+              "...and then vest linearly over this many seconds."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Applicant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "orders",
+            "docs": [
+              "Live orders."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "escrow",
+            "docs": [
+              "Quote escrowed in live buy orders."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArbiterRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arbiter",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "BaseMintBound",
       "type": {
         "kind": "struct",
@@ -1796,6 +3885,309 @@
           {
             "name": "base_mint",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Breaker",
+      "docs": [
+        "Oracle circuit breaker settings and the last observation."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "window_slots",
+            "docs": [
+              "Two observations further apart than this many slots are not compared."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "move_bps",
+            "docs": [
+              "Halt when `|new \u2212 last| \u00b7 10_000 > move_bps \u00b7 last`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "last_price",
+            "type": "i64"
+          },
+          {
+            "name": "last_exponent",
+            "type": "i32"
+          },
+          {
+            "name": "last_slot",
+            "type": "u64"
+          },
+          {
+            "name": "last_publish_ts",
+            "docs": [
+              "Publish time of the last accepted update: an older or equal one is never accepted again."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BreakerSetup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "window_slots",
+            "type": "u32"
+          },
+          {
+            "name": "move_bps",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Challenge",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u32"
+          },
+          {
+            "name": "challenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "subject",
+            "docs": [
+              "The wallet alleged to be an undeclared insider."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "evidence",
+            "docs": [
+              "Hash of the evidence kept off chain."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "filed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ChallengeStatus"
+              }
+            }
+          },
+          {
+            "name": "slashed",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u32"
+          },
+          {
+            "name": "upheld",
+            "type": "bool"
+          },
+          {
+            "name": "slash",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Upheld"
+          },
+          {
+            "name": "Rejected"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClassBook",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "qty",
+            "docs": [
+              "Buy quantity per tick of classes 1, 2 and 3."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u64",
+                    256
+                  ]
+                },
+                3
+              ]
+            }
+          },
+          {
+            "name": "tickets",
+            "docs": [
+              "Class-1 orders per tick: the lottery tickets."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                256
+              ]
+            }
+          },
+          {
+            "name": "insider_qty",
+            "docs": [
+              "Buy quantity per tick of declared insiders."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClearingExt",
+      "docs": [
+        "Figures recorded at the clear when allocation classes or insiders are in play."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_qty",
+            "docs": [
+              "Quantity of classes 1, 2 and 3 among the marginal buy orders."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "tickets",
+            "docs": [
+              "Class-1 orders at the marginal tick (lottery tickets)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "rho",
+            "docs": [
+              "Where the lottery window starts."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "cleared_ts",
+            "type": "i64"
+          },
+          {
+            "name": "insider_ub",
+            "docs": [
+              "Upper bound on declared insiders' allocation (left out of the minimum raise)."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -1894,6 +4286,142 @@
               "Bump of the order PDA, computed by the client."
             ],
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitOrderExtArgs",
+      "docs": [
+        "Arguments for `commit_order_ext`: those of `commit_order` and the order's class and lock.",
+        "(A separate type keeps `commit_order`'s arguments flat in the generated clients.)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "OrderSide"
+              }
+            }
+          },
+          {
+            "name": "escrow",
+            "type": "u64"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "order_bump",
+            "type": "u8"
+          },
+          {
+            "name": "class",
+            "docs": [
+              "Allocation class: 0 general, 1 identity-verified small, 2 locked, 3 priority."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "lock_secs",
+            "docs": [
+              "Class 2: seconds the fill stays locked."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompactRules",
+      "docs": [
+        "The argument of `set_rules`: the same rules as [`RulesInput`] with the two padded lists sent unpadded, so that",
+        "the instruction and `create_cross` fit one transaction. [`CompactRules::into_input`] pads them and every check",
+        "runs on the padded form, as for a series."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "flags",
+            "type": "u16"
+          },
+          {
+            "name": "guards",
+            "type": {
+              "defined": {
+                "name": "GuardRules"
+              }
+            }
+          },
+          {
+            "name": "ending",
+            "type": {
+              "defined": {
+                "name": "EndingRules"
+              }
+            }
+          },
+          {
+            "name": "identity",
+            "type": {
+              "defined": {
+                "name": "IdentityRules"
+              }
+            }
+          },
+          {
+            "name": "alloc",
+            "type": {
+              "defined": {
+                "name": "AllocationRules"
+              }
+            }
+          },
+          {
+            "name": "neutrality",
+            "type": {
+              "defined": {
+                "name": "NeutralityInput"
+              }
+            }
+          },
+          {
+            "name": "referral",
+            "type": {
+              "defined": {
+                "name": "ReferralRules"
+              }
+            }
+          },
+          {
+            "name": "oracle_set",
+            "type": {
+              "defined": {
+                "name": "OracleSetInput"
+              }
+            }
           }
         ]
       }
@@ -2439,6 +4967,146 @@
       }
     },
     {
+      "name": "CrossExt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "docs": [
+              "0 = no tail (a legacy cross, or one whose tail was never initialised)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "rules_set",
+            "type": "bool"
+          },
+          {
+            "name": "created_slot",
+            "docs": [
+              "Slot of the creating transaction; `set_rules` is only accepted in that slot."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "flags",
+            "type": "u16"
+          },
+          {
+            "name": "guards",
+            "type": {
+              "defined": {
+                "name": "GuardRules"
+              }
+            }
+          },
+          {
+            "name": "ending",
+            "type": {
+              "defined": {
+                "name": "EndingRules"
+              }
+            }
+          },
+          {
+            "name": "draw",
+            "type": {
+              "defined": {
+                "name": "DrawState"
+              }
+            }
+          },
+          {
+            "name": "identity",
+            "type": {
+              "defined": {
+                "name": "IdentityRules"
+              }
+            }
+          },
+          {
+            "name": "alloc",
+            "type": {
+              "defined": {
+                "name": "AllocationRules"
+              }
+            }
+          },
+          {
+            "name": "neutrality",
+            "type": {
+              "defined": {
+                "name": "NeutralityRules"
+              }
+            }
+          },
+          {
+            "name": "neutral_state",
+            "type": {
+              "defined": {
+                "name": "NeutralityState"
+              }
+            }
+          },
+          {
+            "name": "clearing",
+            "type": {
+              "defined": {
+                "name": "ClearingExt"
+              }
+            }
+          },
+          {
+            "name": "referral",
+            "docs": [
+              "Referral: a share of the protocol fee paid to whoever brought the cross (ADR-0460)."
+            ],
+            "type": {
+              "defined": {
+                "name": "ReferralRules"
+              }
+            }
+          },
+          {
+            "name": "oracle_set",
+            "docs": [
+              "More oracles than one (ADR-0459)."
+            ],
+            "type": {
+              "defined": {
+                "name": "OracleSet"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrossExtSnapshot",
+      "docs": [
+        "The cross's extension as stored, emitted by `log_ext` so that indexers and clients that do not",
+        "decode the tail themselves can read it from a transaction."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "ext",
+            "type": {
+              "defined": {
+                "name": "CrossExt"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CrossFinalized",
       "type": {
         "kind": "struct",
@@ -2521,6 +5189,490 @@
       }
     },
     {
+      "name": "DrawFinished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "purpose",
+            "type": "u8"
+          },
+          {
+            "name": "epoch",
+            "type": "u8"
+          },
+          {
+            "name": "begun_slot",
+            "type": "u64"
+          },
+          {
+            "name": "sampled_slots",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "end_bucket",
+            "type": "u8"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DrawStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "purpose",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DrawState",
+      "docs": [
+        "Draw bookkeeping (ADR-0452): which randomness is pending or settled, and what it decided."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "docs": [
+              "0 for the call as created, 1 once the extension has opened a second window."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "pending_slot",
+            "docs": [
+              "Slot at which an unfinished draw began; 0 = none."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_purpose",
+            "docs": [
+              "1 = the draw that closes an epoch, 2 = the draw that sets the extension length."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "seed_epoch",
+            "type": "u8"
+          },
+          {
+            "name": "seed_ready",
+            "type": "bool"
+          },
+          {
+            "name": "end_bucket",
+            "docs": [
+              "Last counted ending bucket; `NO_BUCKET` until drawn (all buckets count)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ext_pending",
+            "docs": [
+              "A clear failed its guards and the extension is waiting for its draw."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "extension_used",
+            "type": "bool"
+          },
+          {
+            "name": "aux_merged",
+            "docs": [
+              "Merged auxiliary shards: bit `i` = ending bucket `i`, bit `8 + j` = extension shard `j`."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EndingRules",
+      "docs": [
+        "The hard-to-game ending (ADR-0452). Zero switches a part off."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ending_secs",
+            "docs": [
+              "Length of the ending period that closes the call. Orders placed in it are bucketed."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "buckets",
+            "docs": [
+              "Equal sub-windows of the ending period, `1..=MAX_BUCKETS` when `ending_secs > 0`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "cancel_cutoff_secs",
+            "docs": [
+              "No cancellation from this many seconds before the ending period starts."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "random_end",
+            "docs": [
+              "The last counted bucket is drawn after the call: orders in later buckets are refunded."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "extension_min_secs",
+            "docs": [
+              "A failed clear may extend the call once by a random length in this range."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "extension_max_secs",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtensionPending",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": {
+              "defined": {
+                "name": "NoPrintReason"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GuardRules",
+      "docs": [
+        "Rules that decide whether a cleared cross prints (ADR-0451). Zero switches a rule off."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "min_raise_quote",
+            "docs": [
+              "Minimum raise in quote atoms."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_matched",
+            "docs": [
+              "Hard cap on the base the sell side delivers (mint modes without sells)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_supply",
+            "docs": [
+              "Declared fully diluted supply in base atoms; read from the base mint when zero and the",
+              "mint is known at the clear."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "min_float_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_fdv_x100",
+            "type": "u32"
+          },
+          {
+            "name": "anchor_price",
+            "docs": [
+              "Anchor for the price-move guard; resolved at `set_rules` from the explicit anchor, the",
+              "reference price or the grid estimate, in that order."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "move_bps",
+            "type": "u16"
+          },
+          {
+            "name": "grid_estimate",
+            "docs": [
+              "The issuer's estimate that the standard grid is built around."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "halt_source",
+            "docs": [
+              "Halt state of the base mint; a halted or corporate-action mint does not print."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "multiplier_bits",
+            "docs": [
+              "The multiplier of the base mint's scaled-UI-amount extension when the rules were set (`FLAG_GUARD_SCALED_UI`):",
+              "the bits of the `f64`, compared for equality and never used in arithmetic."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HaltChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "reason",
+            "type": {
+              "defined": {
+                "name": "HaltReason"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "HaltReason",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "IssuerPause"
+          },
+          {
+            "name": "VenueHalt"
+          },
+          {
+            "name": "CircuitBreaker"
+          },
+          {
+            "name": "CorporateAction"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HaltState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "The issuer's authority: may halt and flag corporate actions."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_signer",
+            "docs": [
+              "A venue (an exchange or a market operator) that may signal a halt."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "reason",
+            "type": {
+              "defined": {
+                "name": "HaltReason"
+              }
+            }
+          },
+          {
+            "name": "corporate_action",
+            "type": "bool"
+          },
+          {
+            "name": "since_ts",
+            "type": "i64"
+          },
+          {
+            "name": "since_slot",
+            "type": "u64"
+          },
+          {
+            "name": "issuer_unpaused",
+            "docs": [
+              "The issuer lifted its pause on the mint; the halt stays until a resume cross prints."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "breaker",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "Breaker"
+                }
+              }
+            }
+          },
+          {
+            "name": "last_resume_cross",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "last_resume_price",
+            "type": "u64"
+          },
+          {
+            "name": "last_resume_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IdentityRules",
+      "docs": [
+        "Per-identity limits (ADR-0453). They need a gated cross: an identity is the wallet that holds",
+        "the cross's gate pass, and a cap without an identity is theatre."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cap_quote",
+            "docs": [
+              "Most quote an identity may have escrowed in buy orders at once (0 = no cap)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_orders",
+            "docs": [
+              "Most live orders an identity may have (0 = no limit; 1 = one application per identity)."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InsiderChallenged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u32"
+          },
+          {
+            "name": "challenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "subject",
+            "type": "pubkey"
+          },
+          {
+            "name": "evidence",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "Levels",
       "docs": [
         "Per-tick aggregates. Used both for shards (written by orders) and the merged book."
@@ -2589,6 +5741,220 @@
       }
     },
     {
+      "name": "LockCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "cliff_secs",
+            "type": "u32"
+          },
+          {
+            "name": "vest_secs",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lockup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "released",
+            "type": "u64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "cliff_secs",
+            "type": "u32"
+          },
+          {
+            "name": "vest_secs",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NeutralityInput",
+      "docs": [
+        "Declared insiders as `set_rules` takes them: only the ones named, where the stored form is padded to",
+        "`MAX_INSIDERS`. A transaction holding `create_cross` and `set_rules` together must fit in 1,232 bytes, and the",
+        "padding alone is 256 of them."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insiders",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "insider_cliff_secs",
+            "type": "u32"
+          },
+          {
+            "name": "insider_vest_secs",
+            "type": "u32"
+          },
+          {
+            "name": "bond_quote",
+            "type": "u64"
+          },
+          {
+            "name": "challenge_secs",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NeutralityRules",
+      "docs": [
+        "Issuer neutrality (ADR-0454): declared insiders and the bond behind the declaration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insiders",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "insider_count",
+            "type": "u8"
+          },
+          {
+            "name": "insider_cliff_secs",
+            "docs": [
+              "Insider fills unlock after this cliff and vest over `insider_vest_secs`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "insider_vest_secs",
+            "type": "u32"
+          },
+          {
+            "name": "bond_quote",
+            "docs": [
+              "Quote the creator posts behind the declaration; slashed on an upheld challenge."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "challenge_secs",
+            "docs": [
+              "How long after the clear a challenge may be raised."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NeutralityState",
+      "docs": [
+        "Bond bookkeeping."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bond_held",
+            "type": "u64"
+          },
+          {
+            "name": "slashed",
+            "type": "u64"
+          },
+          {
+            "name": "open_challenges",
+            "type": "u16"
+          },
+          {
+            "name": "challenges",
+            "docs": [
+              "Challenges filed so far; the next one's id."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "NoPrintReason",
       "type": {
         "kind": "enum",
@@ -2610,6 +5976,30 @@
           },
           {
             "name": "OracleUnavailable"
+          },
+          {
+            "name": "BelowMinimumRaise"
+          },
+          {
+            "name": "FloatTooLow"
+          },
+          {
+            "name": "FdvTooHigh"
+          },
+          {
+            "name": "PriceMoved"
+          },
+          {
+            "name": "Halted"
+          },
+          {
+            "name": "CorporateAction"
+          },
+          {
+            "name": "IssuerPaused"
+          },
+          {
+            "name": "OracleDisagreement"
           }
         ]
       }
@@ -2621,7 +6011,7 @@
         "`max_divergence_bps`, or if no fully verified price newer than `max_staleness_secs` exists.",
         "",
         "The guard pins the Pyth **feed id**, not an account: Pyth's sponsored push accounts for US",
-        "equities were 24–40 days stale on mainnet (DP15), so the clearing keeper posts a fresh update",
+        "equities were 24\u201340 days stale on mainnet (DP15), so the clearing keeper posts a fresh update",
         "through the Pyth receiver (pull model) and passes that account. The receiver verifies the",
         "Wormhole signatures; the guard accepts only fully verified updates for the pinned feed."
       ],
@@ -2643,6 +6033,92 @@
           },
           {
             "name": "max_staleness_secs",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleSet",
+      "docs": [
+        "Several oracles for one reopen (PRODUCT_FEATURES C1, VM9, C3): the cross's own `OracleGuard` names the first",
+        "Pyth feed; these name up to two more. The reference price is the median of the fresh, fully verified prices, the",
+        "guard needs a quorum of them, and outside the calendar's sessions the divergence bound is wider."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "extra_feeds",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                2
+              ]
+            }
+          },
+          {
+            "name": "extra_count",
+            "type": "u8"
+          },
+          {
+            "name": "quorum",
+            "docs": [
+              "How many of the `1 + extra_count` prices must be usable (1 when there are no extra feeds)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_spread_bps",
+            "docs": [
+              "The most the usable prices may differ from one another, in basis points of the lowest (0 = no limit)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "off_hours_widen_bps",
+            "docs": [
+              "Added to the divergence bound while no session of the cross's calendar is open (0 = no widening)."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleSetInput",
+      "docs": [
+        "The extra oracle feeds as `set_rules` takes them: only the ones named (see [`NeutralityInput`])."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "extra_feeds",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "quorum",
+            "type": "u8"
+          },
+          {
+            "name": "max_spread_bps",
+            "type": "u32"
+          },
+          {
+            "name": "off_hours_widen_bps",
             "type": "u32"
           }
         ]
@@ -2688,7 +6164,7 @@
           {
             "name": "commitment",
             "docs": [
-              "Sealed crosses: `sha256(cross ‖ owner ‖ nonce ‖ side ‖ price ‖ quantity ‖ salt)`."
+              "Sealed crosses: `sha256(cross \u2016 owner \u2016 nonce \u2016 side \u2016 price \u2016 quantity \u2016 salt)`."
             ],
             "type": {
               "array": [
@@ -2824,6 +6300,89 @@
       }
     },
     {
+      "name": "OrderExt",
+      "docs": [
+        "Per-order extension: where in the call an order was placed and what it asked for."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "epoch",
+            "type": "u8"
+          },
+          {
+            "name": "bucket",
+            "type": "u8"
+          },
+          {
+            "name": "class",
+            "docs": [
+              "Allocation class: 0 general, 1 identity-verified small, 2 locked, 3 priority."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "lock_cliff",
+            "docs": [
+              "Lock applied to the fill: unlocks after `lock_cliff` seconds and vests over `lock_vest`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "lock_vest",
+            "type": "u32"
+          },
+          {
+            "name": "placed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "ticket",
+            "docs": [
+              "Class-1 lottery ticket: the order's number among the class-1 orders at its tick."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderPlacement",
+      "docs": [
+        "An order's placement and what it asked for, emitted when the cross keeps an order extension."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "ext",
+            "type": {
+              "defined": {
+                "name": "OrderExt"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "OrderRevealed",
       "type": {
         "kind": "struct",
@@ -2896,6 +6455,108 @@
       }
     },
     {
+      "name": "PrintFed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "matched",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrintFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "May change the publishers and the minimum."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "publishers",
+            "type": {
+              "array": [
+                "pubkey",
+                4
+              ]
+            }
+          },
+          {
+            "name": "publisher_count",
+            "type": "u8"
+          },
+          {
+            "name": "min_matched",
+            "docs": [
+              "A print matching less than this many base atoms never updates the feed."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Last accepted print: quote atoms per `price_scale` base atoms."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "price_scale",
+            "type": "u64"
+          },
+          {
+            "name": "matched",
+            "type": "u64"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "prints",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "Protocol",
       "type": {
         "kind": "struct",
@@ -2943,6 +6604,450 @@
             "type": {
               "option": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferralRules",
+      "docs": [
+        "A referral: the share of the protocol fee that goes to the referrer (PRODUCT_FEATURES W4, W6).",
+        "It comes out of the protocol's fee only; the integrator's fee and every bidder's price are untouched."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "docs": [
+              "Basis points of the protocol fee, at most `MAX_REFERRAL_BPS`."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RulesInput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "flags",
+            "type": "u16"
+          },
+          {
+            "name": "guards",
+            "type": {
+              "defined": {
+                "name": "GuardRules"
+              }
+            }
+          },
+          {
+            "name": "ending",
+            "type": {
+              "defined": {
+                "name": "EndingRules"
+              }
+            }
+          },
+          {
+            "name": "identity",
+            "type": {
+              "defined": {
+                "name": "IdentityRules"
+              }
+            }
+          },
+          {
+            "name": "alloc",
+            "type": {
+              "defined": {
+                "name": "AllocationRules"
+              }
+            }
+          },
+          {
+            "name": "neutrality",
+            "type": {
+              "defined": {
+                "name": "NeutralityRules"
+              }
+            }
+          },
+          {
+            "name": "referral",
+            "type": {
+              "defined": {
+                "name": "ReferralRules"
+              }
+            }
+          },
+          {
+            "name": "oracle_set",
+            "type": {
+              "defined": {
+                "name": "OracleSet"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RulesSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "flags",
+            "type": "u16"
+          },
+          {
+            "name": "guards",
+            "type": {
+              "defined": {
+                "name": "GuardRules"
+              }
+            }
+          },
+          {
+            "name": "ending",
+            "type": {
+              "defined": {
+                "name": "EndingRules"
+              }
+            }
+          },
+          {
+            "name": "identity",
+            "type": {
+              "defined": {
+                "name": "IdentityRules"
+              }
+            }
+          },
+          {
+            "name": "alloc",
+            "type": {
+              "defined": {
+                "name": "AllocationRules"
+              }
+            }
+          },
+          {
+            "name": "insiders",
+            "type": "u8"
+          },
+          {
+            "name": "bond_quote",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Series",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "May pause the series, change nothing else, and withdraw its funds."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "series_id",
+            "type": "u64"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": {
+                "name": "SeriesConfig"
+              }
+            }
+          },
+          {
+            "name": "next_index",
+            "docs": [
+              "Crosses spawned so far; the next cross's id."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_cross",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "last_close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_price",
+            "docs": [
+              "Price of the last cross that printed (0 until one has)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CrossKind"
+              }
+            }
+          },
+          {
+            "name": "disclosure",
+            "type": {
+              "defined": {
+                "name": "Disclosure"
+              }
+            }
+          },
+          {
+            "name": "price_scale",
+            "type": "u64"
+          },
+          {
+            "name": "grid",
+            "type": {
+              "defined": {
+                "name": "SeriesGrid"
+              }
+            }
+          },
+          {
+            "name": "start_ts",
+            "docs": [
+              "Interval mode: the close of the first cross."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "interval_secs",
+            "docs": [
+              "Interval mode: seconds between closes. 0 means the calendar sets the closes."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "calendar",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "call_secs",
+            "docs": [
+              "Length of the call window before each close."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "reveal_secs",
+            "docs": [
+              "Sealed crosses: length of the reveal window after each close."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "min_matched",
+            "type": "u64"
+          },
+          {
+            "name": "max_imbalance_bps",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "integrator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "integrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "gate_mint",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "shards",
+            "type": "u8"
+          },
+          {
+            "name": "max_orders",
+            "type": "u32"
+          },
+          {
+            "name": "proceeds_to",
+            "docs": [
+              "Where each cross pays out; the default (all zeros) is the series itself, which also returns",
+              "the dust bond to the series' funds."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "OracleGuard"
+                }
+              }
+            }
+          },
+          {
+            "name": "max_crosses",
+            "docs": [
+              "0 = no limit."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rules",
+            "docs": [
+              "Rules every spawned cross gets (no bond: the series cannot sign for one)."
+            ],
+            "type": {
+              "defined": {
+                "name": "RulesInput"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesGrid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "relative",
+            "docs": [
+              "A grid re-centred on the last print each time, instead of the fixed one."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "min_price",
+            "docs": [
+              "Fixed grid."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tick",
+            "type": "u64"
+          },
+          {
+            "name": "ticks",
+            "type": "u16"
+          },
+          {
+            "name": "tick_bps",
+            "docs": [
+              "Relative grid: tick size as basis points of the centre (`ticks` of them, centred)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "center",
+            "docs": [
+              "Relative grid: the centre of the first cross, before any print exists."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesSpawned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
           }
         ]
       }

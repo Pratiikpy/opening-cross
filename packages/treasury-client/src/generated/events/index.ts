@@ -6,8 +6,28 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './assignmentRecorded.js';
 export * from './attestationLapsed.js';
+export * from './disclosurePosted.js';
+export * from './disclosureRequested.js';
+export * from './distributionClaimed.js';
+export * from './distributionDeposited.js';
+export * from './grantCreated.js';
+export * from './grantExpired.js';
 export * from './liquidationStarted.js';
+export * from './milestoneReleased.js';
+export * from './navRedeemed.js';
+export * from './proposalCreated.js';
+export * from './proposalExecuted.js';
 export * from './redeemed.js';
+export * from './roundMissed.js';
+export * from './roundPaid.js';
 export * from './spent.js';
+export * from './staked.js';
+export * from './trancheReleased.js';
 export * from './treasuryCreated.js';
+export * from './treasuryExtended.js';
+export * from './unclaimedSwept.js';
+export * from './unstaked.js';
+export * from './voted.js';
+export * from './voteReclaimed.js';

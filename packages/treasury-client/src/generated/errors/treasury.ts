@@ -33,12 +33,90 @@ export const TREASURY_ERROR__NO_LAPSE = 0x1779; // 6009
 export const TREASURY_ERROR__GRACE_NOT_OVER = 0x177a; // 6010
 /** Overflow: Arithmetic overflow */
 export const TREASURY_ERROR__OVERFLOW = 0x177b; // 6011
+/** NotExtended: This treasury has no extension: call init_ext first */
+export const TREASURY_ERROR__NOT_EXTENDED = 0x177c; // 6012
+/** AlreadyExtended: This treasury is already extended */
+export const TREASURY_ERROR__ALREADY_EXTENDED = 0x177d; // 6013
+/** Disabled: This feature is not enabled for the treasury */
+export const TREASURY_ERROR__DISABLED = 0x177e; // 6014
+/** NavMode: NAV mode is on: team spending is frozen while holders can redeem */
+export const TREASURY_ERROR__NAV_MODE = 0x177f; // 6015
+/** AssignmentRequired: The IP and asset assignment has not been recorded */
+export const TREASURY_ERROR__ASSIGNMENT_REQUIRED = 0x1780; // 6016
+/** AlreadyAssigned: The assignment is already recorded */
+export const TREASURY_ERROR__ALREADY_ASSIGNED = 0x1781; // 6017
+/** DisclosureOverdue: A holder's disclosure request is overdue */
+export const TREASURY_ERROR__DISCLOSURE_OVERDUE = 0x1782; // 6018
+/** NotHolder: Only a holder of enough coins may do this */
+export const TREASURY_ERROR__NOT_HOLDER = 0x1783; // 6019
+/** WrongProposalId: The id must be the next one */
+export const TREASURY_ERROR__WRONG_PROPOSAL_ID = 0x1784; // 6020
+/** WrongProposal: That account does not belong to this proposal or treasury */
+export const TREASURY_ERROR__WRONG_PROPOSAL = 0x1785; // 6021
+/** VotingClosed: Voting on this proposal is closed */
+export const TREASURY_ERROR__VOTING_CLOSED = 0x1786; // 6022
+/** VotingOpen: Voting on this proposal is still open */
+export const TREASURY_ERROR__VOTING_OPEN = 0x1787; // 6023
+/** TimelockPending: The timelock after the vote has not ended */
+export const TREASURY_ERROR__TIMELOCK_PENDING = 0x1788; // 6024
+/** ProposalExpired: The proposal expired before it was executed */
+export const TREASURY_ERROR__PROPOSAL_EXPIRED = 0x1789; // 6025
+/** ProposalFailed: The proposal did not reach quorum and a majority */
+export const TREASURY_ERROR__PROPOSAL_FAILED = 0x178a; // 6026
+/** AlreadyExecuted: The proposal was already executed */
+export const TREASURY_ERROR__ALREADY_EXECUTED = 0x178b; // 6027
+/** OverProposalCap: The spend exceeds the share of the vault one proposal may move */
+export const TREASURY_ERROR__OVER_PROPOSAL_CAP = 0x178c; // 6028
+/** WrongDestination: The destination is not the one the proposal names */
+export const TREASURY_ERROR__WRONG_DESTINATION = 0x178d; // 6029
+/** NavClosed: The NAV window is not open */
+export const TREASURY_ERROR__NAV_CLOSED = 0x178e; // 6030
+/** NavLimit: This period's NAV redemption limit is used up */
+export const TREASURY_ERROR__NAV_LIMIT = 0x178f; // 6031
+/** InsiderExcluded: Insiders cannot redeem at NAV */
+export const TREASURY_ERROR__INSIDER_EXCLUDED = 0x1790; // 6032
+/** ZeroPayout: The redemption would pay nothing */
+export const TREASURY_ERROR__ZERO_PAYOUT = 0x1791; // 6033
+/** NothingToClaim: There is nothing to claim */
+export const TREASURY_ERROR__NOTHING_TO_CLAIM = 0x1792; // 6034
+/** RoundOpen: The round has not ended yet */
+export const TREASURY_ERROR__ROUND_OPEN = 0x1793; // 6035
+/** RoundClosed: The payment window for this round has closed */
+export const TREASURY_ERROR__ROUND_CLOSED = 0x1794; // 6036
+/** RoundNotLate: The payment window for this round has not closed */
+export const TREASURY_ERROR__ROUND_NOT_LATE = 0x1795; // 6037
+/** BadRevenueData: The attestation's data is not a revenue figure */
+export const TREASURY_ERROR__BAD_REVENUE_DATA = 0x1796; // 6038
+/** TrancheNotEligible: This round is not eligible for a tranche */
+export const TREASURY_ERROR__TRANCHE_NOT_ELIGIBLE = 0x1797; // 6039
+/** GrantInvalid: The grant terms are invalid */
+export const TREASURY_ERROR__GRANT_INVALID = 0x1798; // 6040
+/** LockupTooShort: The grant lockup is shorter than the treasury's minimum */
+export const TREASURY_ERROR__LOCKUP_TOO_SHORT = 0x1799; // 6041
+/** MilestoneNotReady: The lockup has not ended */
+export const TREASURY_ERROR__MILESTONE_NOT_READY = 0x179a; // 6042
+/** AlreadyReleased: The milestone was already released */
+export const TREASURY_ERROR__ALREADY_RELEASED = 0x179b; // 6043
+/** GrantExpired: The grant has expired or was burned */
+export const TREASURY_ERROR__GRANT_EXPIRED = 0x179c; // 6044
+/** GrantNotExpired: The grant has not expired */
+export const TREASURY_ERROR__GRANT_NOT_EXPIRED = 0x179d; // 6045
+/** WrongBeneficiary: The coin account is not the grant's beneficiary */
+export const TREASURY_ERROR__WRONG_BENEFICIARY = 0x179e; // 6046
+/** WindowOpen: The withdraw-only window is still open */
+export const TREASURY_ERROR__WINDOW_OPEN = 0x179f; // 6047
+/** AlreadySwept: The leftover was already swept */
+export const TREASURY_ERROR__ALREADY_SWEPT = 0x17a0; // 6048
+/** WrongRecovery: The recovery account does not match */
+export const TREASURY_ERROR__WRONG_RECOVERY = 0x17a1; // 6049
+/** WoundDown: The treasury was wound down and swept */
+export const TREASURY_ERROR__WOUND_DOWN = 0x17a2; // 6050
 
-export type TreasuryError = typeof TREASURY_ERROR__GRACE_NOT_OVER | typeof TREASURY_ERROR__INVALID_PARAMS | typeof TREASURY_ERROR__LIQUIDATING | typeof TREASURY_ERROR__NO_LAPSE | typeof TREASURY_ERROR__NOT_ATTESTED | typeof TREASURY_ERROR__NOT_LIQUIDATING | typeof TREASURY_ERROR__OVER_ALLOWANCE | typeof TREASURY_ERROR__OVERFLOW | typeof TREASURY_ERROR__STILL_ATTESTED | typeof TREASURY_ERROR__SUPPLY_NOT_FIXED | typeof TREASURY_ERROR__UNAUTHORIZED | typeof TREASURY_ERROR__WRONG_ATTESTATION_ACCOUNT;
+export type TreasuryError = typeof TREASURY_ERROR__ALREADY_ASSIGNED | typeof TREASURY_ERROR__ALREADY_EXECUTED | typeof TREASURY_ERROR__ALREADY_EXTENDED | typeof TREASURY_ERROR__ALREADY_RELEASED | typeof TREASURY_ERROR__ALREADY_SWEPT | typeof TREASURY_ERROR__ASSIGNMENT_REQUIRED | typeof TREASURY_ERROR__BAD_REVENUE_DATA | typeof TREASURY_ERROR__DISABLED | typeof TREASURY_ERROR__DISCLOSURE_OVERDUE | typeof TREASURY_ERROR__GRACE_NOT_OVER | typeof TREASURY_ERROR__GRANT_EXPIRED | typeof TREASURY_ERROR__GRANT_INVALID | typeof TREASURY_ERROR__GRANT_NOT_EXPIRED | typeof TREASURY_ERROR__INSIDER_EXCLUDED | typeof TREASURY_ERROR__INVALID_PARAMS | typeof TREASURY_ERROR__LIQUIDATING | typeof TREASURY_ERROR__LOCKUP_TOO_SHORT | typeof TREASURY_ERROR__MILESTONE_NOT_READY | typeof TREASURY_ERROR__NAV_CLOSED | typeof TREASURY_ERROR__NAV_LIMIT | typeof TREASURY_ERROR__NAV_MODE | typeof TREASURY_ERROR__NO_LAPSE | typeof TREASURY_ERROR__NOT_ATTESTED | typeof TREASURY_ERROR__NOT_EXTENDED | typeof TREASURY_ERROR__NOTHING_TO_CLAIM | typeof TREASURY_ERROR__NOT_HOLDER | typeof TREASURY_ERROR__NOT_LIQUIDATING | typeof TREASURY_ERROR__OVER_ALLOWANCE | typeof TREASURY_ERROR__OVERFLOW | typeof TREASURY_ERROR__OVER_PROPOSAL_CAP | typeof TREASURY_ERROR__PROPOSAL_EXPIRED | typeof TREASURY_ERROR__PROPOSAL_FAILED | typeof TREASURY_ERROR__ROUND_CLOSED | typeof TREASURY_ERROR__ROUND_NOT_LATE | typeof TREASURY_ERROR__ROUND_OPEN | typeof TREASURY_ERROR__STILL_ATTESTED | typeof TREASURY_ERROR__SUPPLY_NOT_FIXED | typeof TREASURY_ERROR__TIMELOCK_PENDING | typeof TREASURY_ERROR__TRANCHE_NOT_ELIGIBLE | typeof TREASURY_ERROR__UNAUTHORIZED | typeof TREASURY_ERROR__VOTING_CLOSED | typeof TREASURY_ERROR__VOTING_OPEN | typeof TREASURY_ERROR__WINDOW_OPEN | typeof TREASURY_ERROR__WOUND_DOWN | typeof TREASURY_ERROR__WRONG_ATTESTATION_ACCOUNT | typeof TREASURY_ERROR__WRONG_BENEFICIARY | typeof TREASURY_ERROR__WRONG_DESTINATION | typeof TREASURY_ERROR__WRONG_PROPOSAL | typeof TREASURY_ERROR__WRONG_PROPOSAL_ID | typeof TREASURY_ERROR__WRONG_RECOVERY | typeof TREASURY_ERROR__ZERO_PAYOUT;
 
 let treasuryErrorMessages: Record<TreasuryError, string> | undefined;
 if (process.env['NODE_ENV'] !== 'production') {
-  treasuryErrorMessages = { [TREASURY_ERROR__GRACE_NOT_OVER]: `The grace period after the lapse has not ended`, [TREASURY_ERROR__INVALID_PARAMS]: `Invalid parameters`, [TREASURY_ERROR__LIQUIDATING]: `The treasury is in liquidation`, [TREASURY_ERROR__NO_LAPSE]: `No lapse has been recorded`, [TREASURY_ERROR__NOT_ATTESTED]: `No live attestation for this treasury`, [TREASURY_ERROR__NOT_LIQUIDATING]: `The treasury is not in liquidation`, [TREASURY_ERROR__OVER_ALLOWANCE]: `Spend exceeds this period's allowance`, [TREASURY_ERROR__OVERFLOW]: `Arithmetic overflow`, [TREASURY_ERROR__STILL_ATTESTED]: `The attestation is still live`, [TREASURY_ERROR__SUPPLY_NOT_FIXED]: `The coin's supply must be fixed: its mint authority must be revoked`, [TREASURY_ERROR__UNAUTHORIZED]: `Only the treasury authority may spend`, [TREASURY_ERROR__WRONG_ATTESTATION_ACCOUNT]: `That is not this treasury's attestation account` };
+  treasuryErrorMessages = { [TREASURY_ERROR__ALREADY_ASSIGNED]: `The assignment is already recorded`, [TREASURY_ERROR__ALREADY_EXECUTED]: `The proposal was already executed`, [TREASURY_ERROR__ALREADY_EXTENDED]: `This treasury is already extended`, [TREASURY_ERROR__ALREADY_RELEASED]: `The milestone was already released`, [TREASURY_ERROR__ALREADY_SWEPT]: `The leftover was already swept`, [TREASURY_ERROR__ASSIGNMENT_REQUIRED]: `The IP and asset assignment has not been recorded`, [TREASURY_ERROR__BAD_REVENUE_DATA]: `The attestation's data is not a revenue figure`, [TREASURY_ERROR__DISABLED]: `This feature is not enabled for the treasury`, [TREASURY_ERROR__DISCLOSURE_OVERDUE]: `A holder's disclosure request is overdue`, [TREASURY_ERROR__GRACE_NOT_OVER]: `The grace period after the lapse has not ended`, [TREASURY_ERROR__GRANT_EXPIRED]: `The grant has expired or was burned`, [TREASURY_ERROR__GRANT_INVALID]: `The grant terms are invalid`, [TREASURY_ERROR__GRANT_NOT_EXPIRED]: `The grant has not expired`, [TREASURY_ERROR__INSIDER_EXCLUDED]: `Insiders cannot redeem at NAV`, [TREASURY_ERROR__INVALID_PARAMS]: `Invalid parameters`, [TREASURY_ERROR__LIQUIDATING]: `The treasury is in liquidation`, [TREASURY_ERROR__LOCKUP_TOO_SHORT]: `The grant lockup is shorter than the treasury's minimum`, [TREASURY_ERROR__MILESTONE_NOT_READY]: `The lockup has not ended`, [TREASURY_ERROR__NAV_CLOSED]: `The NAV window is not open`, [TREASURY_ERROR__NAV_LIMIT]: `This period's NAV redemption limit is used up`, [TREASURY_ERROR__NAV_MODE]: `NAV mode is on: team spending is frozen while holders can redeem`, [TREASURY_ERROR__NO_LAPSE]: `No lapse has been recorded`, [TREASURY_ERROR__NOT_ATTESTED]: `No live attestation for this treasury`, [TREASURY_ERROR__NOT_EXTENDED]: `This treasury has no extension: call init_ext first`, [TREASURY_ERROR__NOTHING_TO_CLAIM]: `There is nothing to claim`, [TREASURY_ERROR__NOT_HOLDER]: `Only a holder of enough coins may do this`, [TREASURY_ERROR__NOT_LIQUIDATING]: `The treasury is not in liquidation`, [TREASURY_ERROR__OVER_ALLOWANCE]: `Spend exceeds this period's allowance`, [TREASURY_ERROR__OVERFLOW]: `Arithmetic overflow`, [TREASURY_ERROR__OVER_PROPOSAL_CAP]: `The spend exceeds the share of the vault one proposal may move`, [TREASURY_ERROR__PROPOSAL_EXPIRED]: `The proposal expired before it was executed`, [TREASURY_ERROR__PROPOSAL_FAILED]: `The proposal did not reach quorum and a majority`, [TREASURY_ERROR__ROUND_CLOSED]: `The payment window for this round has closed`, [TREASURY_ERROR__ROUND_NOT_LATE]: `The payment window for this round has not closed`, [TREASURY_ERROR__ROUND_OPEN]: `The round has not ended yet`, [TREASURY_ERROR__STILL_ATTESTED]: `The attestation is still live`, [TREASURY_ERROR__SUPPLY_NOT_FIXED]: `The coin's supply must be fixed: its mint authority must be revoked`, [TREASURY_ERROR__TIMELOCK_PENDING]: `The timelock after the vote has not ended`, [TREASURY_ERROR__TRANCHE_NOT_ELIGIBLE]: `This round is not eligible for a tranche`, [TREASURY_ERROR__UNAUTHORIZED]: `Only the treasury authority may spend`, [TREASURY_ERROR__VOTING_CLOSED]: `Voting on this proposal is closed`, [TREASURY_ERROR__VOTING_OPEN]: `Voting on this proposal is still open`, [TREASURY_ERROR__WINDOW_OPEN]: `The withdraw-only window is still open`, [TREASURY_ERROR__WOUND_DOWN]: `The treasury was wound down and swept`, [TREASURY_ERROR__WRONG_ATTESTATION_ACCOUNT]: `That is not this treasury's attestation account`, [TREASURY_ERROR__WRONG_BENEFICIARY]: `The coin account is not the grant's beneficiary`, [TREASURY_ERROR__WRONG_DESTINATION]: `The destination is not the one the proposal names`, [TREASURY_ERROR__WRONG_PROPOSAL]: `That account does not belong to this proposal or treasury`, [TREASURY_ERROR__WRONG_PROPOSAL_ID]: `The id must be the next one`, [TREASURY_ERROR__WRONG_RECOVERY]: `The recovery account does not match`, [TREASURY_ERROR__ZERO_PAYOUT]: `The redemption would pay nothing` };
 }
 
 export function getTreasuryErrorMessage(code: TreasuryError): string {

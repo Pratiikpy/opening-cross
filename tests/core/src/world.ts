@@ -73,7 +73,7 @@ export class World {
   creator!: KeyPairSigner;
   quoteMint!: Address;
   baseMint!: Address;
-  private nextId = 1n;
+  protected nextId = 1n;
 
   static async create(): Promise<World> {
     const w = new World();

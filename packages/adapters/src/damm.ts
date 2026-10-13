@@ -18,6 +18,7 @@ import {
   getLiquidityDeltaFromAmountB,
 } from '@meteora-ag/cp-amm-sdk';
 import { CROSS_SETTLE_PROGRAM_ADDRESS, getSeedDammV2Instruction } from '@opening-cross/cross-settle-client';
+import { i64le, rewrapInstruction } from './rewrap.js';
 import { type CrossView, ata } from '@opening-cross/sdk';
 import { TOKEN_2022, sqrtPriceQ64 } from './index.js';
 
@@ -58,6 +59,13 @@ export type SeedDammInput = {
   collectFeeMode?: number;
   /** Share of each trading fee that compounds back into the pool, in bps; only meaningful with `DammCollectFeeMode.Compounding`. */
   compoundingFeeBps?: number;
+  /**
+   * Open the pool closed for a batch window (ADR-0483): it cannot trade before `activationPoint`, its fee falls from `feeBps` to
+   * `endingFeeBps` over `periods` steps of `periodSecs`, and it compounds `compoundingFeeBps` (default 5,000) of every fee back in.
+   */
+  batch?: { windowSecs: number; activationPoint: bigint; endingFeeBps: number; periods: number; periodSecs: number };
+  /** Bind the pool to an Alpha Vault (ADR-0484): before the start only the vault created for this pool can buy. Needs a `batch` start. */
+  alphaVault?: boolean;
 };
 
 /** Full-range DAMM v2 pool at P* (constant-product behaviour). */
@@ -66,15 +74,20 @@ export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instructi
   if (c.clearing.__option !== 'Some') throw new Error('cross has not cleared');
   if (!c.baseBound) throw new Error('cross has no base mint yet');
   const sqrtPrice = sqrtPriceQ64(c.clearing.value.price, c.priceScale);
-  const mode = input.collectFeeMode ?? DammCollectFeeMode.OnlyB;
+  const mode = input.batch ? DammCollectFeeMode.Compounding : (input.collectFeeMode ?? DammCollectFeeMode.OnlyB);
   const sp = new BN(sqrtPrice.toString());
   const la = getLiquidityDeltaFromAmountA(new BN(input.baseAmount.toString()), sp, MAX_SQRT_PRICE, mode);
   const lb = getLiquidityDeltaFromAmountB(new BN(input.quoteAmount.toString()), MIN_SQRT_PRICE, sp, mode);
   const liquidity = BigInt((la.lt(lb) ? la : lb).toString());
   if (liquidity === 0n) throw new Error('amounts too small for any liquidity');
-  const baseFee = getBaseFeeParams({ baseFeeMode: BaseFeeMode.FeeTimeSchedulerLinear, feeTimeSchedulerParam: { startingFeeBps: input.feeBps, endingFeeBps: input.feeBps, numberOfPeriod: 0, totalDuration: 0 } });
+  const b = input.batch;
+  if (b && !(input.feeBps > b.endingFeeBps && b.periods > 0 && b.periodSecs > 0)) throw new Error('a batch-opened pool needs a fee that falls: feeBps above endingFeeBps, with at least one period of at least a second');
+  const baseFee = getBaseFeeParams({
+    baseFeeMode: BaseFeeMode.FeeTimeSchedulerLinear,
+    feeTimeSchedulerParam: b ? { startingFeeBps: input.feeBps, endingFeeBps: b.endingFeeBps, numberOfPeriod: b.periods, totalDuration: b.periods * b.periodSecs } : { startingFeeBps: input.feeBps, endingFeeBps: input.feeBps, numberOfPeriod: 0, totalDuration: 0 },
+  });
   const a = await dammAddresses(input.cross.address, c.baseMint, c.quoteMint);
-  const instruction = getSeedDammV2Instruction({
+  const original = getSeedDammV2Instruction({
     creator: input.creator,
     cross: input.cross.address,
     positionNftMint: a.positionNftMint,
@@ -92,16 +105,18 @@ export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instructi
     baseTokenProgram: c.baseTokenProgram,
     quoteTokenProgram: c.quoteTokenProgram,
     token2022Program: TOKEN_2022,
-    poolFees: { baseFee: { data: Uint8Array.from(baseFee.data as number[]) }, compoundingFeeBps: mode === DammCollectFeeMode.Compounding ? (input.compoundingFeeBps ?? 0) : 0, padding: 0, dynamicFee: null },
+    poolFees: { baseFee: { data: Uint8Array.from(baseFee.data as number[]) }, compoundingFeeBps: mode === DammCollectFeeMode.Compounding ? (input.compoundingFeeBps ?? (input.batch ? 5000 : 0)) : 0, padding: 0, dynamicFee: null },
     sqrtMinPrice: BigInt(MIN_SQRT_PRICE.toString()),
     sqrtMaxPrice: BigInt(MAX_SQRT_PRICE.toString()),
-    hasAlphaVault: false,
+    hasAlphaVault: input.alphaVault ?? false,
     liquidity,
     sqrtPrice,
     activationType: 1,
     collectFeeMode: mode,
-    activationPoint: null,
-  });
+    activationPoint: input.batch ? input.batch.activationPoint : null,
+  
+  } as Parameters<typeof getSeedDammV2Instruction>[0]);
+  const instruction = input.batch ? rewrapInstruction(original, 'seed_damm_v2_batched', i64le(input.batch.windowSecs)) : original;
   return { instruction, liquidity, sqrtPrice, addresses: a };
 }
 

@@ -24,7 +24,9 @@
     "dp:gate-live": "tsx src/gate-live-proof.ts",
     "dp:calendar": "tsx src/calendar-proof.ts",
     "dp:calendar-live": "tsx src/calendar-live-proof.ts",
-    "dp:treasury": "tsx src/treasury-proof.ts"
+    "dp:treasury": "tsx src/treasury-proof.ts",
+    "dp:treasury-ext": "tsx src/treasury-ext-proof.ts",
+    "dp:w2d-core": "tsx src/w2d-core-proof.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",

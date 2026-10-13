@@ -6,54 +6,119 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithRpc, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type GetAccountInfoApi, type GetMultipleAccountsApi, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
+import { assertIsInstructionWithAccounts, containsBytes, extendClient, fixEncoderSize, getBytesEncoder, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, SolanaError, type Address, type ClientWithPayer, type ClientWithRpc, type ClientWithTransactionPlanning, type ClientWithTransactionSending, type ExtendedClient, type GetAccountInfoApi, type GetMultipleAccountsApi, type Instruction, type InstructionWithData, type ReadonlyUint8Array } from '@solana/kit';
 import { addSelfFetchFunctions, addSelfPlanAndSendFunctions, type SelfFetchFunctions, type SelfPlanAndSendFunctions } from '@solana/program-client-core';
-import { getTreasuryCodec, type Treasury, type TreasuryArgs } from '../accounts/index.js';
-import { getCreateTreasuryInstructionAsync, getRecordAttestedInstruction, getRecordLapseInstruction, getRedeemInstructionAsync, getSpendInstructionAsync, getTriggerLiquidationInstructionAsync, parseCreateTreasuryInstruction, parseRecordAttestedInstruction, parseRecordLapseInstruction, parseRedeemInstruction, parseSpendInstruction, parseTriggerLiquidationInstruction, type CreateTreasuryAsyncInput, type ParsedCreateTreasuryInstruction, type ParsedRecordAttestedInstruction, type ParsedRecordLapseInstruction, type ParsedRedeemInstruction, type ParsedSpendInstruction, type ParsedTriggerLiquidationInstruction, type RecordAttestedInput, type RecordLapseInput, type RedeemAsyncInput, type SpendAsyncInput, type TriggerLiquidationAsyncInput } from '../instructions/index.js';
-import { findTreasuryPda, findVaultPda } from '../pdas/index.js';
+import { getGrantCodec, getPositionCodec, getProposalCodec, getRoundRecordCodec, getTreasuryCodec, getVoteRecordCodec, type Grant, type GrantArgs, type Position, type PositionArgs, type Proposal, type ProposalArgs, type RoundRecord, type RoundRecordArgs, type Treasury, type TreasuryArgs, type VoteRecord, type VoteRecordArgs } from '../accounts/index.js';
+import { getClaimDistributionInstructionAsync, getCreateGrantInstructionAsync, getCreateTreasuryInstructionAsync, getDepositDistributionInstructionAsync, getExecuteProposalInstructionAsync, getExpireGrantInstructionAsync, getInitExtInstructionAsync, getMarkMissedInstructionAsync, getNavRedeemInstructionAsync, getPayRoundInstructionAsync, getPostDisclosureInstruction, getProposeInstructionAsync, getReclaimVoteInstructionAsync, getRecordAssignmentInstruction, getRecordAttestedInstruction, getRecordLapseInstruction, getRedeemInstructionAsync, getReleaseMilestoneInstructionAsync, getReleaseTrancheInstructionAsync, getRequestDisclosureInstruction, getSpendInstructionAsync, getStakeInstructionAsync, getSweepUnclaimedInstructionAsync, getTriggerLiquidationInstructionAsync, getUnstakeInstructionAsync, getVoteInstructionAsync, parseClaimDistributionInstruction, parseCreateGrantInstruction, parseCreateTreasuryInstruction, parseDepositDistributionInstruction, parseExecuteProposalInstruction, parseExpireGrantInstruction, parseInitExtInstruction, parseMarkMissedInstruction, parseNavRedeemInstruction, parsePayRoundInstruction, parsePostDisclosureInstruction, parseProposeInstruction, parseReclaimVoteInstruction, parseRecordAssignmentInstruction, parseRecordAttestedInstruction, parseRecordLapseInstruction, parseRedeemInstruction, parseReleaseMilestoneInstruction, parseReleaseTrancheInstruction, parseRequestDisclosureInstruction, parseSpendInstruction, parseStakeInstruction, parseSweepUnclaimedInstruction, parseTriggerLiquidationInstruction, parseUnstakeInstruction, parseVoteInstruction, type ClaimDistributionAsyncInput, type CreateGrantAsyncInput, type CreateTreasuryAsyncInput, type DepositDistributionAsyncInput, type ExecuteProposalAsyncInput, type ExpireGrantAsyncInput, type InitExtAsyncInput, type MarkMissedAsyncInput, type NavRedeemAsyncInput, type ParsedClaimDistributionInstruction, type ParsedCreateGrantInstruction, type ParsedCreateTreasuryInstruction, type ParsedDepositDistributionInstruction, type ParsedExecuteProposalInstruction, type ParsedExpireGrantInstruction, type ParsedInitExtInstruction, type ParsedMarkMissedInstruction, type ParsedNavRedeemInstruction, type ParsedPayRoundInstruction, type ParsedPostDisclosureInstruction, type ParsedProposeInstruction, type ParsedReclaimVoteInstruction, type ParsedRecordAssignmentInstruction, type ParsedRecordAttestedInstruction, type ParsedRecordLapseInstruction, type ParsedRedeemInstruction, type ParsedReleaseMilestoneInstruction, type ParsedReleaseTrancheInstruction, type ParsedRequestDisclosureInstruction, type ParsedSpendInstruction, type ParsedStakeInstruction, type ParsedSweepUnclaimedInstruction, type ParsedTriggerLiquidationInstruction, type ParsedUnstakeInstruction, type ParsedVoteInstruction, type PayRoundAsyncInput, type PostDisclosureInput, type ProposeAsyncInput, type ReclaimVoteAsyncInput, type RecordAssignmentInput, type RecordAttestedInput, type RecordLapseInput, type RedeemAsyncInput, type ReleaseMilestoneAsyncInput, type ReleaseTrancheAsyncInput, type RequestDisclosureInput, type SpendAsyncInput, type StakeAsyncInput, type SweepUnclaimedAsyncInput, type TriggerLiquidationAsyncInput, type UnstakeAsyncInput, type VoteAsyncInput } from '../instructions/index.js';
+import { findCoinVaultPda, findDistVaultPda, findGrantPda, findPositionPda, findProposalPda, findRoundRecordPda, findTreasuryPda, findVaultPda, findVoteRecordPda } from '../pdas/index.js';
 
 export const TREASURY_PROGRAM_ADDRESS = 'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd' as Address<'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd'>;
 
-export enum TreasuryAccount { Treasury }
+export enum TreasuryAccount { Grant, Position, Proposal, RoundRecord, Treasury, VoteRecord }
 
 export function identifyTreasuryAccount(account: { data: ReadonlyUint8Array } | ReadonlyUint8Array): TreasuryAccount {
     const data = 'data' in account ? account.data : account;
-    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([238, 239, 123, 238, 89, 1, 168, 253])), 0)) { return TreasuryAccount.Treasury; }
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([161, 166, 11, 205, 204, 135, 205, 54])), 0)) { return TreasuryAccount.Grant; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([170, 188, 143, 228, 122, 64, 247, 208])), 0)) { return TreasuryAccount.Position; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([26, 94, 189, 187, 116, 136, 53, 33])), 0)) { return TreasuryAccount.Proposal; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([147, 5, 169, 78, 138, 208, 76, 193])), 0)) { return TreasuryAccount.RoundRecord; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([238, 239, 123, 238, 89, 1, 168, 253])), 0)) { return TreasuryAccount.Treasury; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([112, 9, 123, 165, 234, 9, 157, 167])), 0)) { return TreasuryAccount.VoteRecord; }
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, { accountData: data, programName: "treasury" });
 }
 
-export enum TreasuryEvent { AttestationLapsed, LiquidationStarted, Redeemed, Spent, TreasuryCreated }
+export enum TreasuryEvent { AssignmentRecorded, AttestationLapsed, DisclosurePosted, DisclosureRequested, DistributionClaimed, DistributionDeposited, GrantCreated, GrantExpired, LiquidationStarted, MilestoneReleased, NavRedeemed, ProposalCreated, ProposalExecuted, Redeemed, RoundMissed, RoundPaid, Spent, Staked, TrancheReleased, TreasuryCreated, TreasuryExtended, UnclaimedSwept, Unstaked, VoteReclaimed, Voted }
 
 export function identifyTreasuryEvent(event: { data: ReadonlyUint8Array } | ReadonlyUint8Array): TreasuryEvent {
     const data = 'data' in event ? event.data : event;
-    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([233, 199, 63, 195, 107, 254, 13, 32])), 0)) { return TreasuryEvent.AttestationLapsed; }
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([86, 194, 150, 81, 168, 37, 178, 49])), 0)) { return TreasuryEvent.AssignmentRecorded; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([233, 199, 63, 195, 107, 254, 13, 32])), 0)) { return TreasuryEvent.AttestationLapsed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([27, 99, 231, 34, 215, 34, 114, 89])), 0)) { return TreasuryEvent.DisclosurePosted; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([56, 252, 93, 206, 134, 210, 51, 186])), 0)) { return TreasuryEvent.DisclosureRequested; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([28, 224, 98, 55, 240, 215, 209, 4])), 0)) { return TreasuryEvent.DistributionClaimed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([214, 198, 183, 205, 56, 196, 27, 162])), 0)) { return TreasuryEvent.DistributionDeposited; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([162, 254, 131, 56, 65, 214, 85, 6])), 0)) { return TreasuryEvent.GrantCreated; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([253, 77, 239, 73, 217, 30, 106, 176])), 0)) { return TreasuryEvent.GrantExpired; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([209, 158, 62, 23, 178, 196, 8, 241])), 0)) { return TreasuryEvent.LiquidationStarted; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([49, 225, 91, 223, 34, 165, 109, 181])), 0)) { return TreasuryEvent.MilestoneReleased; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([229, 198, 232, 253, 62, 17, 177, 137])), 0)) { return TreasuryEvent.NavRedeemed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([186, 8, 160, 108, 81, 13, 51, 206])), 0)) { return TreasuryEvent.ProposalCreated; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([92, 213, 189, 201, 101, 83, 111, 83])), 0)) { return TreasuryEvent.ProposalExecuted; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([14, 29, 183, 71, 31, 165, 107, 38])), 0)) { return TreasuryEvent.Redeemed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([135, 129, 166, 79, 180, 50, 235, 36])), 0)) { return TreasuryEvent.RoundMissed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([225, 220, 210, 19, 148, 21, 127, 154])), 0)) { return TreasuryEvent.RoundPaid; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([43, 51, 164, 100, 191, 244, 174, 98])), 0)) { return TreasuryEvent.Spent; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([11, 146, 45, 205, 230, 58, 213, 240])), 0)) { return TreasuryEvent.Staked; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([225, 25, 37, 246, 224, 183, 193, 249])), 0)) { return TreasuryEvent.TrancheReleased; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([190, 59, 58, 105, 76, 234, 21, 199])), 0)) { return TreasuryEvent.TreasuryCreated; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([226, 222, 36, 78, 110, 154, 209, 103])), 0)) { return TreasuryEvent.TreasuryExtended; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([20, 92, 19, 237, 135, 103, 255, 168])), 0)) { return TreasuryEvent.UnclaimedSwept; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([27, 179, 156, 215, 47, 71, 195, 7])), 0)) { return TreasuryEvent.Unstaked; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([58, 198, 33, 254, 109, 38, 248, 127])), 0)) { return TreasuryEvent.VoteReclaimed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([189, 74, 101, 127, 109, 214, 95, 130])), 0)) { return TreasuryEvent.Voted; }
     throw new Error('The provided event could not be identified as a treasury event.');
 }
 
-export enum TreasuryInstruction { CreateTreasury, RecordAttested, RecordLapse, Redeem, Spend, TriggerLiquidation }
+export enum TreasuryInstruction { ClaimDistribution, CreateGrant, CreateTreasury, DepositDistribution, ExecuteProposal, ExpireGrant, InitExt, MarkMissed, NavRedeem, PayRound, PostDisclosure, Propose, ReclaimVote, RecordAssignment, RecordAttested, RecordLapse, Redeem, ReleaseMilestone, ReleaseTranche, RequestDisclosure, Spend, Stake, SweepUnclaimed, TriggerLiquidation, Unstake, Vote }
 
 export function identifyTreasuryInstruction(instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array): TreasuryInstruction {
     const data = 'data' in instruction ? instruction.data : instruction;
-    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([254, 98, 217, 51, 25, 88, 140, 45])), 0)) { return TreasuryInstruction.CreateTreasury; }
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([204, 156, 94, 85, 2, 125, 232, 180])), 0)) { return TreasuryInstruction.ClaimDistribution; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([19, 119, 176, 223, 45, 142, 225, 156])), 0)) { return TreasuryInstruction.CreateGrant; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([254, 98, 217, 51, 25, 88, 140, 45])), 0)) { return TreasuryInstruction.CreateTreasury; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([96, 87, 121, 0, 169, 204, 217, 158])), 0)) { return TreasuryInstruction.DepositDistribution; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([186, 60, 116, 133, 108, 128, 111, 28])), 0)) { return TreasuryInstruction.ExecuteProposal; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([79, 102, 144, 86, 253, 70, 154, 197])), 0)) { return TreasuryInstruction.ExpireGrant; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([64, 67, 67, 113, 219, 202, 61, 176])), 0)) { return TreasuryInstruction.InitExt; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([143, 84, 126, 192, 57, 168, 227, 26])), 0)) { return TreasuryInstruction.MarkMissed; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([66, 220, 169, 81, 197, 43, 237, 98])), 0)) { return TreasuryInstruction.NavRedeem; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([88, 109, 196, 46, 199, 222, 90, 98])), 0)) { return TreasuryInstruction.PayRound; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([56, 44, 128, 27, 181, 102, 199, 127])), 0)) { return TreasuryInstruction.PostDisclosure; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([93, 253, 82, 168, 118, 33, 102, 90])), 0)) { return TreasuryInstruction.Propose; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([54, 249, 247, 137, 93, 95, 134, 91])), 0)) { return TreasuryInstruction.ReclaimVote; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([233, 91, 157, 228, 74, 251, 214, 234])), 0)) { return TreasuryInstruction.RecordAssignment; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([216, 174, 195, 96, 37, 176, 195, 195])), 0)) { return TreasuryInstruction.RecordAttested; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([19, 199, 199, 180, 125, 2, 37, 98])), 0)) { return TreasuryInstruction.RecordLapse; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([184, 12, 86, 149, 70, 196, 97, 225])), 0)) { return TreasuryInstruction.Redeem; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([56, 2, 199, 164, 184, 108, 167, 222])), 0)) { return TreasuryInstruction.ReleaseMilestone; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([156, 137, 159, 5, 80, 38, 133, 227])), 0)) { return TreasuryInstruction.ReleaseTranche; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([108, 50, 251, 21, 123, 69, 244, 20])), 0)) { return TreasuryInstruction.RequestDisclosure; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([242, 205, 255, 87, 101, 217, 245, 57])), 0)) { return TreasuryInstruction.Spend; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([206, 176, 202, 18, 200, 209, 179, 108])), 0)) { return TreasuryInstruction.Stake; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([64, 168, 221, 224, 42, 216, 138, 144])), 0)) { return TreasuryInstruction.SweepUnclaimed; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([236, 95, 184, 119, 197, 67, 148, 229])), 0)) { return TreasuryInstruction.TriggerLiquidation; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([90, 95, 107, 42, 205, 124, 50, 225])), 0)) { return TreasuryInstruction.Unstake; }
+if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([227, 110, 155, 23, 136, 126, 172, 25])), 0)) { return TreasuryInstruction.Vote; }
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION, { instructionData: data, programName: "treasury" });
 }
 
 export type ParsedTreasuryInstruction<TProgram extends string = 'HoRbUkEXdJSFJFp3yZNgEmNJeniWPEheVUejPGZbVGAd'> =
+| { instructionType: TreasuryInstruction.ClaimDistribution } & ParsedClaimDistributionInstruction<TProgram>
+| { instructionType: TreasuryInstruction.CreateGrant } & ParsedCreateGrantInstruction<TProgram>
 | { instructionType: TreasuryInstruction.CreateTreasury } & ParsedCreateTreasuryInstruction<TProgram>
+| { instructionType: TreasuryInstruction.DepositDistribution } & ParsedDepositDistributionInstruction<TProgram>
+| { instructionType: TreasuryInstruction.ExecuteProposal } & ParsedExecuteProposalInstruction<TProgram>
+| { instructionType: TreasuryInstruction.ExpireGrant } & ParsedExpireGrantInstruction<TProgram>
+| { instructionType: TreasuryInstruction.InitExt } & ParsedInitExtInstruction<TProgram>
+| { instructionType: TreasuryInstruction.MarkMissed } & ParsedMarkMissedInstruction<TProgram>
+| { instructionType: TreasuryInstruction.NavRedeem } & ParsedNavRedeemInstruction<TProgram>
+| { instructionType: TreasuryInstruction.PayRound } & ParsedPayRoundInstruction<TProgram>
+| { instructionType: TreasuryInstruction.PostDisclosure } & ParsedPostDisclosureInstruction<TProgram>
+| { instructionType: TreasuryInstruction.Propose } & ParsedProposeInstruction<TProgram>
+| { instructionType: TreasuryInstruction.ReclaimVote } & ParsedReclaimVoteInstruction<TProgram>
+| { instructionType: TreasuryInstruction.RecordAssignment } & ParsedRecordAssignmentInstruction<TProgram>
 | { instructionType: TreasuryInstruction.RecordAttested } & ParsedRecordAttestedInstruction<TProgram>
 | { instructionType: TreasuryInstruction.RecordLapse } & ParsedRecordLapseInstruction<TProgram>
 | { instructionType: TreasuryInstruction.Redeem } & ParsedRedeemInstruction<TProgram>
+| { instructionType: TreasuryInstruction.ReleaseMilestone } & ParsedReleaseMilestoneInstruction<TProgram>
+| { instructionType: TreasuryInstruction.ReleaseTranche } & ParsedReleaseTrancheInstruction<TProgram>
+| { instructionType: TreasuryInstruction.RequestDisclosure } & ParsedRequestDisclosureInstruction<TProgram>
 | { instructionType: TreasuryInstruction.Spend } & ParsedSpendInstruction<TProgram>
+| { instructionType: TreasuryInstruction.Stake } & ParsedStakeInstruction<TProgram>
+| { instructionType: TreasuryInstruction.SweepUnclaimed } & ParsedSweepUnclaimedInstruction<TProgram>
 | { instructionType: TreasuryInstruction.TriggerLiquidation } & ParsedTriggerLiquidationInstruction<TProgram>
+| { instructionType: TreasuryInstruction.Unstake } & ParsedUnstakeInstruction<TProgram>
+| { instructionType: TreasuryInstruction.Vote } & ParsedVoteInstruction<TProgram>
 
 
         export function parseTreasuryInstruction<TProgram extends string>(
@@ -62,34 +127,76 @@ export type ParsedTreasuryInstruction<TProgram extends string = 'HoRbUkEXdJSFJFp
         ): ParsedTreasuryInstruction<TProgram> {
             const instructionType = identifyTreasuryInstruction(instruction);
             switch (instructionType) {
-                case TreasuryInstruction.CreateTreasury: { assertIsInstructionWithAccounts(instruction);
+                case TreasuryInstruction.ClaimDistribution: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ClaimDistribution, ...parseClaimDistributionInstruction(instruction) }; }
+case TreasuryInstruction.CreateGrant: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.CreateGrant, ...parseCreateGrantInstruction(instruction) }; }
+case TreasuryInstruction.CreateTreasury: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.CreateTreasury, ...parseCreateTreasuryInstruction(instruction) }; }
+case TreasuryInstruction.DepositDistribution: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.DepositDistribution, ...parseDepositDistributionInstruction(instruction) }; }
+case TreasuryInstruction.ExecuteProposal: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ExecuteProposal, ...parseExecuteProposalInstruction(instruction) }; }
+case TreasuryInstruction.ExpireGrant: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ExpireGrant, ...parseExpireGrantInstruction(instruction) }; }
+case TreasuryInstruction.InitExt: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.InitExt, ...parseInitExtInstruction(instruction) }; }
+case TreasuryInstruction.MarkMissed: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.MarkMissed, ...parseMarkMissedInstruction(instruction) }; }
+case TreasuryInstruction.NavRedeem: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.NavRedeem, ...parseNavRedeemInstruction(instruction) }; }
+case TreasuryInstruction.PayRound: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.PayRound, ...parsePayRoundInstruction(instruction) }; }
+case TreasuryInstruction.PostDisclosure: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.PostDisclosure, ...parsePostDisclosureInstruction(instruction) }; }
+case TreasuryInstruction.Propose: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.Propose, ...parseProposeInstruction(instruction) }; }
+case TreasuryInstruction.ReclaimVote: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ReclaimVote, ...parseReclaimVoteInstruction(instruction) }; }
+case TreasuryInstruction.RecordAssignment: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.RecordAssignment, ...parseRecordAssignmentInstruction(instruction) }; }
 case TreasuryInstruction.RecordAttested: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.RecordAttested, ...parseRecordAttestedInstruction(instruction) }; }
 case TreasuryInstruction.RecordLapse: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.RecordLapse, ...parseRecordLapseInstruction(instruction) }; }
 case TreasuryInstruction.Redeem: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.Redeem, ...parseRedeemInstruction(instruction) }; }
+case TreasuryInstruction.ReleaseMilestone: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ReleaseMilestone, ...parseReleaseMilestoneInstruction(instruction) }; }
+case TreasuryInstruction.ReleaseTranche: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.ReleaseTranche, ...parseReleaseTrancheInstruction(instruction) }; }
+case TreasuryInstruction.RequestDisclosure: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.RequestDisclosure, ...parseRequestDisclosureInstruction(instruction) }; }
 case TreasuryInstruction.Spend: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.Spend, ...parseSpendInstruction(instruction) }; }
+case TreasuryInstruction.Stake: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.Stake, ...parseStakeInstruction(instruction) }; }
+case TreasuryInstruction.SweepUnclaimed: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.SweepUnclaimed, ...parseSweepUnclaimedInstruction(instruction) }; }
 case TreasuryInstruction.TriggerLiquidation: { assertIsInstructionWithAccounts(instruction);
 return { instructionType: TreasuryInstruction.TriggerLiquidation, ...parseTriggerLiquidationInstruction(instruction) }; }
+case TreasuryInstruction.Unstake: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.Unstake, ...parseUnstakeInstruction(instruction) }; }
+case TreasuryInstruction.Vote: { assertIsInstructionWithAccounts(instruction);
+return { instructionType: TreasuryInstruction.Vote, ...parseVoteInstruction(instruction) }; }
                 default: throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE, { instructionType: instructionType as string, programName: "treasury" });
             }
         }
 
 export type TreasuryPlugin = { accounts: TreasuryPluginAccounts; instructions: TreasuryPluginInstructions; pdas: TreasuryPluginPdas; identifyAccount: typeof identifyTreasuryAccount; identifyInstruction: typeof identifyTreasuryInstruction; parseInstruction: typeof parseTreasuryInstruction; }
 
-export type TreasuryPluginAccounts = { treasury: ReturnType<typeof getTreasuryCodec> & SelfFetchFunctions<TreasuryArgs, Treasury>; }
+export type TreasuryPluginAccounts = { grant: ReturnType<typeof getGrantCodec> & SelfFetchFunctions<GrantArgs, Grant>; position: ReturnType<typeof getPositionCodec> & SelfFetchFunctions<PositionArgs, Position>; proposal: ReturnType<typeof getProposalCodec> & SelfFetchFunctions<ProposalArgs, Proposal>; roundRecord: ReturnType<typeof getRoundRecordCodec> & SelfFetchFunctions<RoundRecordArgs, RoundRecord>; treasury: ReturnType<typeof getTreasuryCodec> & SelfFetchFunctions<TreasuryArgs, Treasury>; voteRecord: ReturnType<typeof getVoteRecordCodec> & SelfFetchFunctions<VoteRecordArgs, VoteRecord>; }
 
-export type TreasuryPluginInstructions = { createTreasury: (input: CreateTreasuryAsyncInput) => ReturnType<typeof getCreateTreasuryInstructionAsync> & SelfPlanAndSendFunctions; recordAttested: (input: RecordAttestedInput) => ReturnType<typeof getRecordAttestedInstruction> & SelfPlanAndSendFunctions; recordLapse: (input: RecordLapseInput) => ReturnType<typeof getRecordLapseInstruction> & SelfPlanAndSendFunctions; redeem: (input: RedeemAsyncInput) => ReturnType<typeof getRedeemInstructionAsync> & SelfPlanAndSendFunctions; spend: (input: SpendAsyncInput) => ReturnType<typeof getSpendInstructionAsync> & SelfPlanAndSendFunctions; triggerLiquidation: (input: TriggerLiquidationAsyncInput) => ReturnType<typeof getTriggerLiquidationInstructionAsync> & SelfPlanAndSendFunctions; }
+export type TreasuryPluginInstructions = { claimDistribution: (input: ClaimDistributionAsyncInput) => ReturnType<typeof getClaimDistributionInstructionAsync> & SelfPlanAndSendFunctions; createGrant: (input: CreateGrantAsyncInput) => ReturnType<typeof getCreateGrantInstructionAsync> & SelfPlanAndSendFunctions; createTreasury: (input: CreateTreasuryAsyncInput) => ReturnType<typeof getCreateTreasuryInstructionAsync> & SelfPlanAndSendFunctions; depositDistribution: (input: DepositDistributionAsyncInput) => ReturnType<typeof getDepositDistributionInstructionAsync> & SelfPlanAndSendFunctions; executeProposal: (input: ExecuteProposalAsyncInput) => ReturnType<typeof getExecuteProposalInstructionAsync> & SelfPlanAndSendFunctions; expireGrant: (input: ExpireGrantAsyncInput) => ReturnType<typeof getExpireGrantInstructionAsync> & SelfPlanAndSendFunctions; initExt: (input: InitExtAsyncInput) => ReturnType<typeof getInitExtInstructionAsync> & SelfPlanAndSendFunctions; markMissed: (input: MarkMissedAsyncInput) => ReturnType<typeof getMarkMissedInstructionAsync> & SelfPlanAndSendFunctions; navRedeem: (input: NavRedeemAsyncInput) => ReturnType<typeof getNavRedeemInstructionAsync> & SelfPlanAndSendFunctions; payRound: (input: MakeOptional<PayRoundAsyncInput, "payer">) => ReturnType<typeof getPayRoundInstructionAsync> & SelfPlanAndSendFunctions; postDisclosure: (input: PostDisclosureInput) => ReturnType<typeof getPostDisclosureInstruction> & SelfPlanAndSendFunctions; propose: (input: ProposeAsyncInput) => ReturnType<typeof getProposeInstructionAsync> & SelfPlanAndSendFunctions; reclaimVote: (input: ReclaimVoteAsyncInput) => ReturnType<typeof getReclaimVoteInstructionAsync> & SelfPlanAndSendFunctions; recordAssignment: (input: RecordAssignmentInput) => ReturnType<typeof getRecordAssignmentInstruction> & SelfPlanAndSendFunctions; recordAttested: (input: RecordAttestedInput) => ReturnType<typeof getRecordAttestedInstruction> & SelfPlanAndSendFunctions; recordLapse: (input: RecordLapseInput) => ReturnType<typeof getRecordLapseInstruction> & SelfPlanAndSendFunctions; redeem: (input: RedeemAsyncInput) => ReturnType<typeof getRedeemInstructionAsync> & SelfPlanAndSendFunctions; releaseMilestone: (input: ReleaseMilestoneAsyncInput) => ReturnType<typeof getReleaseMilestoneInstructionAsync> & SelfPlanAndSendFunctions; releaseTranche: (input: ReleaseTrancheAsyncInput) => ReturnType<typeof getReleaseTrancheInstructionAsync> & SelfPlanAndSendFunctions; requestDisclosure: (input: RequestDisclosureInput) => ReturnType<typeof getRequestDisclosureInstruction> & SelfPlanAndSendFunctions; spend: (input: SpendAsyncInput) => ReturnType<typeof getSpendInstructionAsync> & SelfPlanAndSendFunctions; stake: (input: StakeAsyncInput) => ReturnType<typeof getStakeInstructionAsync> & SelfPlanAndSendFunctions; sweepUnclaimed: (input: SweepUnclaimedAsyncInput) => ReturnType<typeof getSweepUnclaimedInstructionAsync> & SelfPlanAndSendFunctions; triggerLiquidation: (input: TriggerLiquidationAsyncInput) => ReturnType<typeof getTriggerLiquidationInstructionAsync> & SelfPlanAndSendFunctions; unstake: (input: UnstakeAsyncInput) => ReturnType<typeof getUnstakeInstructionAsync> & SelfPlanAndSendFunctions; vote: (input: VoteAsyncInput) => ReturnType<typeof getVoteInstructionAsync> & SelfPlanAndSendFunctions; }
 
-export type TreasuryPluginPdas = { treasury: typeof findTreasuryPda; vault: typeof findVaultPda; }
+export type TreasuryPluginPdas = { position: typeof findPositionPda; distVault: typeof findDistVaultPda; coinVault: typeof findCoinVaultPda; grant: typeof findGrantPda; treasury: typeof findTreasuryPda; vault: typeof findVaultPda; roundRecord: typeof findRoundRecordPda; proposal: typeof findProposalPda; voteRecord: typeof findVoteRecordPda; }
 
-export type TreasuryPluginRequirements = ClientWithRpc<GetAccountInfoApi & GetMultipleAccountsApi> & ClientWithTransactionPlanning & ClientWithTransactionSending
+export type TreasuryPluginRequirements = ClientWithRpc<GetAccountInfoApi & GetMultipleAccountsApi> & ClientWithPayer & ClientWithTransactionPlanning & ClientWithTransactionSending
 
 export function treasuryProgram() {
     return <T extends TreasuryPluginRequirements>(client: T): ExtendedClient<T, { treasury: TreasuryPlugin }> => {
-        return extendClient(client, { treasury: <TreasuryPlugin>{ accounts: { treasury: addSelfFetchFunctions(client, getTreasuryCodec()) }, instructions: { createTreasury: input => addSelfPlanAndSendFunctions(client, getCreateTreasuryInstructionAsync(input)), recordAttested: input => addSelfPlanAndSendFunctions(client, getRecordAttestedInstruction(input)), recordLapse: input => addSelfPlanAndSendFunctions(client, getRecordLapseInstruction(input)), redeem: input => addSelfPlanAndSendFunctions(client, getRedeemInstructionAsync(input)), spend: input => addSelfPlanAndSendFunctions(client, getSpendInstructionAsync(input)), triggerLiquidation: input => addSelfPlanAndSendFunctions(client, getTriggerLiquidationInstructionAsync(input)) }, pdas: { treasury: findTreasuryPda, vault: findVaultPda }, identifyAccount: identifyTreasuryAccount, identifyInstruction: identifyTreasuryInstruction, parseInstruction: parseTreasuryInstruction } });
+        return extendClient(client, { treasury: <TreasuryPlugin>{ accounts: { grant: addSelfFetchFunctions(client, getGrantCodec()), position: addSelfFetchFunctions(client, getPositionCodec()), proposal: addSelfFetchFunctions(client, getProposalCodec()), roundRecord: addSelfFetchFunctions(client, getRoundRecordCodec()), treasury: addSelfFetchFunctions(client, getTreasuryCodec()), voteRecord: addSelfFetchFunctions(client, getVoteRecordCodec()) }, instructions: { claimDistribution: input => addSelfPlanAndSendFunctions(client, getClaimDistributionInstructionAsync(input)), createGrant: input => addSelfPlanAndSendFunctions(client, getCreateGrantInstructionAsync(input)), createTreasury: input => addSelfPlanAndSendFunctions(client, getCreateTreasuryInstructionAsync(input)), depositDistribution: input => addSelfPlanAndSendFunctions(client, getDepositDistributionInstructionAsync(input)), executeProposal: input => addSelfPlanAndSendFunctions(client, getExecuteProposalInstructionAsync(input)), expireGrant: input => addSelfPlanAndSendFunctions(client, getExpireGrantInstructionAsync(input)), initExt: input => addSelfPlanAndSendFunctions(client, getInitExtInstructionAsync(input)), markMissed: input => addSelfPlanAndSendFunctions(client, getMarkMissedInstructionAsync(input)), navRedeem: input => addSelfPlanAndSendFunctions(client, getNavRedeemInstructionAsync(input)), payRound: input => addSelfPlanAndSendFunctions(client, getPayRoundInstructionAsync({ ...input, payer: input.payer ?? client.payer })), postDisclosure: input => addSelfPlanAndSendFunctions(client, getPostDisclosureInstruction(input)), propose: input => addSelfPlanAndSendFunctions(client, getProposeInstructionAsync(input)), reclaimVote: input => addSelfPlanAndSendFunctions(client, getReclaimVoteInstructionAsync(input)), recordAssignment: input => addSelfPlanAndSendFunctions(client, getRecordAssignmentInstruction(input)), recordAttested: input => addSelfPlanAndSendFunctions(client, getRecordAttestedInstruction(input)), recordLapse: input => addSelfPlanAndSendFunctions(client, getRecordLapseInstruction(input)), redeem: input => addSelfPlanAndSendFunctions(client, getRedeemInstructionAsync(input)), releaseMilestone: input => addSelfPlanAndSendFunctions(client, getReleaseMilestoneInstructionAsync(input)), releaseTranche: input => addSelfPlanAndSendFunctions(client, getReleaseTrancheInstructionAsync(input)), requestDisclosure: input => addSelfPlanAndSendFunctions(client, getRequestDisclosureInstruction(input)), spend: input => addSelfPlanAndSendFunctions(client, getSpendInstructionAsync(input)), stake: input => addSelfPlanAndSendFunctions(client, getStakeInstructionAsync(input)), sweepUnclaimed: input => addSelfPlanAndSendFunctions(client, getSweepUnclaimedInstructionAsync(input)), triggerLiquidation: input => addSelfPlanAndSendFunctions(client, getTriggerLiquidationInstructionAsync(input)), unstake: input => addSelfPlanAndSendFunctions(client, getUnstakeInstructionAsync(input)), vote: input => addSelfPlanAndSendFunctions(client, getVoteInstructionAsync(input)) }, pdas: { position: findPositionPda, distVault: findDistVaultPda, coinVault: findCoinVaultPda, grant: findGrantPda, treasury: findTreasuryPda, vault: findVaultPda, roundRecord: findRoundRecordPda, proposal: findProposalPda, voteRecord: findVoteRecordPda }, identifyAccount: identifyTreasuryAccount, identifyInstruction: identifyTreasuryInstruction, parseInstruction: parseTreasuryInstruction } });
     };
 }
+
+type MakeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
