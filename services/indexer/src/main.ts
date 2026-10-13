@@ -19,6 +19,7 @@ if (!dbUrl || !rpcUrl) {
 }
 const pollMs = Number(process.env.POLL_MS ?? 5_000);
 const reconcileEvery = Number(process.env.RECONCILE_EVERY ?? 60);
+const slowEvery = Math.max(1, Number(process.env.SLOW_EVERY ?? 4));
 
 const db = new pg.Pool({ connectionString: dbUrl });
 const rpc = createIndexerRpc(rpcUrl);
@@ -39,13 +40,17 @@ for (let tick = 0; ; tick++) {
     // Open orders indexed before their terms were captured are filled in a few at a time.
     const filled = await backfillOrderTerms(db, rpc);
     if (filled.updated) console.log(JSON.stringify({ at: new Date().toISOString(), orderTermsBackfilled: filled.updated, remaining: filled.remaining }));
-    // cross_calendar: calendars and their events, then the calendar each newly indexed cross is bound to.
-    const cal = await pollCalendar(db, rpc, readAccounts);
-    if (cal) console.log(JSON.stringify({ at: new Date().toISOString(), calendarEventsApplied: cal }));
-    const bound = await bindCrosses(db, readAccounts, CROSS_CORE_PROGRAM_ADDRESS);
-    if (bound.bound) console.log(JSON.stringify({ at: new Date().toISOString(), crossBindingsRead: bound.bound, remaining: bound.remaining }));
-    const tre = await pollTreasuryOnce(db, rpc);
-    if (tre) console.log(JSON.stringify({ at: new Date().toISOString(), treasuryEventsApplied: tre }));
+    // Calendars, their cross bindings and treasuries change slowly and share the public endpoint's per-address limit with every
+    // other process: they are read every SLOW_EVERY polls (default 4), the core program on every one.
+    if (tick % slowEvery === 0) {
+      // cross_calendar: calendars and their events, then the calendar each newly indexed cross is bound to.
+      const cal = await pollCalendar(db, rpc, readAccounts);
+      if (cal) console.log(JSON.stringify({ at: new Date().toISOString(), calendarEventsApplied: cal }));
+      const bound = await bindCrosses(db, readAccounts, CROSS_CORE_PROGRAM_ADDRESS);
+      if (bound.bound) console.log(JSON.stringify({ at: new Date().toISOString(), crossBindingsRead: bound.bound, remaining: bound.remaining }));
+      const tre = await pollTreasuryOnce(db, rpc);
+      if (tre) console.log(JSON.stringify({ at: new Date().toISOString(), treasuryEventsApplied: tre }));
+    }
     if (tick % reconcileEvery === 0) {
       const calDrift = await reconcileCalendars(db, () => scanCalendars(rpc), { catchUp: () => pollCalendar(db, rpc, readAccounts), waitMs: pollMs, attempts: 5, record: true, repair: true });
       if (calDrift.length) console.error(JSON.stringify({ at: new Date().toISOString(), calendarDrift: calDrift }));
