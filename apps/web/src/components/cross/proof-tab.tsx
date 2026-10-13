@@ -22,7 +22,7 @@ export type Proof = {
 };
 
 // The program stores the reason as an enum index; the recomputation reports its name.
-const REASON_BY_INDEX = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable'];
+const REASON_BY_INDEX = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'];
 const reasonName = (r: string | number | null): string | null => (typeof r === 'number' ? (REASON_BY_INDEX[r] ?? `reason ${r}`) : r);
 
 /** The short verdict beside the order ticket. */

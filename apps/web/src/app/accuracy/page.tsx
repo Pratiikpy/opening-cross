@@ -26,7 +26,7 @@ function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
     return (
       <li className="py-5" data-testid={`bucket-${b.bucket}`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-lg font-medium">{label}</h3>
+          <h2 className="text-lg font-medium">{label}</h2>
           <span className="text-sm text-muted">No bands signed yet</span>
         </div>
       </li>
@@ -35,7 +35,7 @@ function Bucket({ b, bounds }: { b: BucketReport; bounds: number[] }) {
   return (
     <li className="py-6" data-testid={`bucket-${b.bucket}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg font-medium">{label}</h3>
+        <h2 className="text-lg font-medium">{label}</h2>
         <span className={`rounded-full border px-2.5 py-0.5 text-xs ${c.status === 'CALIBRATED' ? 'border-positive text-positive' : 'border-border text-muted'}`}>
           {c.status === 'CALIBRATED' ? 'Claims coverage' : 'Provisional: claims none'}
         </span>

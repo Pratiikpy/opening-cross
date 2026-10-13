@@ -36,7 +36,10 @@ export function currentStage(c: Pick<CrossDetail, 'state' | 'disclosure'>, phase
   }
 }
 
-export function stagesOf(c: CrossDetail, phase: Phase): Stage[] {
+/** When the cross cleared and finalized, from the event log (GET /v1/replay/:address); null for a moment that has not happened or was not recorded. */
+export type SettleTimes = { clearedAt: bigint | null; finalizedAt: bigint | null };
+
+export function stagesOf(c: CrossDetail, phase: Phase, times?: SettleTimes): Stage[] {
   const cur = currentStage(c, phase);
   const sealed = c.disclosure === 'sealed';
   const revealEnd = BigInt(c.window.revealEndTs);
@@ -64,7 +67,7 @@ export function stagesOf(c: CrossDetail, phase: Phase): Stage[] {
     {
       key: 'cleared',
       label: 'Cleared',
-      ts: null,
+      ts: times?.clearedAt ?? null,
       status: status(2),
       tag: tag(2),
       note:
@@ -77,7 +80,7 @@ export function stagesOf(c: CrossDetail, phase: Phase): Stage[] {
     {
       key: 'finalized',
       label: noPrint ? 'Finalized / refunded' : 'Finalized / paid',
-      ts: null,
+      ts: times?.finalizedAt ?? null,
       status: status(3),
       tag: tag(3),
       note: finished

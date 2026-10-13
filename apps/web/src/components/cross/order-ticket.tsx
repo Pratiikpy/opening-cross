@@ -7,6 +7,8 @@ import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, buyerPays, formatAtoms, formatPrice, parseAtoms, parsePrice } from '@/lib/units';
 import { downloadBackup, loadBids, randomNonce, randomSalt, rememberOrder, saveBid } from '@/lib/sealed';
 import { Eligibility } from '@/components/gate/eligibility';
+import { HOLDER_API_URL } from '@/lib/holder-api';
+import { SOL_NEEDED, useLamports, useSponsor } from './holder-readiness';
 import { RiskAck, useRiskAck } from '@/components/portfolio/risk-ack';
 import { ActionButton } from './action-button';
 import { rememberTerms } from './own-orders';
@@ -37,6 +39,13 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
   const [placed, setPlaced] = useState<string | null>(null);
   const sealed = cross.disclosure === 'sealed';
   const risk = useRiskAck(owner);
+  // A wallet with tokens but too little SOL can have the network fee and the order account's deposit paid for it, where the deployment offers that.
+  const sponsor = useSponsor();
+  const [sponsorRefresh, setSponsorRefresh] = useState(0);
+  const lamports = useLamports(owner, sponsorRefresh);
+  const sponsorOffered = sponsor?.enabled === true && lamports !== null && lamports < SOL_NEEDED;
+  const [sponsorChoice, setSponsorChoice] = useState(true);
+  const sponsored = sponsorOffered && sponsorChoice;
 
   const price = priceText ? onGrid(priceText, cross, m) : null;
   const qty = qtyText ? parseAtoms(qtyText, m.baseDecimals) : null;
@@ -124,6 +133,15 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
           This wallet holds {formatAtoms(held, lockDecimals)} of the {side === 'buy' ? 'quote token' : 'token'} and the order locks up to {formatAtoms(escrow, lockDecimals)}. It needs {formatAtoms(missing, lockDecimals)} more.
         </p>
       ) : null}
+      {sponsorOffered ? (
+        <label className="mt-4 flex min-h-6 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm" data-testid="sponsor-choice">
+          <input type="checkbox" checked={sponsorChoice} onChange={(e) => setSponsorChoice(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--accent-fill)]" />
+          <span>
+            <span className="block font-medium">Let Opening Bell pay the fee</span>
+            <span className="mt-0.5 block text-xs text-muted">This wallet holds {formatAtoms(lamports ?? 0n, 9, 4)} SOL. Opening Bell pays the network fee and puts in the deposit for the order account (about 0.0016 SOL, returned to you when the order is claimed or cancelled). It does not pay for the tokens in escrow. Devnet only, a few orders per wallet per day.</span>
+          </span>
+        </label>
+      ) : null}
       {cross.gateMint ? <Eligibility cross={cross.address} gateMint={cross.gateMint} owner={owner} sign={sign} /> : null}
       <RiskAck {...risk} />
       <div className="mt-4">
@@ -133,7 +151,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
           return (
             <ActionButton
               label={sealed ? 'Place sealed order' : 'Place order'}
-              path="/v1/tx/place-order"
+              path={sponsored ? `${HOLDER_API_URL}/v1/tx/place-order-sponsored` : '/v1/tx/place-order'}
               disabled={!ready || risk.acknowledged !== true || missing > 0n}
               sign={sign}
               before={() => {
@@ -154,6 +172,7 @@ export function OrderTicket({ cross, market: m, owner, sign, book, onPlaced }: {
                 setPriceText('');
                 setQtyText('');
                 setRefresh((n) => n + 1);
+                setSponsorRefresh((n) => n + 1);
                 onPlaced();
               }}
             />

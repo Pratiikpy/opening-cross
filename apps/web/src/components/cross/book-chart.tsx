@@ -123,7 +123,7 @@ function Notes({ own, market, levels }: { own: OwnMarks; market: Market; levels:
       ) : null}
       {own.unlocated ? (
         <p>
-          {own.unlocated} of your order{own.unlocated === 1 ? '' : 's'} cannot be placed on the chart: the API does not publish an open order’s price, and this browser did not place {own.unlocated === 1 ? 'it' : 'them'}.
+          {own.unlocated} of your order{own.unlocated === 1 ? '' : 's'} cannot be placed on the chart: {own.unlocated === 1 ? 'its' : 'their'} price could not be read from the chain just now. Reload to try again.
         </p>
       ) : null}
     </div>

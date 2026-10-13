@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { dayLabel, formatWindow } from '@/lib/calendar';
 import { type MarketCalendar, type MarketSession, countdown, explorerAddress, sessionIcs, shortKey, statusAt } from '@/lib/calendar-markets';
+import { FollowButton } from '@/components/alerts/follow-button';
 import { REMINDER_NOTE, ReminderToggle, useReminders } from './reminders';
 import { useClock, useZone } from './use-clock';
 
@@ -85,6 +86,7 @@ export function MarketSessions({ markets, network, serverNow }: { markets: Marke
                         {st.current ? 'Add next open to calendar' : 'Add to calendar'}
                       </button>
                       <ReminderToggle calendar={m.address} startTs={Number(st.next.startTs)} endTs={Number(st.next.endTs)} list={list} toggle={toggle} onRefused={() => setRefused(true)} context={`calendar ${shortKey(m.address)}, session opening ${dayLabel(Number(st.next.startTs), zone)}`} />
+                      <FollowButton kind="markets" address={m.address} label={`market ${shortKey(m.address)}`} />
                     </div>
                   ) : null}
                 </div>

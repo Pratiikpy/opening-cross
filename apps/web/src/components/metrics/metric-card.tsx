@@ -7,10 +7,10 @@ export function MetricCard({ id, label, value, sample, method, tone }: { id: str
     <div className="border-t-2 border-ink pt-3" data-testid={`metric-${id}`}>
       <dd className="text-[28px] font-semibold leading-tight tracking-tight">{value}</dd>
       <dt className="mt-1 text-sm text-ink">{label}</dt>
-      <p className="mt-2 font-mono text-xs text-muted" data-testid={`metric-${id}-sample`}>
+      <dd className="mt-2 font-mono text-xs text-muted" data-testid={`metric-${id}-sample`}>
         {sample}
-      </p>
-      <p className={`mt-1 text-xs ${tone === 'caution' ? 'text-ink' : 'text-muted'}`}>{method}</p>
+      </dd>
+      <dd className={`mt-1 text-xs ${tone === 'caution' ? 'text-ink' : 'text-muted'}`}>{method}</dd>
     </div>
   );
 }
@@ -20,7 +20,7 @@ export function MetricUnavailable({ id, label, error }: { id: string; label: str
     <div className="border-t-2 border-border pt-3" role="status" data-testid={`metric-${id}`}>
       <dd className="text-[28px] font-semibold leading-tight tracking-tight text-subtle">Unavailable</dd>
       <dt className="mt-1 text-sm text-ink">{label}</dt>
-      <p className="mt-2 text-xs text-muted">{error} Nothing is shown in its place.</p>
+      <dd className="mt-2 text-xs text-muted">{error} Nothing is shown in its place.</dd>
     </div>
   );
 }

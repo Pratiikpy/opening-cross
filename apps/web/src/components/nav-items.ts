@@ -18,4 +18,11 @@ export const MORE_NAV = [
   { href: '/gates', label: 'Gates' },
   { href: '/treasury', label: 'Treasuries' },
   { href: '/export', label: 'Export' },
+  { href: '/issuer', label: 'For issuers' },
+  { href: '/portfolio', label: 'Portfolio' },
+  { href: '/markets', label: 'Markets' },
+  { href: '/alerts', label: 'Alerts' },
+  { href: '/rights', label: 'Rights' },
+  { href: '/practice', label: 'Practice' },
+  { href: '/support', label: 'Support' },
 ];

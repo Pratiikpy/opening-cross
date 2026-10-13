@@ -93,4 +93,4 @@ export function ReminderBanner({ serverNow }: { serverNow: number }) {
   );
 }
 
-export const REMINDER_NOTE = 'Reminders are saved in this browser only. They appear on the Calendar and Live pages while one of them is open. We send no email and no push notification.';
+export const REMINDER_NOTE = 'Notify me saves a reminder in this browser only; it shows on the Calendar and Live pages while one of them is open. Follow is different: once you choose a channel on the Alerts page, a push, an email or a Telegram message reaches you 10 minutes before it opens, with no page open.';

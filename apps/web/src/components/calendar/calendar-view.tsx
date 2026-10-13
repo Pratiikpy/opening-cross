@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { FollowButton } from '@/components/alerts/follow-button';
 import { StateBadge } from '@/components/state-badge';
 import type { CrossSummary } from '@/lib/api';
 import { buildCalendar, formatWindow } from '@/lib/calendar';
@@ -79,6 +80,7 @@ export function CalendarView({ crosses, nowSec }: { crosses: CrossSummary[]; now
                                   Add to calendar
                                 </button>
                               ) : null}
+                              {addable ? <FollowButton kind="crosses" address={c.address} label={`cross ${shortAddress(c.address)}`} /> : null}
                             </div>
                           </li>
                         );

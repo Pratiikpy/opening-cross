@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { WalletProvider, useWallet } from './src/lib/wallet';
 import type { RootStack } from './src/navigation';
 import { CrossScreen } from './src/screens/Cross';
+import { AlertsScreen } from './src/screens/Alerts';
 import { CrossesScreen } from './src/screens/Crosses';
 import { OrdersScreen } from './src/screens/Orders';
 import { PremiumScreen } from './src/screens/Premium';
@@ -18,11 +19,12 @@ import { FONT, useTheme } from './src/ui/theme';
 
 const Stack = createNativeStackNavigator<RootStack>();
 
-function WalletButton({ onOrders }: { onOrders: () => void }) {
+function WalletButton({ onOrders, onAlerts }: { onOrders: () => void; onAlerts: () => void }) {
   const w = useWallet();
   const [busy, setBusy] = useState(false);
   return (
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      {w.address ? <Button label="Alerts" variant="secondary" onPress={onAlerts} /> : null}
       {w.address ? <Button label="Orders" variant="secondary" onPress={onOrders} /> : null}
       <Button
         label={w.address ? `${w.address.slice(0, 4)}…${w.address.slice(-4)}` : 'Connect'}
@@ -54,10 +56,11 @@ function Shell() {
         <Stack.Screen
           name="Crosses"
           component={CrossesScreen}
-          options={({ navigation }) => ({ title: 'Opening Bell', headerRight: () => <WalletButton onOrders={() => navigation.navigate('Orders')} /> })}
+          options={({ navigation }) => ({ title: 'Opening Bell', headerRight: () => <WalletButton onOrders={() => navigation.navigate('Orders')} onAlerts={() => navigation.navigate('Alerts')} /> })}
         />
-        <Stack.Screen name="Cross" component={CrossScreen} options={({ navigation }) => ({ title: 'Cross', headerRight: () => <WalletButton onOrders={() => navigation.navigate('Orders')} /> })} />
+        <Stack.Screen name="Cross" component={CrossScreen} options={({ navigation }) => ({ title: 'Cross', headerRight: () => <WalletButton onOrders={() => navigation.navigate('Orders')} onAlerts={() => navigation.navigate('Alerts')} /> })} />
         <Stack.Screen name="Orders" component={OrdersScreen} options={{ title: 'Your orders' }} />
+        <Stack.Screen name="Alerts" component={AlertsScreen} options={{ title: 'Needs you' }} />
         <Stack.Screen name="Premium" component={PremiumScreen} options={{ title: 'Premium monitor' }} />
       </Stack.Navigator>
       <StatusBar style={t.dark ? 'light' : 'dark'} />

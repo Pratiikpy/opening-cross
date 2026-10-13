@@ -10,7 +10,7 @@ import { formatAtoms, formatPrice, shortAddress } from './units';
 export const RECEIPT_SCHEMA = 'opening-cross/receipt/v1';
 export const PROOF_SCHEMA_ID = 'opening-cross/fairness-proof/v1';
 
-const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable'] as const;
+const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'] as const;
 
 /** The parts of GET /v1/crosses/:address/proof a receipt reads. Anything else in the proof is covered by `proofSha256`. */
 export type ProofInput = {

@@ -4,7 +4,18 @@
 import { formatAtoms } from './units';
 
 export type MintRead =
-  | { ok: true; program: string; decimals: number; mintAuthority: string | null; freezeAuthority: string | null; extensions: string[] }
+  | {
+      ok: true;
+      program: string;
+      decimals: number;
+      mintAuthority: string | null;
+      freezeAuthority: string | null;
+      extensions: string[];
+      /** Total supply in base atoms, when the read carried it. */
+      supply?: bigint;
+      /** The Token-2022 metadata extension, when the mint has one. */
+      metadata?: { name: string; symbol: string } | null;
+    }
   | { ok: false; reason: string };
 
 /** Lamports a cross costs to open, from rent-exemption minimums the cluster reported for the real account sizes. */
@@ -46,9 +57,11 @@ export const LAMPORTS_PER_SOL = 1_000_000_000n;
 /** A signature costs 5000 lamports on Solana; the create is one transaction and each shard another. */
 const FEE_PER_TX = 5000n;
 
+export const SPL_TOKEN = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+export const TOKEN_2022 = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const TOKEN_PROGRAMS: Record<string, string> = {
-  TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA: 'the classic SPL Token program',
-  TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb: 'Token-2022',
+  [SPL_TOKEN]: 'the classic SPL Token program',
+  [TOKEN_2022]: 'Token-2022',
 };
 
 const SIZES_NOTE = ' No cross exists yet to measure, so the account sizes are the ones this build was made with.';

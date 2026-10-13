@@ -24,7 +24,7 @@ const bytesToB64 = (b: Uint8Array) => btoa(Array.from(b, (x) => String.fromCharC
 export async function build(path: string, body: unknown): Promise<{ txs: Unsigned[]; extra: Record<string, unknown> }> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    res = await fetch(/^https?:\/\//.test(path) ? path : `${API_URL}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   } catch {
     throw new ActionError('The Opening Cross API could not be reached. Nothing was signed.');
   }

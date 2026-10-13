@@ -5,7 +5,7 @@ import { loadAllOrders } from '../lib/orders';
 import type { OwnerOrder } from '../lib/types';
 import { shortAddress } from '../lib/units';
 import { useWallet } from '../lib/wallet';
-import { ActionButton } from '../ui/action';
+import { ClaimCenter } from '../ui/claim-center';
 import { Card, Notice, Pill, Txt } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import type { RootStack } from '../navigation';
@@ -17,6 +17,7 @@ export function OrdersScreen({ navigation }: NativeStackScreenProps<RootStack, '
   const [orders, setOrders] = useState<OwnerOrder[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [claimKey, setClaimKey] = useState(0);
   const load = useCallback(async () => {
     if (!address) return;
     const o = await loadAllOrders(address);
@@ -34,8 +35,13 @@ export function OrdersScreen({ navigation }: NativeStackScreenProps<RootStack, '
       keyExtractor={(o) => o.address}
       style={{ backgroundColor: t.bg }}
       contentContainerStyle={{ padding: 16, gap: 12 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
-      ListHeaderComponent={failed ? <Notice tone="error">The Opening Cross API could not be reached. Pull down to try again.</Notice> : null}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); setClaimKey((k) => k + 1); await load(); setRefreshing(false); }} />}
+      ListHeaderComponent={
+        <View style={{ gap: 12 }}>
+          {failed ? <Notice tone="error">The Opening Cross API could not be reached. Pull down to try again.</Notice> : null}
+          <ClaimCenter key={claimKey} owner={address} onChanged={() => void load()} />
+        </View>
+      }
       ListEmptyComponent={orders === null && !failed ? <Txt tone="muted">Loading your orders…</Txt> : orders?.length === 0 ? <Txt tone="muted">You have not placed an order yet.</Txt> : null}
       renderItem={({ item: o }) => (
         <Card>

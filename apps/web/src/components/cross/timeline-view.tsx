@@ -1,11 +1,40 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { API_URL } from '@/lib/api';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import type { Market } from '@/lib/units';
 import type { OrderRecord } from './order-record';
-import { type Phase, formatUtc, stagesOf, workedExample } from './timeline';
+import { type Phase, type SettleTimes, formatUtc, stagesOf, workedExample } from './timeline';
+
+/** The moments the cross cleared and finalized, read from the event log once it has settled. */
+function useSettleTimes(address: string, state: CrossDetail['state']): SettleTimes | undefined {
+  const [t, setT] = useState<SettleTimes | undefined>(undefined);
+  useEffect(() => {
+    if (state === 'Live') return;
+    let live = true;
+    void fetch(`${API_URL}/v1/replay/${address}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? (r.json() as Promise<{ events: { kind: string; time: string | null }[] }>) : null))
+      .then((j) => {
+        if (!live || !j) return;
+        const at = (kind: string) => {
+          const e = j.events.find((x) => x.kind === kind && x.time);
+          return e?.time ? BigInt(Math.floor(Date.parse(e.time) / 1000)) : null;
+        };
+        setT({ clearedAt: at('cleared'), finalizedAt: at('finalized') });
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [address, state]);
+  return t;
+}
 
 /** The four stages of a cross with the real times from its window, the stage it is in, and a worked example of its price. */
 export function TimelineView({ cross, book, orders, phase, market: m }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; market: Market }) {
-  const stages = stagesOf(cross, phase);
+  const times = useSettleTimes(cross.address, cross.state);
+  const stages = stagesOf(cross, phase, times);
   const example = workedExample(cross, book, m, orders);
   return (
     <section aria-labelledby="timeline">

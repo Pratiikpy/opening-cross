@@ -35,8 +35,18 @@ export async function readMintFull(mint: string): Promise<MintRead> {
     if (!value) return { ok: false, reason: 'No account exists at this address.' };
     const p = value.data.parsed;
     if (p?.type !== 'mint') return { ok: false, reason: 'This address is not a token mint.' };
-    const i = p.info as { decimals: number; mintAuthority?: string | null; freezeAuthority?: string | null; extensions?: { extension: string }[] };
-    return { ok: true, program: value.owner, decimals: i.decimals, mintAuthority: i.mintAuthority ?? null, freezeAuthority: i.freezeAuthority ?? null, extensions: (i.extensions ?? []).map((e) => e.extension) };
+    const i = p.info as { decimals: number; supply?: string; mintAuthority?: string | null; freezeAuthority?: string | null; extensions?: { extension: string; state?: { name?: string; symbol?: string } }[] };
+    const meta = (i.extensions ?? []).find((e) => e.extension === 'tokenMetadata')?.state;
+    return {
+      ok: true,
+      program: value.owner,
+      decimals: i.decimals,
+      mintAuthority: i.mintAuthority ?? null,
+      freezeAuthority: i.freezeAuthority ?? null,
+      extensions: (i.extensions ?? []).map((e) => e.extension),
+      ...(i.supply !== undefined && /^\d+$/.test(i.supply) && { supply: BigInt(i.supply) }),
+      metadata: meta?.name !== undefined && meta.symbol !== undefined ? { name: meta.name, symbol: meta.symbol } : null,
+    };
   } catch (e) {
     return { ok: false, reason: `The network could not be reached to read this mint (${e instanceof Error ? e.message : String(e)}).` };
   }
@@ -116,8 +126,8 @@ async function readRent(): Promise<RentModel | null> {
 }
 
 /** Everything the checklist needs, read now. Each part fails on its own: a missing fact makes only its own item fail. */
-export async function readFacts(input: { wallet: string; baseMint: string; quoteMint: string }): Promise<ChainFacts> {
-  const [base, quote] = await Promise.all([readMintFull(input.baseMint), readMintFull(input.quoteMint)]);
+export async function readFacts(input: { wallet: string; baseMint: string; quoteMint: string; /** Mints already read by the caller, so they are not read twice. */ mints?: { base: MintRead; quote: MintRead } }): Promise<ChainFacts> {
+  const [base, quote] = input.mints ? [input.mints.base, input.mints.quote] : await Promise.all([readMintFull(input.baseMint), readMintFull(input.quoteMint)]);
   const [lamports, quoteAccount, rent, clock] = await Promise.all([
     rpc<{ value: number }>('getBalance', [input.wallet, { commitment: 'confirmed' }]).then((r) => BigInt(r.value), () => null),
     readQuoteAccount(input.wallet, quote, input.quoteMint),

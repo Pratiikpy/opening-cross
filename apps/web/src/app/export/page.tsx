@@ -40,7 +40,7 @@ export default async function Export() {
         {f.rows.length === 0 ? (
           <p role="status" className="mt-6 text-sm text-muted">The Opening Cross API could not be reached, so there are no figures to show or download.</p>
         ) : (
-          <div role="region" aria-label="Public figures" tabIndex={0} className="mt-6 overflow-x-auto">
+          <div role="region" aria-label="Table of public figures" tabIndex={0} className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm" data-testid="figures-table">
               <caption className="sr-only">Public figures with unit, sample size and method</caption>
               <thead className="font-mono text-xs uppercase tracking-wider text-muted">

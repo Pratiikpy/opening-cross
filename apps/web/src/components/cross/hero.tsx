@@ -1,7 +1,11 @@
+'use client';
+
+import { useState } from 'react';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, formatAtoms, formatDuration, formatPrice } from '@/lib/units';
 import type { OrderRecord } from './order-record';
 import { finalWindow } from './final-window';
+import { coarseRange, imbalance } from './holder-coarse';
 import type { Phase } from './timeline';
 
 function Stat({ label, children, sub, testId }: { label: string; children: React.ReactNode; sub?: string; testId?: string }) {
@@ -23,8 +27,11 @@ const RATIONED: Record<string, string> = {
 };
 
 /** The three numbers that matter most, by stage: price, size and time while live; price, volume and fills once settled. */
-export function Hero({ cross, book, orders, phase, now, market: m }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market }) {
-  if (cross.state !== 'Live') return <Settled cross={cross} orders={orders} market={m} />;
+export function Hero(props: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market }) {
+  return props.cross.state !== 'Live' ? <Settled cross={props.cross} orders={props.orders} market={props.market} /> : <LiveHero {...props} />;
+}
+
+function LiveHero({ cross, book, phase, now, market: m }: { cross: CrossDetail; book: BookResponse | null; orders: OrderRecord[] | null; phase: Phase; now: bigint; market: Market }) {
   const sealed = cross.disclosure === 'sealed';
   const offered = (book?.levels ?? []).reduce((s, l) => s + BigInt(l.sell), 0n);
   const wanted = (book?.levels ?? []).reduce((s, l) => s + BigInt(l.buy), 0n);
@@ -32,11 +39,19 @@ export function Hero({ cross, book, orders, phase, now, market: m }: { cross: Cr
   const timeLabel = phase === 'upcoming' ? 'Opens in' : phase === 'open' ? 'Closes in' : phase === 'reveal' ? 'Reveal ends in' : 'Call status';
   const hasBook = book !== null && book.levels.length > 0;
   const fin = phase === 'open' ? finalWindow(cross.window.openTs, cross.window.closeTs, now) : null;
+  // In the final minutes the page leads with a price range and a demand bucket; the exact figures are one press away.
+  const [exact, setExact] = useState(false);
+  const coarse = Boolean(fin?.active) && !exact && !sealed && book !== null;
+  const range = coarse && book?.indicative ? coarseRange(BigInt(book.indicative.price), cross.grid) : null;
+  const bucket = coarse ? imbalance(wanted, offered) : null;
   return (
     <>
     {fin?.active ? (
       <p className="mb-4 rounded-[var(--radius-card)] border border-accent px-4 py-3 text-sm" data-testid="final-window">
-        <span className="font-medium">Final minutes.</span> {formatDuration(fin.remaining)} left to place or cancel an order. Orders and cancellations still change the indicative price until the countdown ends. This is a notice only: the program has no hidden or coarse final window, so every order is treated alike.
+        <span className="font-medium">Final minutes.</span> {formatDuration(fin.remaining)} left to place or cancel an order. Orders and cancellations still change the indicative price until the countdown ends. {exact ? 'Showing exact figures.' : 'The price and the balance of demand are rounded here so this page does not flicker with every order.'} This is a display choice only: the program has no hidden or coarse final window, the book is public and exact, and every order is treated alike.{' '}
+        <button type="button" onClick={() => setExact(!exact)} aria-pressed={exact} className="inline-flex min-h-6 items-center py-1 text-accent-text underline">
+          {exact ? 'Round the figures' : 'Show exact figures'}
+        </button>
       </p>
     ) : null}
     <dl className="grid gap-4 sm:grid-cols-3" aria-label="Key numbers">
@@ -51,12 +66,12 @@ export function Hero({ cross, book, orders, phase, now, market: m }: { cross: Cr
               : 'No crossing orders yet.'
         }
       >
-        {book?.indicative ? formatPrice(BigInt(book.indicative.price), m) : sealed ? 'Sealed' : 'No price yet'}
+        {range ? <span data-testid="coarse-price" className="text-[26px] sm:text-[32px]">about {formatPrice(range.low, m)} to {formatPrice(range.high, m)}</span> : book?.indicative ? formatPrice(BigInt(book.indicative.price), m) : sealed ? 'Sealed' : 'No price yet'}
       </Stat>
       <Stat
         label="Tokens offered"
         testId="offered"
-        sub={book === null ? 'Loading the book…' : sealed ? (hasBook ? `${formatAtoms(wanted, m.baseDecimals)} wanted so far. Only revealed bids are counted.` : 'Bids stay sealed until the reveal.') : `${formatAtoms(wanted, m.baseDecimals)} wanted by buyers`}
+        sub={book === null ? 'Loading the book…' : sealed ? (hasBook ? `${formatAtoms(wanted, m.baseDecimals)} wanted so far. Only revealed bids are counted.` : 'Bids stay sealed until the reveal.') : bucket ? `Demand: ${bucket.label}.` : `${formatAtoms(wanted, m.baseDecimals)} wanted by buyers`}
       >
         {book === null ? '…' : sealed && !hasBook ? 'Sealed' : formatAtoms(offered, m.baseDecimals)}
       </Stat>

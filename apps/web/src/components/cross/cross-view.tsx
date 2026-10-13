@@ -2,13 +2,17 @@
 
 import type { UiWalletAccount } from '@wallet-standard/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { FollowButton } from '@/components/alerts/follow-button';
 import { StateBadge } from '@/components/state-badge';
 import { API_URL } from '@/lib/api';
+import { HOLDER_API_URL } from '@/lib/holder-api';
 import type { AuthenticityView, PromiseView } from '@/lib/trust-types';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { type Market, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
 import { BookChart } from './book-chart';
+import { CommentsTab } from './comments-tab';
+import { Readiness, ShareAsBlink } from './holder-readiness';
 import { Hero } from './hero';
 import { MyOrders } from './my-orders';
 import { OrderTicket } from './order-ticket';
@@ -143,6 +147,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Cross {shortAddress(cross.address)}</h1>
         <StateBadge state={cross.state} phase={phase === 'settled' ? 'awaiting-settlement' : phase} />
+        {cross.state === 'Live' ? <FollowButton kind="crosses" address={cross.address} label={`cross ${shortAddress(cross.address)}`} /> : null}
       </div>
       <p className="mt-2 text-sm text-muted">
         {cross.kind} · {cross.disclosure === 'sealed' ? 'sealed bids' : 'open book'} · base {cross.baseMint ? shortAddress(cross.baseMint) : 'minted at settlement'} · quote {shortAddress(cross.quoteMint)}
@@ -173,6 +178,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
               { id: 'orders', label: 'Orders', content: <OrdersTab cross={cross} orders={orders} loaded={ordersLoaded} phase={phase} market={m} owner={account?.address ?? null} /> },
               { id: 'proof', label: 'Proof', content: <ProofTab cross={cross} proof={proof} loaded={proofLoaded} market={m} /> },
               { id: 'replay', label: 'Replay', content: <ReplayTab cross={cross} version={version} market={m} /> },
+              { id: 'comments', label: 'Comments', content: <CommentsTab cross={cross.address} account={account} /> },
             ]}
           />
         </div>
@@ -185,7 +191,9 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
               This cross is ready to settle. Anyone can settle it; connect a wallet to do so, or wait for a keeper.
             </p>
           ) : null}
+          {account && cross.state === 'Live' && (phase === 'upcoming' || phase === 'open') ? <Readiness cross={cross} owner={account.address} decimals={m.quoteDecimals} /> : null}
           <SignedBand address={cross.address} market={m} version={version} initial={initialBand} />
+          {cross.disclosure === 'open' && cross.state === 'Live' ? <ShareAsBlink cross={cross.address} apiUrl={HOLDER_API_URL} /> : null}
           {settled ? <ProofLink address={cross.address} proof={proof} /> : null}
         </div>
       </div>

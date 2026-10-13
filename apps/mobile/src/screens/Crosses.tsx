@@ -2,12 +2,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { type CrossSummary, get } from '../lib/api';
+import { badgeOf } from '../lib/listing';
 import { shortAddress } from '../lib/units';
 import { Card, Notice, Pill, Txt } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import type { RootStack } from '../navigation';
-
-const TONE = { Live: 'live', Cleared: 'good', NoPrint: 'plain', Finalized: 'plain' } as const;
 
 function when(ts: string): string {
   return new Date(Number(ts) * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
@@ -15,6 +14,7 @@ function when(ts: string): string {
 
 export function CrossesScreen({ navigation }: NativeStackScreenProps<RootStack, 'Crosses'>) {
   const t = useTheme();
+  const now = Math.floor(Date.now() / 1000);
   const [rows, setRows] = useState<CrossSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,11 +49,11 @@ export function CrossesScreen({ navigation }: NativeStackScreenProps<RootStack, 
       ListHeaderComponent={error ? <Notice tone="error">{error} Pull down to try again.</Notice> : null}
       ListEmptyComponent={rows === null && !error ? <Txt tone="muted">Loading crosses…</Txt> : rows?.length === 0 ? <Txt tone="muted">No crosses yet.</Txt> : null}
       renderItem={({ item: c }) => (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Cross ${shortAddress(c.address)}, ${c.state}`} onPress={() => navigation.navigate('Cross', { address: c.address })}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Cross ${shortAddress(c.address)}, ${badgeOf(c, now).label}`} onPress={() => navigation.navigate('Cross', { address: c.address })}>
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Txt variant="heading">{shortAddress(c.address)}</Txt>
-              <Pill label={c.state === 'Live' ? 'Open' : c.state === 'NoPrint' ? 'No print' : c.state} tone={TONE[c.state]} />
+              <Pill label={badgeOf(c, now).label} tone={badgeOf(c, now).tone} />
             </View>
             <Txt variant="small" tone="muted" style={{ marginTop: 8 }}>
               {c.orders_committed} order{c.orders_committed === 1 ? '' : 's'} · closes {when(c.close_ts)}

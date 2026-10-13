@@ -96,8 +96,8 @@ for (const path of ['/calendar', '/live']) {
     await again.click();
     check((await again.getAttribute('aria-pressed')) === 'false' && (await page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? '[]').length, KEY)) === 0, 'clicking again removes it');
   }
-  const note = await page.getByText(/send no email and no push notification/).first().isVisible();
-  check(note, 'the page says plainly that no email or push is sent');
+  const note = await page.getByText(/Follow is different: once you choose a channel/).first().isVisible();
+  check(note, 'the page says plainly that Notify me stays in this browser and Follow needs a channel');
   await s.ctx.close();
 }
 

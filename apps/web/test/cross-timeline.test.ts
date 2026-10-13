@@ -132,3 +132,13 @@ describe('workedExample', () => {
     expect(workedExample(finalized, null, market).kind).toBe('none');
   });
 });
+
+describe('stage times from the event log (M3 follow-up)', () => {
+  it('gives the cleared and finalized stages the moments the event log recorded, and leaves them unpublished without', () => {
+    const none = stagesOf(finalized, 'settled');
+    expect(none.map((s) => s.ts)).toEqual([BigInt(finalized.window.openTs), BigInt(finalized.window.closeTs), null, null]);
+    const withTimes = stagesOf(finalized, 'settled', { clearedAt: 1_791_855_000n, finalizedAt: 1_791_855_100n });
+    expect(withTimes.map((s) => s.ts)).toEqual([BigInt(finalized.window.openTs), BigInt(finalized.window.closeTs), 1_791_855_000n, 1_791_855_100n]);
+    expect(stagesOf(finalized, 'settled', { clearedAt: 1_791_855_000n, finalizedAt: null })[3]!.ts).toBeNull();
+  });
+});
