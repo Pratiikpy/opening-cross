@@ -5,7 +5,7 @@
 // own words, never as a stack trace.
 import { API_URL } from './api';
 
-import { RPC_URL } from './config';
+import { RPC_ENDPOINTS, RPC_URL } from './config';
 
 export { RPC_URL };
 
@@ -34,17 +34,29 @@ export async function build(path: string, body: unknown): Promise<{ txs: Unsigne
   return { txs, extra: json };
 }
 
+let endpoint = 0;
+
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  // Public endpoints answer bursts with 429. Sending and polling are safe to repeat (the same signed bytes, a read), so ride it
-  // out with a short backoff instead of reporting a failure for a transaction that may well have landed.
+  // Public endpoints answer bursts with 429. Sending and polling are safe to repeat (the same signed bytes, a read), so move to the
+  // next endpoint at once, and after a full round back off, instead of reporting a failure for a transaction that may well have landed.
   let res: Response;
   let json: { result?: T; error?: { code?: number; message: string; data?: { logs?: string[] } } };
   for (let attempt = 1; ; attempt++) {
-    res = await fetch(RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
-    json = (await res.json().catch(() => ({ error: { message: `The RPC endpoint answered HTTP ${res.status}.` } }))) as typeof json;
+    const at = endpoint;
+    try {
+      res = await fetch(RPC_ENDPOINTS[at]!, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+      json = (await res.json().catch(() => ({ error: { message: `The RPC endpoint answered HTTP ${res.status}.` } }))) as typeof json;
+    } catch (e) {
+      // A refused or dropped connection (a limited endpoint's answer can arrive without CORS headers): try the next one.
+      if (attempt >= 8) throw new ActionError(`The RPC endpoint could not be reached: ${e instanceof Error ? e.message : String(e)}`);
+      if (RPC_ENDPOINTS.length > 1 && endpoint === at) endpoint = (at + 1) % RPC_ENDPOINTS.length;
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
     const limited = res.status === 429 || json.error?.code === 429;
     if (!limited || attempt >= 8) break;
-    await new Promise((r) => setTimeout(r, Math.min(8_000, 500 * 2 ** (attempt - 1))));
+    if (RPC_ENDPOINTS.length > 1 && endpoint === at) endpoint = (at + 1) % RPC_ENDPOINTS.length;
+    if (attempt % RPC_ENDPOINTS.length === 0) await new Promise((r) => setTimeout(r, Math.min(8_000, 500 * 2 ** (attempt / RPC_ENDPOINTS.length - 1))));
   }
   if (json.error) {
     const reason = json.error.data?.logs?.find((l) => l.includes('Error Message:'))?.split('Error Message:')[1]?.trim();
@@ -72,7 +84,7 @@ async function landOne(t: Unsigned, label: string, sign: Signer, onStatus?: (s: 
     if (s?.err) throw new ActionError(`The transaction failed on chain: ${JSON.stringify(s.err)}`);
     if (s && (s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized')) return sig;
     if (Date.now() > deadline) throw new ActionError(`Not confirmed after 90 s. Check ${sig} in an explorer before retrying.`);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 1_500));
   }
 }
 
