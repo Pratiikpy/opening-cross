@@ -660,7 +660,7 @@ create_cross
 | `init_shard` | yes (no state check) | yes | yes | yes |
 | `merge_shard` | from `reveal_end_ts` | no | no | no |
 | `clear` | when every shard is merged | no | no | no |
-| `bind_base_mint` | no | deferred-mint, unbound | no | no |
+| `bind_base_mint` | no | deferred-mint, unbound, before the deadline | no | no |
 | `abandon_settlement` | no | deferred-mint, unbound, after the deadline | no | no |
 | `claim` | no | yes (after the base mint is bound, if deferred) | yes | no |
 | `finalize` | no | when `orders_open = 0` | when `orders_open = 0` | no |
@@ -1047,7 +1047,7 @@ Discriminator `ec6386e535b395e7`. Arguments: none.
 | 3 | `base_mint` | – |  |
 <!-- /ocip:ix -->
 
-Preconditions: `supply_mode = DeferredMint` and `state = Cleared` and `base_bound = false` (`WrongState`); the signer equals `settler` (`NotSettler`); `base_mint` is owned by the cross's stored `base_token_program` (`WrongMint`); it differs from the quote mint (`InvalidParams`); its mint authority is the cross PDA (`MintAuthorityNotCross`). Effects: `base_mint`, `base_decimals`, `base_bound = true`. Event `BaseMintBound`.
+Preconditions: `supply_mode = DeferredMint` and `state = Cleared` and `base_bound = false` (`WrongState`); the signer equals `settler` (`NotSettler`); `now < settle_deadline_ts` (`SettlementDeadlinePassed`; ADR-0026); `base_mint` is owned by the cross's stored `base_token_program` (`WrongMint`); it differs from the quote mint (`InvalidParams`); its mint authority is the cross PDA (`MintAuthorityNotCross`). Effects: `base_mint`, `base_decimals`, `base_bound = true`. Event `BaseMintBound`.
 
 #### `abandon_settlement`
 
@@ -1088,9 +1088,9 @@ Discriminator `ab3dda387f730cd9`. Arguments: none.
 | 12 | `quote_token_program` | – |  |
 <!-- /ocip:ix -->
 
-`base_vault`, `base_mint` and `proceeds_base` MUST be supplied for an escrow-mode cross: the program sweeps base dust only if `base_vault` is supplied (and then needs the other two), and it does not fail when they are omitted, so a call that leaves them out finalizes the cross and strands any base dust in the vault (§17.3). In the mint modes `base_mint` is needed to hand back the mint authority. `fee_recipient_quote`, `integrator_quote` and `proceeds_quote` are token accounts of the quote mint owned by `fee_recipient`, `integrator` and `proceeds_to` respectively; they MAY be the same account.
+`base_vault`, `base_mint` and `proceeds_base` MUST be supplied for an escrow-mode cross that holds base dust: when `supply_mode = Escrow` and `base_sold > base_bought`, a call that omits any of them fails with `BaseDustAccountsMissing` before anything moves (ADR-0025). An escrow-mode cross with no dust (`base_sold = base_bought`, which includes every cross that did not print) may omit them. A client SHOULD always supply them for an escrow-mode cross. In the mint modes `base_mint` is needed to hand back the mint authority. `fee_recipient_quote`, `integrator_quote` and `proceeds_quote` are token accounts of the quote mint owned by `fee_recipient`, `integrator` and `proceeds_to` respectively; they MAY be the same account.
 
-Preconditions: `state` is `Cleared` or `NoPrint` (`WrongState`); `orders_open = 0` (`OrdersOutstanding`).
+Preconditions: `state` is `Cleared` or `NoPrint` (`WrongState`); `orders_open = 0` (`OrdersOutstanding`); in an escrow-mode cross with `base_sold > base_bought`, the three base accounts above are present (`BaseDustAccountsMissing`).
 
 Procedure:
 
@@ -1551,7 +1551,7 @@ where `owner` is the 32 address bytes and `nonce_le8` is the `u64` nonce, little
 1. `create_cross` with `supply_mode = DeferredMint`, no base mint and no base vault, `settler` set to the adapter's authority, and `settle_deadline_ts > reveal_end_ts`.
 2. The cross clears. While `base_bound = false`, `claim` fails with `SettlementPending` and refunds are not available through `claim` either (the instruction requires a bound mint in `Cleared`).
 3. The adapter creates the base mint with the cross PDA as mint authority and calls `bind_base_mint`, signing as `settler`.
-4. If the mint has not been bound, anyone may call `abandon_settlement` at or after `settle_deadline_ts`; the cross becomes `NoPrint` (`SettlementExpired`) and every order refunds. `bind_base_mint` does not check the deadline, so until `abandon_settlement` has run the settler can still bind, and after the deadline whichever of the two transactions lands first decides the outcome.
+4. If the mint has not been bound, anyone may call `abandon_settlement` at or after `settle_deadline_ts`; the cross becomes `NoPrint` (`SettlementExpired`) and every order refunds. `bind_base_mint` fails with `SettlementDeadlinePassed` at or after the same instant, so the deadline splits time exactly: before it only a bind can end the wait, from it on only `abandon_settlement` can, and the outcome never depends on which transaction lands first.
 
 **Post-bind adapter.** Opens a market for an already-bound base mint at `P*` (DAMM v2, DLMM, Raydium CPMM). It is not a precondition of anything in `cross_core`.
 
@@ -1770,7 +1770,7 @@ Nested types: `Session { start_ts: i64, end_ts: i64 }`, `PendingUpdate { session
 | `cancel_update` | admin | Clears the pending update (`NothingPending` if none). Event `UpdateCancelled` |
 | `apply_update` | anyone | Applies the pending update once `now ≥ eta` (`TimelockActive` before; `NothingPending` if none). Event `CalendarUpdated` |
 | `propose_admin(new_admin)` | admin | Stores `pending_admin` with `eta = now + timelock_secs`. No event |
-| `apply_admin` | anyone | Sets `admin` to the pending admin once `now ≥ eta` (`TimelockActive`, `NothingPending`). Event `AdminChanged` |
+| `apply_admin` | anyone | Sets `admin` to the pending admin once `now ≥ eta` (`TimelockActive`, `NothingPending`). Event `CalendarAdminChanged` |
 
 Validation of a session list: at most `MAX_SESSIONS` sessions and `MAX_FEEDS` feeds (`TooMany`); every session has `start_ts < end_ts` and `start_ts` not before the previous session's `end_ts` (`BadSessions`). The signer checks fail with `Unauthorized`. There is no instruction to cancel a pending admin change.
 
@@ -1831,13 +1831,13 @@ Events are emitted with Anchor `emit!`: the program writes a log line `Program d
 
 | Event | Discriminator | Fields |
 |---|---|---|
-| `AdminChanged` | `e8221fe23e121372` | `calendar: Pubkey`, `admin: Pubkey` |
+| `CalendarAdminChanged` | `7b06056a7d8ef04b` | `calendar: Pubkey`, `admin: Pubkey` |
 | `CalendarUpdated` | `8ded6af7464a4740` | `calendar: Pubkey`, `sessions: u32`, `feeds: u32` |
 | `UpdateCancelled` | `ac042411a937d362` | `calendar: Pubkey` |
 | `UpdateProposed` | `d3040569fc788d1e` | `calendar: Pubkey`, `eta: i64` |
 <!-- /ocip:events -->
 
-`AdminChanged` is a name used by both `cross_core` and `cross_calendar` with different fields and the same discriminator. A consumer MUST attribute an event to a program before decoding it (§12.3).
+No event name, and so no event discriminator, is shared by two programs. The calendar's admin event was renamed from `AdminChanged` to `CalendarAdminChanged` (ADR-0027); `cross_core` keeps `AdminChanged`. Events the calendar emitted under the old name before that change carry the discriminator `e8221fe23e121372`, the same as `cross_core`'s `AdminChanged`. A consumer MUST still attribute an event to a program before decoding it (§12.3).
 
 Instructions that emit no event: in `cross_core`, `init_protocol`, `set_protocol_fees`, `migrate_protocol`, `set_guardian`, `init_shard` and `merge_shard`; in `cross_gate`, `init_hook_metas`, `init_gate_metas`, `execute`, `can_thaw_permissionless` and `can_freeze_permissionless`; in `cross_calendar`, `propose_admin`. `CrossFinalized.dust_base` is the base atoms sent to `proceeds_base` and `CrossFinalized.proceeds_quote` the quote atoms sent to `proceeds_quote`; `OrderCommitted.index` is `orders_total` before the increment.
 
@@ -1886,6 +1886,8 @@ Custom error codes start at 6000 in declaration order.
 | 6033 | `CalendarMismatch` | Calendar account missing or does not match |
 | 6034 | `NotACalendarSession` | The cross must close at the start of a calendar session |
 | 6035 | `FeedNotApproved` | The oracle feed is not approved by the calendar |
+| 6036 | `BaseDustAccountsMissing` | This cross holds base dust: base_vault, base_mint and proceeds_base are required |
+| 6037 | `SettlementDeadlinePassed` | The settlement deadline has passed |
 <!-- /ocip:errors -->
 
 <!-- ocip:errors cross_settle -->
@@ -2333,7 +2335,7 @@ This section states what the protocol is designed to guarantee, what it does not
 - **Oracle guard.** The caller of `clear` chooses which fully verified Pyth update within `max_staleness_secs` to pass, so among the updates that are valid at that moment the caller decides whether the price is judged divergent. A cross with an oracle guard cannot be cleared without an update. This follows from the rule; no test exercises an adversarial choice.
 - **Identity.** The rule rations by size, not by identity, and the program has no per-identity cap. Identity gating (§10) is optional per cross and depends on the attester.
 - **Issuer powers.** The program does not check mint extensions. A mint with a freeze authority, a pause authority, a transfer hook, a transfer fee or a permanent delegate can stall or tax escrow or settlement outside the program's control. The reference API and keeper check this; the program does not (§14.1).
-- **Dust.** Rounding leaves less than `marginal_orders` atoms of base dust, which goes to `proceeds_base` only if the caller of `finalize` supplies the optional base accounts. `finalize` is permissionless and does not check that they are present, so in an escrow-mode cross a call that omits them finalizes the cross and leaves the dust in the base vault. This follows from reading `programs/cross_core/src/lib.rs`; no test in the repository exercises it (NOT VERIFIED by execution). The quote vault is always swept.
+- **Dust.** Rounding leaves less than `marginal_orders` atoms of base dust, which goes to `proceeds_base`. `finalize` refuses (`BaseDustAccountsMissing`) a call that leaves out the optional base accounts when the cross holds dust, so dust cannot be stranded by a careless caller (ADR-0025; `tests/core/test/finalize-dust.test.ts`). The quote vault is always swept.
 
 ### 17.4 Trust placed in operators
 

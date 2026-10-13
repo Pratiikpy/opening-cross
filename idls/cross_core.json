@@ -1737,6 +1737,16 @@
       "code": 6035,
       "name": "FeedNotApproved",
       "msg": "The oracle feed is not approved by the calendar"
+    },
+    {
+      "code": 6036,
+      "name": "BaseDustAccountsMissing",
+      "msg": "This cross holds base dust: base_vault, base_mint and proceeds_base are required"
+    },
+    {
+      "code": 6037,
+      "name": "SettlementDeadlinePassed",
+      "msg": "The settlement deadline has passed"
     }
   ],
   "types": [

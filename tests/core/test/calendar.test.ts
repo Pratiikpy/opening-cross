@@ -1,6 +1,8 @@
 // Exchange calendar (ROADMAP C6): changes wait out a ≥7-day timelock, the admin can cancel during
 // the wait, anyone applies after it, and crosses bound to a calendar must close at a session
 // start with an approved oracle feed.
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { type Address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import {
@@ -74,6 +76,27 @@ describe('exchange calendar', () => {
     w.h.setTime(T0 + WEEK);
     await w.h.send([getApplyAdminInstruction({ calendar: cal })], next);
     expect(read().admin).toBe(next.address);
+  });
+
+  // ADR-0027: an event is identified by sha256("event:<Name>")[..8], so two programs that emit events of the same name
+  // emit indistinguishable discriminators. cross_core and cross_calendar once both emitted `AdminChanged`.
+  it('emits CalendarAdminChanged, and no event discriminator is shared with cross_core', async () => {
+    const { w, cal } = await setup();
+    const next = await w.trader();
+    await w.h.send([getProposeAdminInstruction({ admin: w.admin, calendar: cal, newAdmin: next.address })], w.admin);
+    w.h.setTime(T0 + WEEK);
+    await w.h.send([getApplyAdminInstruction({ calendar: cal })], next);
+    const disc = (name: string) => createHash('sha256').update(`event:${name}`).digest().subarray(0, 8).toString('base64');
+    const emitted = w.h.landed.at(-1)!.logs.filter((l) => l.startsWith('Program data: ')).map((l) => Buffer.from(l.slice('Program data: '.length), 'base64').subarray(0, 8).toString('base64'));
+    expect(emitted).toEqual([disc('CalendarAdminChanged')]);
+
+    const idl = (p: string) => JSON.parse(readFileSync(new URL(`../../../${p}`, import.meta.url), 'utf8')) as { events: { name: string; discriminator: number[] }[] };
+    const core = idl('idls/cross_core.json').events;
+    const calendar = idl('packages/cross-calendar-client/idl/cross_calendar.json').events;
+    const key = (e: { discriminator: number[] }) => e.discriminator.join(',');
+    expect(calendar.map((e) => e.name)).not.toContain('AdminChanged');
+    expect(calendar.filter((c) => core.some((e) => key(e) === key(c))).map((e) => e.name)).toEqual([]);
+    for (const e of calendar) expect(Buffer.from(e.discriminator).toString('base64')).toBe(disc(e.name));
   });
 
   it('a calendar cross must close at a session start and use an approved feed', async () => {

@@ -269,16 +269,16 @@
   ],
   "events": [
     {
-      "name": "AdminChanged",
+      "name": "CalendarAdminChanged",
       "discriminator": [
-        232,
-        34,
-        31,
-        226,
-        62,
-        18,
-        19,
-        114
+        123,
+        6,
+        5,
+        106,
+        125,
+        142,
+        240,
+        75
       ]
     },
     {
@@ -360,22 +360,6 @@
   ],
   "types": [
     {
-      "name": "AdminChanged",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "calendar",
-            "type": "pubkey"
-          },
-          {
-            "name": "admin",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "Calendar",
       "type": {
         "kind": "struct",
@@ -436,6 +420,22 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CalendarAdminChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "calendar",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
           }
         ]
       }

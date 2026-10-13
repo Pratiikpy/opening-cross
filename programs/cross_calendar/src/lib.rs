@@ -128,7 +128,7 @@ pub mod cross_calendar {
             .ok_or(CalendarError::NothingPending)?;
         require!(now >= p.eta, CalendarError::TimelockActive);
         c.admin = p.admin;
-        emit!(AdminChanged {
+        emit!(CalendarAdminChanged {
             calendar: c.key(),
             admin: p.admin
         });
@@ -240,7 +240,7 @@ pub struct UpdateCancelled {
     pub calendar: Pubkey,
 }
 #[event]
-pub struct AdminChanged {
+pub struct CalendarAdminChanged {
     pub calendar: Pubkey,
     pub admin: Pubkey,
 }

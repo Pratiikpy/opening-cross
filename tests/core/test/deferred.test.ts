@@ -62,6 +62,37 @@ describe('deferred-mint launch', () => {
     expect(final.data.state).toBe(CrossState.Finalized);
   });
 
+  // ADR-0026: the deadline splits time exactly in two. Before it only the settler can settle; from it on only
+  // abandonment can run, so the outcome never depends on which transaction lands first.
+  it('binds up to the last second before the deadline and not at or after it', async () => {
+    const w = await World.create();
+    const { settler, cross, b, o } = await setup(w);
+    w.h.setTime(1_800_000_499n);
+    const base = await w.h.mint(settler, 6);
+    await w.h.setMintAuthority(base, settler, cross.address);
+    await w.h.send([getBindBaseMintInstruction({ settler, cross: cross.address, baseMint: base })], settler);
+    expect(w.view(cross.address).data.baseBound).toBe(true);
+    await w.claimAll(w.view(cross.address), [o]);
+    expect(await w.h.balanceOf(b.address, base)).toBe(1_000_000_000n);
+  });
+
+  it('refuses to bind from the deadline on, and abandonment then decides the outcome', async () => {
+    const w = await World.create();
+    const { settler, cross, b, o } = await setup(w);
+    const base = await w.h.mint(settler, 6);
+    await w.h.setMintAuthority(base, settler, cross.address);
+    const bind = getBindBaseMintInstruction({ settler, cross: cross.address, baseMint: base });
+    w.h.setTime(1_800_000_500n); // exactly the deadline: abandon_settlement would succeed here
+    expect(await w.h.fail([bind], settler)).toContain('SettlementDeadlinePassed');
+    w.h.setTime(1_800_009_999n); // long after, and nobody has abandoned yet
+    expect(await w.h.fail([bind], settler)).toContain('SettlementDeadlinePassed');
+    expect(w.view(cross.address).data.baseBound).toBe(false);
+    await w.h.send([getAbandonSettlementInstruction({ cross: cross.address })], w.admin);
+    expect(w.view(cross.address).data.state).toBe(CrossState.NoPrint);
+    await w.claimAll(w.view(cross.address), [o]);
+    expect(await w.h.balanceOf(b.address, w.quoteMint)).toBe(10_000_000_000n);
+  });
+
   it('rejects inconsistent deferred configurations', async () => {
     const w = await World.create();
     await expect(w.newCross({ supplyMode: SupplyMode.DeferredMint, schedule })).rejects.toThrow(/InvalidParams/); // no settler

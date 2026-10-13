@@ -6,7 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from './adminChanged.js';
+export * from './calendarAdminChanged.js';
 export * from './calendarUpdated.js';
 export * from './updateCancelled.js';
 export * from './updateProposed.js';

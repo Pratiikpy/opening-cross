@@ -972,6 +972,12 @@ pub mod cross_core {
             c.settler == Some(ctx.accounts.settler.key()),
             CrossError::NotSettler
         );
+        // The deadline splits time in two (ADR-0026): `abandon_settlement` runs from it on, so a bind may only
+        // run before it. Otherwise the outcome would depend on which transaction landed first.
+        require!(
+            Clock::get()?.unix_timestamp < c.settle_deadline_ts,
+            CrossError::SettlementDeadlinePassed
+        );
         let mint = &ctx.accounts.base_mint;
         require_keys_eq!(
             *mint.to_account_info().owner,
@@ -1030,6 +1036,17 @@ pub mod cross_core {
             CrossError::WrongState
         );
         require!(c.orders_open == 0, CrossError::OrdersOutstanding);
+        // Escrow mode: rationing leaves `base_sold - base_bought` base atoms in the vault, which belong to
+        // `proceeds_to` (ADR-0025). A call that omits the accounts to sweep them is refused rather than
+        // finalizing and stranding them. A cross without dust may still omit them.
+        if c.supply_mode == SupplyMode::Escrow && c.base_sold > c.base_bought {
+            require!(
+                ctx.accounts.base_vault.is_some()
+                    && ctx.accounts.base_mint.is_some()
+                    && ctx.accounts.proceeds_base.is_some(),
+                CrossError::BaseDustAccountsMissing
+            );
+        }
         let cross_info = c.to_account_info();
         let (creator, id, bump) = (c.creator, c.cross_id.to_le_bytes(), [c.bump]);
         let seeds: &[&[u8]] = &[CROSS_SEED, creator.as_ref(), &id, &bump];
@@ -1717,4 +1734,8 @@ pub enum CrossError {
     NotACalendarSession,
     #[msg("The oracle feed is not approved by the calendar")]
     FeedNotApproved,
+    #[msg("This cross holds base dust: base_vault, base_mint and proceeds_base are required")]
+    BaseDustAccountsMissing,
+    #[msg("The settlement deadline has passed")]
+    SettlementDeadlinePassed,
 }

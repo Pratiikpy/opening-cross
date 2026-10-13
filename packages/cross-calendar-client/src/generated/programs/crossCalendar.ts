@@ -22,11 +22,11 @@ export function identifyCrossCalendarAccount(account: { data: ReadonlyUint8Array
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT, { accountData: data, programName: "crossCalendar" });
 }
 
-export enum CrossCalendarEvent { AdminChanged, CalendarUpdated, UpdateCancelled, UpdateProposed }
+export enum CrossCalendarEvent { CalendarAdminChanged, CalendarUpdated, UpdateCancelled, UpdateProposed }
 
 export function identifyCrossCalendarEvent(event: { data: ReadonlyUint8Array } | ReadonlyUint8Array): CrossCalendarEvent {
     const data = 'data' in event ? event.data : event;
-    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([232, 34, 31, 226, 62, 18, 19, 114])), 0)) { return CrossCalendarEvent.AdminChanged; }
+    if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([123, 6, 5, 106, 125, 142, 240, 75])), 0)) { return CrossCalendarEvent.CalendarAdminChanged; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([141, 237, 106, 247, 70, 74, 71, 64])), 0)) { return CrossCalendarEvent.CalendarUpdated; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([172, 4, 36, 17, 169, 55, 211, 98])), 0)) { return CrossCalendarEvent.UpdateCancelled; }
 if (containsBytes(data, fixEncoderSize(getBytesEncoder(), 8).encode(new Uint8Array([211, 4, 5, 105, 252, 120, 141, 30])), 0)) { return CrossCalendarEvent.UpdateProposed; }
