@@ -12,6 +12,7 @@ import { SOL_NEEDED, useLamports, useSponsor } from './holder-readiness';
 import { RiskAck, useRiskAck } from '@/components/portfolio/risk-ack';
 import { type ClassId, type RulesRead, type Standing, blocked, classOptions, endingNow, needsAck, ticketChecks } from '@/lib/holder-rules';
 import type { Built } from '@/lib/holder-tx';
+import { PEG_NOTE, isPegged, pegPrice } from '@/lib/peg';
 import { ActionButton } from './action-button';
 import { rememberTerms } from './own-orders';
 import { type OrderPreview, previewOrder } from './preview';
@@ -146,8 +147,13 @@ export function OrderTicket({
         />
       </label>
       <p id="price-help" className={`mt-1 text-xs ${typeof price === 'string' ? 'text-accent-text' : 'text-muted'}`}>
-        {typeof price === 'string' ? price : 'Everyone who is filled pays the same clearing price, which is never worse than your limit.'}
+        {typeof price === 'string' ? price : isPegged(cross.grid, side, price) ? PEG_NOTE[side] : 'Everyone who is filled pays the same clearing price, which is never worse than your limit.'}
       </p>
+      {isPegged(cross.grid, side, price) ? null : (
+        <button type="button" onClick={() => setPriceText(formatPrice(pegPrice(cross.grid, side), m))} className="mt-2 min-h-11 rounded-full border border-border-strong px-4 py-2 text-xs transition-colors hover:bg-surface" data-testid="peg-open">
+          Take whatever the open prints
+        </button>
+      )}
       <label className="mt-4 block text-sm">
         <span className="text-muted">{lotteryUnit > 0n ? 'Tokens (one lot, fixed by the class)' : 'Tokens'}</span>
         <input

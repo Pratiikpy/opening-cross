@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const server = read('../../../services/api/src/server.ts');
 // The route files of the rules, treasury and settlement layer (docs/api/W3A-rules-treasury-settle.md) register their routes the same way.
-const routeFiles = ['rules-tx', 'rules-read', 'treasury-tx', 'settle-tx'].map((f) => read(`../../../services/api/src/routes/${f}.ts`));
+const routeFiles = ['rules-tx', 'rules-read', 'treasury-tx', 'settle-tx', 'settle-open-tx', 'meteora-tx', 'challenges', 'holder-programs', 'dashboard'].map((f) => read(`../../../services/api/src/routes/${f}.ts`));
 
 /** Every route the API registers: `app.get('/v1/x', ...)` and `app.post(...)`. A WebSocket route is registered with get. */
 const registered = new Set([server, ...routeFiles].flatMap((src) => [...src.matchAll(/app\.(get|post)\(\s*'(\/v1\/[^']+)'/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`)));

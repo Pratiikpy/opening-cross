@@ -17,6 +17,8 @@ export const ISSUER_MENU: IssuerSection[] = [
     links: [
       { href: '/issuer', label: 'Overview', hint: 'Your crosses, holders and fees' },
       { href: '/issuer/treasury', label: 'Treasury', hint: 'Create, extend and run it' },
+      { href: '/issuer/series', label: 'Series', hint: 'Recur on a schedule' },
+      { href: '/issuer/halts', label: 'Halts', hint: 'Halt, flag, resume' },
       { href: '/issuer/settle', label: 'Settle', hint: 'Payouts and the greenshoe' },
       { href: '/issuer/disclosures', label: 'Disclosures and Q&A', hint: 'Post updates, answer holders' },
     ],

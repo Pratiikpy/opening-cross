@@ -33,7 +33,7 @@ try {
   await connect(s, f.wallet);
   log(await visible(P.getByTestId('my-crosses')), 'the wallet’s crosses are listed');
   log((await P.getByTestId('my-crosses').locator('li').count()) === 4, 'all four');
-  log(await visible(P.locator('[data-testid="program-notice"][data-release="unknown"]')) && /does not report/.test(await text(P.getByTestId('program-notice'))), 'the page says the API does not report cross_settle’s release, and that each action is simulated first');
+  log(await visible(P.locator('[data-testid="program-notice"][data-release="extended"]')) && /Live on/.test(await text(P.getByTestId('program-notice'))), 'with the extended release deployed (GET /v1/programs reports cross_settle) the page says the actions are live and signed by the wallet');
 
   // a cross that has not settled
   await picks(s, C.live);
@@ -96,14 +96,18 @@ try {
   log(r.done && Boolean(r.ix), 'settling the level signs settle_greenshoe_level');
   await s.ctx.close();
 
-  // the first release: each button is simulated and refused by the cluster
+  // the first release: GET /v1/programs says cross_settle is the first release, the page says so, and it offers nothing the program would refuse
   await setMode('old');
   const o = await person(browser, { name: 'settle-old', secret: f.secret });
   await o.page.goto(`${BASE}/issuer/settle?cross=${C.fresh}`, { waitUntil: 'networkidle' });
   await connect(o, f.wallet);
   await o.page.getByTestId('claim-partner-fee').waitFor();
-  r = await err(o, 'claim-partner-fee');
-  log(r.shown && /cross_settle does not have this instruction yet/.test(r.message) && /H27/.test(r.message) && r.n === 0, 'on the first release a payout is refused by the cluster’s dry run, in words, and nothing is signed');
+  const notice = o.page.locator('[data-testid="program-notice"][data-release="first-release"]');
+  log(await visible(notice) && /Not live on/.test(await text(notice)) && /switched off/.test(await text(notice)), 'on the first release the page says the extended instructions are not live yet and that signing is switched off');
+  log(await o.page.getByTestId('claim-partner-fee').isDisabled(), 'and the payout button is off, so nothing is offered that the deployed program would refuse');
+  await reset();
+  await o.page.getByTestId('claim-partner-fee').click({ force: true, timeout: 3000 }).catch(() => undefined);
+  log((await sent()).length === 0, 'forcing a click on it signs and sends nothing');
   await o.page.screenshot({ path: `${OUT}/settle-first-release.png`, fullPage: false });
   await o.ctx.close();
   await setMode('new');

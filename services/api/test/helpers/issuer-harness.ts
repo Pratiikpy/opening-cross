@@ -42,7 +42,6 @@ import { CROSS_BODY_LEN, CROSS_CORE_PROGRAM_ADDRESS, CrossKind, CrossState, Disc
 import { dlmmAddresses, greenshoeAddresses } from '@opening-cross/adapters';
 import { SPL_TOKEN_PROGRAM_ADDRESS } from '@opening-cross/token-safety';
 import { buildServer } from '../../src/server.js';
-import { registerHolderPrograms } from '../../src/routes/holder-programs.js';
 
 const PORT = Number(process.env.ISSUER_PORT ?? 8190);
 const KEY_FILE = process.env.ISSUER_KEY_FILE;
@@ -123,6 +122,11 @@ async function putProgram(programId: Address, control: Uint8Array, extra: Uint8A
 async function putPrograms() {
   await putProgram(core.CROSS_CORE_PROGRAM_ADDRESS, core.CREATE_CROSS_DISCRIMINATOR as Uint8Array, [core.SET_RULES_DISCRIMINATOR, core.COMMIT_ORDER_EXT_DISCRIMINATOR, core.DRAW_BEGIN_DISCRIMINATOR] as Uint8Array[]);
   await putProgram(treasury.TREASURY_PROGRAM_ADDRESS, treasury.SPEND_DISCRIMINATOR as Uint8Array, [treasury.INIT_EXT_DISCRIMINATOR, treasury.VOTE_DISCRIMINATOR, treasury.NAV_REDEEM_DISCRIMINATOR, treasury.STAKE_DISCRIMINATOR] as Uint8Array[]);
+  // The extended cross_settle carries every instruction of its client; the first release only the pool opening.
+  const settleExtra = Object.entries(settleClient)
+    .filter(([name, v]) => /_DISCRIMINATOR$/.test(name) && name !== 'OPEN_DBC_POOL_DISCRIMINATOR' && v instanceof Uint8Array)
+    .map(([, v]) => v as Uint8Array);
+  await putProgram(settleClient.CROSS_SETTLE_PROGRAM_ADDRESS, settleClient.OPEN_DBC_POOL_DISCRIMINATOR as Uint8Array, settleExtra);
 }
 
 // ------------------------------------------------------------------------------------------------ instruction names
@@ -340,12 +344,9 @@ async function main() {
     },
     lifetime: async () => ({ blockhash: BLOCKHASH as never, lastValidBlockHeight: 100n }),
     w2a: false,
+    // GET /v1/programs is registered by the server itself; its answer must follow the mode switch at once.
+    programsTtlMs: 0,
   } as never);
-  try {
-    registerHolderPrograms(app, { account: async (a) => { const x = accounts.get(a); return x ? { data: x.data, owner: x.owner } : null; }, network: 'devnet', ttlMs: 0 });
-  } catch {
-    // server.ts already registers GET /v1/programs
-  }
 
   // ---- the JSON-RPC endpoint the web app reads and sends through
   const sent: { signature: string; transaction: ReturnType<typeof decodeTransaction>['instructions']; feePayer: string; at: number }[] = [];

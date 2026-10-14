@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarView } from '@/components/calendar/calendar-view';
 import { MarketSessions } from '@/components/calendar/market-sessions';
+import { SeriesIndex } from '@/components/series/series-index';
 import { ReminderBanner } from '@/components/calendar/reminders';
 import { type CrossSummary, get } from '@/lib/api';
 import type { MarketsResponse } from '@/lib/calendar-markets';
@@ -40,6 +41,14 @@ export default async function Calendar() {
         ) : (
           <MarketSessions markets={markets.data.calendars} network={markets.data.network} serverNow={serverNow} />
         )}
+      </section>
+
+      <section className="mt-14" aria-labelledby="recurring-series">
+        <h2 id="recurring-series" className="text-xl font-semibold">
+          Recurring series
+        </h2>
+        <p className="mt-2 max-w-xl text-sm text-muted">Markets that reopen on a schedule. Each shows when its next cross closes; <Link href="/series" className="underline underline-offset-4 hover:text-ink">all series</Link>.</p>
+        <SeriesIndex />
       </section>
 
       <h2 className="mt-14 text-xl font-semibold">Cross windows</h2>

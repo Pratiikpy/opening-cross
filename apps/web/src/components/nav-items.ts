@@ -25,4 +25,7 @@ export const MORE_NAV = [
   { href: '/rights', label: 'Rights' },
   { href: '/practice', label: 'Practice' },
   { href: '/support', label: 'Support' },
+  { href: '/series', label: 'Series' },
+  { href: '/arbiter', label: 'Arbiter' },
+  { href: '/dashboard', label: 'Dashboard' },
 ];

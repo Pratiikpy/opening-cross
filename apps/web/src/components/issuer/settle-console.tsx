@@ -12,15 +12,17 @@ import { shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
 import { WalletAction } from './issuer-action';
 import { ProgramNotice } from './program-notice';
+import { AlphaVault, FeeSharing, MetLock } from './settle-meteora';
+import { MarketOpening } from './settle-open';
 import { Facts, Pill, Section } from './treasury-ui';
 
 const LIVE_TODAY: { feature: string; today: string; after: string; here: string }[] = [
-  { feature: 'Open a venue: DBC continuation, DAMM v2 pool, DLMM pair, Raydium CPMM pool', today: 'Live (first release of cross_settle), proved on devnet', after: 'Unchanged', here: 'Opened by your tooling with the SDK; not offered on this page.' },
+  { feature: 'Open a venue: DBC continuation, DAMM v2 pool, DLMM pair, Raydium CPMM pool', today: 'Live (first release of cross_settle), proved on devnet', after: 'Unchanged', here: 'The Open the market forms below build them.' },
   { feature: 'Claim the partner’s trading fees; withdraw the partner surplus; withdraw the migration fee; claim the pool-creation fee', today: 'Not available', after: 'Four instructions of the upgraded cross_settle, paid only to the addresses the cross fixed', here: 'Buttons below.' },
   { feature: 'Locked, compounding DBC continuation and the fees of its protocol-owned liquidity', today: 'Not available', after: 'open_dbc_pool_locked and claim_pol_fees', here: 'Claiming the position’s fees is below; opening the pool is done with the SDK.' },
   { feature: 'Greenshoe: standing bids under the clearing price for a week', today: 'Not available', after: 'create, place, settle and finish', here: 'Buttons below.' },
-  { feature: 'Batch-opened pools, Alpha Vault entry and Met Lock vesting', today: 'Not available', after: 'seed_damm_v2_batched, open_dlmm_pair_batched, the Alpha Vault fill, Met Lock', here: 'Built with the SDK; no API route and no button yet.' },
-  { feature: 'Stock-quoted DLMM pair behind a Token Badge', today: 'Not available', after: 'open_dlmm_pair_badged, once Meteora issues the badge', here: 'Built with the SDK; the badge is Meteora’s to issue.' },
+  { feature: 'Batch-opened pools, Alpha Vault entry and Met Lock vesting', today: 'Not available', after: 'seed_damm_v2_batched, open_dlmm_pair_batched, the Alpha Vault fill, Met Lock', here: 'Forms below: open the market, the Alpha Vault, Met Lock. Position vesting (lock.vest) and the DLMM Alpha Vault fill are not offered.' },
+  { feature: 'Stock-quoted DLMM pair behind a Token Badge', today: 'Not available', after: 'open_dlmm_pair_badged, once Meteora issues the badge', here: 'Form below (name the two badges); the badge is Meteora’s to issue.' },
 ];
 
 export function SettleConsole() {
@@ -193,6 +195,10 @@ function Selected({ cross, row, account }: { cross: string; row: CrossRow | null
       </Section>
 
       <PolFees account={account} cross={cross} off={off} why={why} />
+      <MarketOpening cross={cross} row={row} account={account} wallet={wallet} reload={reload} />
+      <AlphaVault cross={cross} row={row} account={account} wallet={wallet} quoteDecimals={quoteDecimals} />
+      <MetLock account={account} wallet={wallet} />
+      <FeeSharing cross={cross} row={row} account={account} wallet={wallet} />
       <Greenshoe account={account} cross={cross} row={row} settlement={settlement} quoteDecimals={quoteDecimals} reload={reload} wallet={wallet} />
     </>
   );

@@ -13,6 +13,8 @@ import { buildReasoned, failureText } from '@/lib/holder-tx';
 import { ActionError, type Signer, signSendConfirm } from '@/lib/tx';
 import { formatAtoms, formatDuration, parseAtoms, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
+import { payable } from '@/lib/holder-treasury-extra';
+import { DepositCard, ProposeCard } from './holder-extras';
 
 type Ext = Extract<ExtRead, { extended: true }>;
 
@@ -24,7 +26,7 @@ const FIELD = 'mt-1 w-full rounded-lg border border-border-strong bg-bg px-3 py-
  * release a grant, ask for a disclosure. Each action builds its unsigned transaction through the API and is signed in the holder's wallet.
  * Nothing is offered unless the deployed treasury program has the extension, this treasury was extended, and it switched the feature on.
  */
-export function HolderActions({ treasury, coinMint, quoteMint }: { treasury: string; coinMint: string; quoteMint: string }) {
+export function HolderActions({ treasury, coinMint, quoteMint, authority }: { treasury: string; coinMint: string; quoteMint: string; authority: string }) {
   const { account } = useWallet();
   const programs = usePrograms();
   const [version, setVersion] = useState(0);
@@ -109,13 +111,13 @@ export function HolderActions({ treasury, coinMint, quoteMint }: { treasury: str
           Connect a wallet with Connect wallet at the top right to see your position and act on it.
         </p>
       ) : (
-        <Connected account={account} treasury={treasury} coinMint={coinMint} data={data} ext={ext} onChanged={reload} />
+        <Connected account={account} treasury={treasury} coinMint={coinMint} authority={authority} data={data} ext={ext} onChanged={reload} />
       )}
     </section>
   );
 }
 
-function Connected({ account, treasury, coinMint, data, ext, onChanged }: { account: UiWalletAccount; treasury: string; coinMint: string; data: TreasuryHolderData; ext: Ext; onChanged: () => void }) {
+function Connected({ account, treasury, coinMint, authority, data, ext, onChanged }: { account: UiWalletAccount; treasury: string; coinMint: string; authority: string; data: TreasuryHolderData; ext: Ext; onChanged: () => void }) {
   const sign = useSigner(account);
   const owner = account.address;
   const [now, setNow] = useState(() => BigInt(Math.floor(Date.now() / 1000)));
@@ -129,7 +131,7 @@ function Connected({ account, treasury, coinMint, data, ext, onChanged }: { acco
   return (
     <div className="mt-8 space-y-8">
       <Position data={data} owner={owner} treasury={treasury} sign={sign} onChanged={onChanged} liquidating={liquidating} />
-      {ext.terms.governance ? <Proposals data={data} ext={ext} treasury={treasury} owner={owner} sign={sign} now={now} onChanged={onChanged} liquidating={liquidating} /> : null}
+      {ext.terms.governance ? <Proposals data={data} ext={ext} treasury={treasury} owner={owner} sign={sign} now={now} onChanged={onChanged} liquidating={liquidating} authority={authority} /> : null}
       {ext.terms.nav ? <Nav ext={ext} data={data} treasury={treasury} owner={owner} sign={sign} onChanged={onChanged} now={now} /> : null}
       {ext.terms.revenue ? <Rounds rounds={data.rounds} treasury={treasury} owner={owner} sign={sign} onChanged={onChanged} decimals={dec?.quote ?? null} /> : null}
       {data.grants && data.grants.length > 0 ? <Grants grants={data.grants} treasury={treasury} owner={owner} sign={sign} onChanged={onChanged} coinDecimals={dec?.coin ?? null} now={now} /> : null}
@@ -203,6 +205,7 @@ function Position({ data, owner, treasury, sign, onChanged, liquidating }: { dat
               )}
             </div>
             <div className="space-y-4">
+              {liquidating ? null : <DepositCard treasury={treasury} owner={owner} sign={sign} onChanged={onChanged} quoteDecimals={dec.quote} />}
               {liquidating ? null : (
                 <AmountForm
                   label="Stake coins to earn distributions"
@@ -230,7 +233,7 @@ function Position({ data, owner, treasury, sign, onChanged, liquidating }: { dat
   );
 }
 
-function Proposals({ data, ext, treasury, owner, sign, now, onChanged, liquidating }: { data: TreasuryHolderData; ext: Ext; treasury: string; owner: string; sign: Signer; now: bigint; onChanged: () => void; liquidating: boolean }) {
+function Proposals({ data, ext, treasury, owner, sign, now, onChanged, liquidating, authority }: { data: TreasuryHolderData; ext: Ext; treasury: string; owner: string; sign: Signer; now: bigint; onChanged: () => void; liquidating: boolean; authority: string }) {
   const list = data.proposals;
   const dec = data.decimals;
   return (
@@ -248,6 +251,9 @@ function Proposals({ data, ext, treasury, owner, sign, now, onChanged, liquidati
             <ProposalRow key={p.id} p={p} data={data} treasury={treasury} owner={owner} sign={sign} now={now} onChanged={onChanged} liquidating={liquidating} coinDecimals={dec.coin} quoteDecimals={dec.quote} />
           ))}
         </ul>
+      )}
+      {liquidating || !dec ? null : (
+        <ProposeCard treasury={treasury} owner={owner} sign={sign} onChanged={onChanged} held={data.position ? BigInt(data.position.held) : 0n} supply={BigInt(ext.balances.coinSupply)} minBps={ext.terms.governance!.proposerMinBps} isAuthority={owner === authority} coinDecimals={dec.coin} quoteDecimals={dec.quote} hasNav={ext.terms.nav !== null} />
       )}
     </div>
   );
@@ -462,6 +468,12 @@ function Rounds({ rounds, treasury, owner, sign, onChanged, decimals }: { rounds
               <p className="mt-0.5 text-xs text-muted">
                 Ends {clock(r.endsAt)}; payment due by {clock(r.payDeadline)}.{r.revenue !== null ? ` Attested revenue ${quoteText(r.revenue, decimals)}${r.due !== null ? `, ${quoteText(r.due, decimals)} paid to stakers` : ''}.` : r.attested ? ' Revenue has been attested.' : ' No revenue attestation yet.'}
               </p>
+              {payable(r.status) ? (
+                <div className="mt-2 max-w-xs">
+                  <ActionButton label={`Pay round ${r.round}`} path={`/v1/treasuries/${treasury}/tx/pay-round`} body={() => ({ payer: owner, round: r.round })} sign={sign} onDone={onChanged} variant="secondary" testId={`pay-round-${r.round}`} />
+                  <p className="mt-1 text-xs text-muted">Anyone may pay a round, the company or a sponsor. The amount is fixed by the revenue attestation: the treasury’s share of the attested revenue, paid to stakers. If revenue has not been attested the API says so and nothing is signed.</p>
+                </div>
+              ) : null}
               {r.status === 'late' ? (
                 <div className="mt-2 max-w-xs">
                   <ActionButton label={`Mark round ${r.round} missed`} path={`/v1/treasuries/${treasury}/tx/mark-missed`} body={() => ({ caller: owner, round: r.round })} sign={sign} onDone={onChanged} variant="secondary" testId={`mark-missed-${r.round}`} />

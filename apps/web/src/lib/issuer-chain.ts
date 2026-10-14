@@ -52,7 +52,7 @@ export async function readMintFull(mint: string): Promise<MintRead> {
   }
 }
 
-async function ata(owner: string, mint: string, tokenProgram: string): Promise<string> {
+export async function ata(owner: string, mint: string, tokenProgram: string): Promise<string> {
   const enc = getAddressEncoder();
   const [pda] = await getProgramDerivedAddress({ programAddress: address(ATA_PROGRAM), seeds: [enc.encode(address(owner)), enc.encode(address(tokenProgram)), enc.encode(address(mint))] });
   return pda;

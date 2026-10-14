@@ -28,7 +28,9 @@ import { SignedBand } from './signed-band';
 import { Tabs } from './tabs';
 import { TimelineView } from './timeline-view';
 import type { Phase } from './timeline';
+import { RefundPanel } from './refund-panel';
 import { RulesPanel } from './rules-panel';
+import { SeriesHaltNote } from './series-halt-note';
 import { TokenFacts } from './token-facts';
 import { useIndicative, useRules } from './use-rules';
 import { useSigner } from './use-signer';
@@ -172,6 +174,8 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
         {rules?.rules ? ' · has rules (see the Rules tab)' : ''}
       </p>
 
+      <SeriesHaltNote cross={cross} rules={rules} />
+
       <div className="mt-8">
         <Hero cross={cross} book={book} orders={orders} phase={phase} now={now} market={m} ending={ending} indicative={indicative} />
       </div>
@@ -204,7 +208,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
 
         {/* What a person can do comes first on a phone, and the panels that load after the page go below it so they never push it down. */}
         <div className="order-first space-y-6 lg:order-none">
-          {account ? <Connected account={account} cross={cross} phase={phase} market={m} book={book} version={version} onChanged={refresh} onMarks={setOwn} rules={rules} standing={standing} now={now} programs={programs} /> : <ConnectPrompt phase={phase} />}
+          {account ? <Connected account={account} cross={cross} orders={orders} phase={phase} market={m} book={book} version={version} onChanged={refresh} onMarks={setOwn} rules={rules} standing={standing} now={now} programs={programs} /> : <ConnectPrompt phase={phase} />}
           {phase === 'awaiting-settlement' && !account ? (
             <p className="rounded-[var(--radius-card)] border border-border p-5 text-sm text-muted">
               This cross is ready to settle. Anyone can settle it; connect a wallet to do so, or wait for a keeper.
@@ -223,6 +227,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
 function Connected({
   account,
   cross,
+  orders,
   phase,
   market,
   book,
@@ -240,6 +245,7 @@ function Connected({
   programs: Programs | null | 'unavailable';
   account: UiWalletAccount;
   cross: CrossDetail;
+  orders: OrderRecord[] | null;
   phase: Phase;
   market: Market;
   book: BookResponse | null;
@@ -252,6 +258,7 @@ function Connected({
     <>
       {phase === 'open' ? <OrderTicket cross={cross} market={market} owner={account.address} sign={sign} book={book} onPlaced={onChanged} rules={rules} standing={standing} now={now} /> : null}
       {phase === 'awaiting-settlement' ? <SettlePanel cross={cross} payer={account.address} sign={sign} onDone={onChanged} rules={rules} /> : null}
+      {phase === 'settled' ? <RefundPanel cross={cross} orders={orders} account={account} onChanged={onChanged} /> : null}
       <MyOrders cross={cross} phase={phase} market={market} owner={account.address} sign={sign} version={version} onChanged={onChanged} onMarks={onMarks} rules={rules} now={now} programs={programs} />
     </>
   );

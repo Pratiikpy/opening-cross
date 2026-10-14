@@ -45,10 +45,11 @@ import * as sdk from '@opening-cross/sdk';
 import { getCalendarEncoder } from '@opening-cross/cross-calendar-client';
 import { CROSS_CALENDAR_PROGRAM_ADDRESS } from '@opening-cross/cross-calendar-client';
 import { CROSS_BODY_LEN, CROSS_CORE_PROGRAM_ADDRESS, CrossKind, CrossState, Disclosure, SupplyMode, crossAddress, getCrossEncoder, protocolAddress } from '@opening-cross/sdk';
-import { dlmmAddresses, greenshoeAddresses } from '@opening-cross/adapters';
+import { ALPHA_VAULT_PROGRAM_ADDRESS, dlmmTokenBadgeAddress, DAMM_V2_PROGRAM_ADDRESS, DBC_PROGRAM_ADDRESS, DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS, MET_LOCK_PROGRAM_ADDRESS, alphaVaultAddresses, continuationMintAddress, dammAddresses, dlmmAddresses, feeShareAddresses, greenshoeAddresses, settlerAddress } from '@opening-cross/adapters';
 import { SPL_TOKEN_PROGRAM_ADDRESS } from '@opening-cross/token-safety';
 import { buildServer } from '../src/server.js';
 import { registerHolderPrograms } from '../src/routes/holder-programs.js';
+import { registerDashboard } from '../src/routes/dashboard.js';
 
 const PORT = Number(process.env.W3F_PORT ?? 8290);
 const KEY_FILE = process.env.W3F_KEY_FILE;
@@ -114,12 +115,12 @@ async function hold(owner: Address, mint: Address, amount: bigint, program: Addr
 }
 
 /** A program the way the upgradeable loader holds it: a program account naming a ProgramData account whose bytes carry the instructions it loads. */
-async function putProgram(programId: Address, control: Uint8Array, extra: Uint8Array[]) {
+async function putProgram(programId: Address, control: Uint8Array, extra: Uint8Array[], always: Uint8Array[] = []) {
   const dataAddress = await key();
   const lddw = (d: Uint8Array) => Uint8Array.from([0x18, 0, 0, 0, d[0]!, d[1]!, d[2]!, d[3]!, 0, 0, 0, 0, d[4]!, d[5]!, d[6]!, d[7]!, 0, 0, 0, 0, 0, 0, 0, 0]);
   const elf = new Uint8Array(2048);
   let at = 64;
-  for (const d of [control, ...(mode === 'new' ? extra : [])]) {
+  for (const d of [control, ...always, ...(mode === 'new' ? extra : [])]) {
     elf.set(lddw(d), at);
     at += 32;
   }
@@ -140,6 +141,13 @@ async function putProgram(programId: Address, control: Uint8Array, extra: Uint8A
 async function putPrograms() {
   await putProgram(core.CROSS_CORE_PROGRAM_ADDRESS, core.CREATE_CROSS_DISCRIMINATOR as Uint8Array, [core.SET_RULES_DISCRIMINATOR, core.COMMIT_ORDER_EXT_DISCRIMINATOR, core.DRAW_BEGIN_DISCRIMINATOR] as Uint8Array[]);
   await putProgram(treasury.TREASURY_PROGRAM_ADDRESS, treasury.SPEND_DISCRIMINATOR as Uint8Array, [treasury.INIT_EXT_DISCRIMINATOR, treasury.VOTE_DISCRIMINATOR, treasury.NAV_REDEEM_DISCRIMINATOR, treasury.STAKE_DISCRIMINATOR] as Uint8Array[]);
+  // cross_settle: the instructions of the first release are always in its bytes, every other one only in the extended build, as on a cluster.
+  const settleProgram = settleClient.CROSS_SETTLE_PROGRAM_ADDRESS as string;
+  const settleNames = [...TABLE.entries()].filter(([k]) => k.startsWith(`${settleProgram}:`)).map(([k, v]) => ({ name: v.name, disc: Uint8Array.from(Buffer.from(k.split(':')[1]!, 'hex')) }));
+  const first = settleNames.filter((x) => FIRST_RELEASE[settleProgram]!.has(x.name));
+  const later = settleNames.filter((x) => !FIRST_RELEASE[settleProgram]!.has(x.name));
+  const control = first.find((x) => x.name === 'open_dbc_pool')!.disc;
+  await putProgram(settleClient.CROSS_SETTLE_PROGRAM_ADDRESS, control, later.map((x) => x.disc), first.filter((x) => x.name !== 'open_dbc_pool').map((x) => x.disc));
 }
 
 // ------------------------------------------------------------------------------------------------ instruction names
@@ -230,7 +238,9 @@ async function main() {
   for (const c of [coinPlain!, coinExt!, coinLiq!, ...extraCoins]) putMint(c, TOKEN_2022_PROGRAM_ADDRESS, 6, 1_000_000_000n, null);
   for (const m of [mintHalted!, mintFlagged!, mintClear!, mintNoHalt!]) putMint(m, SPL_TOKEN_PROGRAM_ADDRESS, 6, 0n, wallet);
   await hold(wallet, quoteMint!, 5_000_000_000n, SPL_TOKEN_PROGRAM_ADDRESS);
-  await hold(wallet, baseMint!, 9_000_000n, SPL_TOKEN_PROGRAM_ADDRESS);
+  await hold(wallet, baseMint!, 9_000_000_000_000n, SPL_TOKEN_PROGRAM_ADDRESS);
+  // Meteora's programs exist on this cluster (the routes only check that they do; no program runs).
+  for (const program of [ALPHA_VAULT_PROGRAM_ADDRESS, DAMM_V2_PROGRAM_ADDRESS, DBC_PROGRAM_ADDRESS, DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS, MET_LOCK_PROGRAM_ADDRESS, DLMM, 'DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb' as Address]) accounts.set(program, { data: new Uint8Array(36), owner: LOADER });
   for (const c of [coinPlain!, coinExt!, coinLiq!, ...extraCoins]) await hold(wallet, c, 200_000_000n, TOKEN_2022_PROGRAM_ADDRESS);
   for (const c of [coinPlain!, coinExt!]) {
     await hold(alice!, c, 400_000_000n, TOKEN_2022_PROGRAM_ADDRESS);
@@ -378,18 +388,18 @@ async function main() {
     clearing: { classQty: [0n, 0n, 0n], tickets: 0, rho: 0, clearedTs: 0n, insiderUb: 0n },
     referral: rulesBase.referral, oracleSet: { extraFeeds: [new Uint8Array(32), new Uint8Array(32)], extraCount: 0, quorum: 0, maxSpreadBps: 0, offHoursWidenBps: 0 }, ...over,
   });
-  type X = { creator?: Address; id: bigint; state: CrossState; stateName: string; open: number; close: number; base?: Address; price?: bigint; matched?: bigint; reason?: number; ext?: ReturnType<typeof extTail>; orders?: number };
+  type X = { deferred?: Address; creator?: Address; id: bigint; state: CrossState; stateName: string; open: number; close: number; base?: Address; price?: bigint; matched?: bigint; reason?: number; ext?: ReturnType<typeof extTail>; orders?: number };
   async function putX(x: X) {
     const creator = x.creator ?? wallet;
     const base = x.base ?? baseMint!;
     const address = await crossAddress(creator, x.id);
     const body = getCrossEncoder().encode({
-      creator, crossId: x.id, kind: CrossKind.Launch, supplyMode: SupplyMode.Escrow, disclosure: Disclosure.Open, state: x.state, baseMint: base, quoteMint: quoteMint!, baseTokenProgram: SPL, quoteTokenProgram: SPL,
+      creator, crossId: x.id, kind: CrossKind.Launch, supplyMode: x.deferred ? SupplyMode.DeferredMint : SupplyMode.Escrow, disclosure: Disclosure.Open, state: x.state, baseMint: base, quoteMint: quoteMint!, baseTokenProgram: SPL, quoteTokenProgram: SPL,
       baseDecimals: 6, quoteDecimals: 6, proceedsTo: wallet, minPrice: 1_000_000n, tick: 100_000n, ticks: 20, priceScale: 1_000_000n, openTs: BigInt(x.open), closeTs: BigInt(x.close), revealEndTs: BigInt(x.close), referencePrice: none(), minMatched: 0n,
       maxImbalanceBps: none(), protocolFeeBps: 30, integratorFeeBps: 0, integrator: integrator!, feeRecipient: feeRecipient!, gateMint: none(), shards: 2, maxOrders: 64, dustBond: 0n, ordersTotal: x.orders ?? 0, ordersOpen: x.orders ?? 0, mergedMask: x.state === CrossState.Live ? 0 : 3,
       clearing: x.price !== undefined ? some({ price: x.price, matched: x.matched ?? 0n, demand: x.matched ?? 0n, supply: x.matched ?? 0n, rationed: 0, marginalQuantity: 0n, marginalRemaining: 0n, marginalOrders: 0 }) : none(),
       noPrintReason: x.reason !== undefined ? some(x.reason) : none(),
-      buyerPaid: 0n, baseBought: 0n, baseSold: 0n, sellerPaid: 0n, feesAccrued: 0n, oracle: none(), calendar: none(), settler: none(), settleDeadlineTs: 0n, baseBound: true, bump: 1, quoteVaultBump: 1, baseVaultBump: 1, bookBump: 1,
+      buyerPaid: 0n, baseBought: 0n, baseSold: 0n, sellerPaid: 0n, feesAccrued: 0n, oracle: none(), calendar: none(), settler: x.deferred ? some(x.deferred) : none(), settleDeadlineTs: 0n, baseBound: !x.deferred, bump: 1, quoteVaultBump: 1, baseVaultBump: 1, bookBump: 1,
     } as never);
     const data = new Uint8Array(CROSS_BODY_LEN + (x.ext ? sdk.CROSS_EXT_LEN : 0));
     data.set(body);
@@ -473,8 +483,80 @@ async function main() {
   for (const c of challenges) {
     accounts.set(await sdk.challengeAddress(challengeCross, c.id), { owner: CROSS_CORE_PROGRAM_ADDRESS, data: new Uint8Array(sdk.getChallengeEncoder().encode({ cross: challengeCross, id: c.id, challenger: c.challenger, subject: c.subject, evidence: new Uint8Array(32).fill(c.evidence), deposit: 10_000_000n, filedTs: BigInt(c.filed), status: c.status, slashed: c.slash, bump: 255 } as never)) });
   }
+  // a finalized cross that printed, created by the issuer wallet: the market can be opened for it
+  await hold(wallet, mintNoHalt!, 9_000_000_000_000n, SPL);
+  const settleCross = await putX({ id: 40n, state: CrossState.Finalized, stateName: 'Finalized', open: NOW - 5 * DAY, close: NOW - 4 * DAY, price: 1_500_000n, matched: 80n * E6, base: mintNoHalt! });
+  // The DLMM Token Badges of a stock-quoted pair: accounts that exist and belong to DLMM.
+  const badgeBase = dlmmTokenBadgeAddress(mintNoHalt!);
+  const badgeQuote = dlmmTokenBadgeAddress(quoteMint!);
+  for (const b of [badgeBase, badgeQuote]) accounts.set(b, { data: new Uint8Array(64), owner: DLMM });
+  // A deferred-mint cross that names the DBC adapter's settler: the DBC continuation can be opened for it.
+  const dbcCross = await (async () => {
+    const id = 43n;
+    const address = await crossAddress(wallet, id);
+    const settler = await settlerAddress(address);
+    const mint = await continuationMintAddress(address);
+    return putX({ id, state: CrossState.Finalized, stateName: 'Finalized', open: NOW - 5 * DAY, close: NOW - 4 * DAY, price: 1_500_000n, matched: 80n * E6, base: mint, deferred: settler });
+  })();
+  // An Alpha Vault needs the pool of a batch-opened DAMM v2 market: one cross has the pool and no vault, another has both (the vault's bytes are a real
+  // devnet account with the fields of this cross written over them, as services/api/test/meteora-tx.test.ts does).
+  const meteora = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/meteora-devnet.json', import.meta.url)), 'utf8')).accounts as Record<string, { address: string; owner: string; data: string }>;
+  const real = (name: string) => Uint8Array.from(Buffer.from(meteora[name]!.data, 'base64'));
+  const enc = getAddressEncoder();
+  const putKey = (d: Uint8Array, at: number, a: Address) => d.set(enc.encode(a), at);
+  const putU64 = (d: Uint8Array, at: number, v: bigint) => new DataView(d.buffer, d.byteOffset).setBigUint64(at, v, true);
+  const alphaPoolCross = await putX({ id: 41n, state: CrossState.Finalized, stateName: 'Finalized', open: NOW - 5 * DAY, close: NOW - 4 * DAY, price: 1_500_000n, matched: 80n * E6, base: mintFlagged! });
+  accounts.set((await dammAddresses(alphaPoolCross, mintFlagged!, quoteMint!)).pool, { data: new Uint8Array(8), owner: DAMM_V2_PROGRAM_ADDRESS });
+  const alphaVaultCross = await putX({ id: 42n, state: CrossState.Finalized, stateName: 'Finalized', open: NOW - 5 * DAY, close: NOW - 4 * DAY, price: 1_500_000n, matched: 80n * E6, base: mintHalted! });
+  {
+    const a = await dammAddresses(alphaVaultCross, mintHalted!, quoteMint!);
+    const { vault } = alphaVaultAddresses(wallet, a.pool);
+    const d = real('alphaVaultProrata').slice();
+    putKey(d, 8, a.pool);
+    putKey(d, 8 + 32, await treasury.associatedTokenAddress(vault, quoteMint!, SPL));
+    putKey(d, 8 + 64, await treasury.associatedTokenAddress(vault, mintHalted!, SPL));
+    putKey(d, 8 + 96, quoteMint!);
+    putKey(d, 8 + 128, mintHalted!);
+    putKey(d, 8 + 160, wallet);
+    putU64(d, 8 + 224, 500n * E6);
+    putU64(d, 8 + 232, 100n * E6);
+    putU64(d, 8 + 280, BigInt(NOW - 100));
+    d[8 + 298] = 0;
+    d[8 + 345] = 1;
+    accounts.set(vault, { data: d, owner: ALPHA_VAULT_PROGRAM_ADDRESS });
+    accounts.set(a.pool, { data: new Uint8Array(8), owner: DAMM_V2_PROGRAM_ADDRESS });
+  }
+  // Met Lock: a real escrow, read as it is; and a Dynamic Fee Sharing vault of the issuer and a friend, over this cross's quote token.
+  const escrowSpl = meteora.escrowSpl!.address as Address;
+  accounts.set(escrowSpl, { data: real('escrowSpl'), owner: MET_LOCK_PROGRAM_ADDRESS });
+  const feeBase = await key();
+  const feeAddrs = feeShareAddresses(feeBase, quoteMint!);
+  {
+    const d = real('feeVault').slice();
+    putKey(d, 8 + 32, quoteMint!);
+    putKey(d, 8 + 64, feeAddrs.tokenVault);
+    putKey(d, 8 + 144, feeBase);
+    for (let i = 0; i < 5; i++) {
+      const at = 8 + 240 + i * 80;
+      d.fill(0, at, at + 80);
+      const u = [{ address: wallet, share: 6000 }, { address: alice!, share: 4000 }][i];
+      if (u) {
+        putKey(d, at, u.address);
+        new DataView(d.buffer).setUint32(at + 32, u.share, true);
+      }
+    }
+    new DataView(d.buffer).setUint32(8 + 112, 10_000, true);
+    accounts.set(feeAddrs.feeVault, { data: d, owner: DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS });
+  }
   const haltedCross = await putX({ id: 21n, state: CrossState.Live, stateName: 'Live', open: NOW - 3600, close: NOW + 3 * 3600, base: mintHalted!, ext: extTail({ guards: { ...rulesBase.guards, haltSource: wallet } }) });
   const haltedNoPrint = await putX({ id: 22n, state: CrossState.NoPrint, stateName: 'NoPrint', open: NOW - 2 * DAY, close: NOW - DAY, base: mintHalted!, reason: 10, ext: extTail({ guards: { ...rulesBase.guards, haltSource: wallet } }) });
+
+  // a locked fill of the issuer wallet in the cleared cross, half vested, and two crosses of the same token that can take a sell order
+  const lockStart = NOW - 3 * DAY;
+  accounts.set(await sdk.lockupAddress(challengeCross, wallet, 0n), { owner: CROSS_CORE_PROGRAM_ADDRESS, data: new Uint8Array(sdk.getLockupEncoder().encode({ cross: challengeCross, owner: wallet, nonce: 0n, amount: 100n * E6, released: 0n, startTs: BigInt(lockStart), cliffSecs: DAY, vestSecs: 4 * DAY, bump: 255 } as never)) });
+  const lockOrder = await sdk.orderAddress(challengeCross, wallet, 0n);
+  const sellOpen = await putX({ id: 50n, state: CrossState.Live, stateName: 'Live', open: NOW - 3600, close: NOW + 3 * 3600 });
+  const sellLater = await putX({ id: 51n, state: CrossState.Live, stateName: 'Live', open: NOW + 6 * 3600, close: NOW + 9 * 3600 });
 
   // ---- a cross that did not print, with fourteen open orders (two refund batches) and one already paid out
   const refundCross = await putX({ id: 30n, state: CrossState.NoPrint, stateName: 'NoPrint', open: NOW - 2 * DAY, close: NOW - DAY, reason: 6, orders: 14 });
@@ -519,6 +601,8 @@ async function main() {
   for (const c of challenges) {
     await pg.query("INSERT INTO cross_challenges (cross_address, id, challenger, subject, evidence, status, slash, filed_slot, resolved_slot) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [challengeCross, c.id, c.challenger, c.subject, Buffer.alloc(32, c.evidence).toString('hex'), c.status === 0 ? 'Open' : 'Upheld', c.slash > 0n ? c.slash.toString() : null, 500 + c.id, c.status === 0 ? null : 510]);
   }
+  await pg.query("INSERT INTO cross_locks (cross_address, owner, order_address, nonce, amount, start_ts, cliff_secs, vest_secs, released, created_slot, signature, seq) VALUES ($1,$2,$3,0,$4,$5,$6,$7,0,1,'lock-sig',0)", [challengeCross, wallet, lockOrder, String(100n * E6), lockStart, DAY, 4 * DAY]);
+  await pg.query("INSERT INTO orders (cross_address, idx, address, owner, side, escrow, sealed, price, quantity, status, fill, quote_out, base_out, fee, created_slot, updated_slot) VALUES ($1,30,$2,$3,0,140000000,false,1500000,100000000,'claimed',100000000,0,0,0,500,501)", [challengeCross, lockOrder, wallet]);
   for (const [i, o] of refundOrders.entries()) {
     await pg.query("INSERT INTO orders (cross_address, idx, address, owner, side, escrow, sealed, price, quantity, status, created_slot, updated_slot) VALUES ($1,$2,$3,$4,0,15000000,false,1500000,10000000,'revealed',600,600)", [refundCross, i, o.address, o.owner]);
   }
@@ -541,6 +625,8 @@ async function main() {
   } catch {
     // server.ts already registers GET /v1/programs
   }
+
+  registerDashboard(app, { account: async (a: Address) => { const x = accounts.get(a); return x ? { data: x.data, owner: x.owner } : null; }, network: 'devnet', clock: () => Math.floor(Date.now() / 1000) + skew }, { ttlMs: 0 });
 
   // ---- the JSON-RPC endpoint the web app reads and sends through
   const sent: { signature: string; transaction: ReturnType<typeof decodeTransaction>['instructions']; feePayer: string; at: number }[] = [];
@@ -625,7 +711,7 @@ async function main() {
     arbiter: { address: arbiter.address, secret: arbiter.secret }, strangerWallet: { address: stranger2.address, secret: stranger2.secret },
     series: { due: seriesDue, early: seriesEarly, paused: seriesPaused, busy: seriesBusy, done: seriesDone, calendar: seriesCalendar }, calendar,
     halts: { venue: haltVenue, flag: haltFlag, clear: haltClear, printFeed }, mints: { halted: mintHalted, flagged: mintFlagged, clear: mintClear, noHalt: mintNoHalt },
-    challengeCross, haltedCross, haltedNoPrint, refundCross, refundOrders: refundOrders.map((o) => ({ ...o, nonce: o.nonce.toString() })),
+    sellOpen, sellLater, settleCross, dbcCross, alphaPoolCross, alphaVaultCross, escrowSpl, feeBase, feeVault: feeAddrs.feeVault, badges: { base: badgeBase, quote: badgeQuote }, challengeCross, haltedCross, haltedNoPrint, refundCross, refundOrders: refundOrders.map((o) => ({ ...o, nonce: o.nonce.toString() })),
     windDown: { redeeming: treasuryRedeeming, swept: treasurySwept, noWindow: treasuryNoWindow, first: treasuryFirst, lapsing: treasuryLapsing, grace: treasuryGrace },
     windCoins: { redeeming: coinRedeeming, swept: coinSwept, noWindow: coinNoWindow, first: coinFirst, lapsing: coinLapsing, grace: coinGrace },
     sessionStart: sessionA,

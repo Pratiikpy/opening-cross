@@ -70,6 +70,8 @@ export type ApiDeps = {
   dexQuote?: (p: { baseMint: Address; quoteMint: Address; intent: Intent }) => Promise<DexQuote>;
   /** Unix seconds; defaults to the wall clock. Tests inject one. */
   clock?: () => number;
+  /** How long GET /v1/programs keeps a definite answer, in milliseconds (default ten minutes; tests that switch the deployed release set 0). */
+  programsTtlMs?: number;
   /** Set false to leave out the W2A route groups (most tests build the server without them). */
   w2a?: boolean;
   /** Cache lifetime for mint safety verdicts in ms (default 30 000) and read attempts before a 429 is surfaced (default 4). */
@@ -860,7 +862,7 @@ export async function buildServer(d: ApiDeps) {
   registerChallenges(app, { account: d.account, ...(d.clock && { clock: d.clock }) });
   registerIssuerTx(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
   registerIssuerBoard(app, { db: d.db, curators: new Set((process.env.ISSUER_CURATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean)), ...(d.clock && { clock: d.clock }) });
-  registerHolderPrograms(app, { account: d.account, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
+  registerHolderPrograms(app, { account: d.account, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }), ...(d.programsTtlMs !== undefined && { ttlMs: d.programsTtlMs }) });
   const holder = await registerHolderRoutes(app, d);
   app.addHook('onClose', async () => holder.stop());
   // Liquidity, pay-per-call, Blinks, routed execution, fees, duplicate tickers, integrity, presets, agents, dashboard. RPC_URL may list

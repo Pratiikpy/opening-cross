@@ -21,6 +21,8 @@ Base URLs (the current devnet deployment; they can change, so read them from the
 
 - GET /v1/health: indexed slot, indexer heartbeat, reconciliation alerts in the last hour.
 - GET /v1/stats: protocol totals and the network they were counted on.
+- GET /v1/programs: which release of cross_core, treasury and cross_settle is deployed on this cluster, read from the program bytes, and what each release can and cannot do (the extended instructions are not deployed to devnet yet).
+- GET /v1/dashboard: every public figure in one answer; each section names the route it came from, and a section that failed or timed out says so and may be shown stale with its age.
 - GET /v1/crosses?state=&limit=: crosses, newest first (`state` is Live, Cleared, NoPrint or Finalized; `limit` 1 to 200, default 50).
 - GET /v1/crosses/:address: one cross, read from chain.
 - GET /v1/crosses/:address/orders: indexed orders with fills.
@@ -121,6 +123,29 @@ Unsigned transactions (all POST, same conventions as above):
 - POST /v1/tx/deploy-greenshoe-bid: place one greenshoe level; a fresh keypair signs next to the payer.
 - POST /v1/tx/settle-greenshoe-level: after the week: cancel a level and close its order.
 - POST /v1/tx/finish-greenshoe: burn what the bids bought and return the unspent budget to the issuer.
+- POST /v1/tx/open-dbc-pool: open the locked, compounding DBC continuation at the clearing price and bind the base token (the creator signs).
+- POST /v1/tx/bind-dbc-mint: bind the base token once the DBC pool exists.
+- POST /v1/tx/seed-damm-v2: open a DAMM v2 pool at the clearing price: plain, batch-opened, with an Alpha Vault, with its liquidity locked.
+- POST /v1/tx/open-dlmm-pair: open a DLMM pair around the clearing price: plain, batch-opened or behind Token Badges.
+- POST /v1/tx/seed-raydium-cpmm: open a Raydium CPMM pool at the clearing price.
+- GET /v1/crosses/:address/venues: which venues a cross has opened and which can be opened now.
+- POST /v1/tx/alpha-vault-init: create the Alpha Vault of a batch-opened DAMM v2 pool.
+- POST /v1/tx/alpha-vault-deposit: deposit quote tokens into an Alpha Vault.
+- POST /v1/tx/alpha-vault-fill: anyone fills the vault from the pool.
+- POST /v1/tx/alpha-vault-claim: claim what the vault bought.
+- POST /v1/tx/alpha-vault-withdraw-remaining: take back what an oversubscribed pro-rata vault did not use.
+- GET /v1/crosses/:address/alpha-vault: the Alpha Vault of a cross's pool and an owner's escrow.
+- POST /v1/tx/metlock-create: lock tokens for a recipient on a vesting schedule in Met Lock.
+- POST /v1/tx/metlock-claim: the recipient claims what has vested.
+- GET /v1/metlock/escrows/:escrow: a Met Lock escrow: total, vested, claimable.
+- POST /v1/tx/fee-share-create: create a Dynamic Fee Sharing vault for up to five recipients.
+- POST /v1/tx/fee-share-fund: fund a fee-sharing vault.
+- POST /v1/tx/fee-share-claim: a recipient claims their share.
+- POST /v1/tx/fee-share-transfer-position: hand a DAMM v2 position to the vault; one way.
+- POST /v1/tx/fee-share-fund-from-damm: pull the position's fees into the vault.
+- GET /v1/fee-share/:base/:mint: a fee-sharing vault and its shares.
+- GET /v1/arbiter: who rules on insider challenges, if anyone has been named.
+- GET /v1/crosses/:address/challenge-state: the open challenges of a cross, the bond, the window and who can rule.
 - POST /v1/treasuries/:address/tx/init-ext: extend a treasury once (votes, NAV window, distributions, revenue rounds, disclosure, assignment gate, wind-down); also the flagship preset.
 - POST /v1/treasuries/:address/tx/propose: a holder proposal: spend, open the NAV window, close it.
 - POST /v1/treasuries/:address/tx/vote: vote with coins that stay locked until the vote ends.

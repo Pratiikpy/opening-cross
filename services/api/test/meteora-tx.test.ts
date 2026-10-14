@@ -112,7 +112,7 @@ describe('Meteora routes over HTTP', () => {
   const of = (ixs: Instruction[], program: Address) => ixs.filter((i) => i.programAddress === program);
   const starts = (ix: Instruction, d: Uint8Array) => d.every((b, i) => ix.data![i] === b);
 
-  async function putCross(id: bigint, o: { state: CrossState; cleared?: boolean }): Promise<Address> {
+  async function putCross(id: bigint, o: { state: CrossState; cleared?: boolean; bound?: boolean }): Promise<Address> {
     const address = await crossAddress(creator, id);
     const body = getCrossEncoder().encode({
       creator, crossId: id, kind: CrossKind.Launch, supplyMode: SupplyMode.DeferredMint, disclosure: Disclosure.Open, state: o.state,
@@ -121,7 +121,7 @@ describe('Meteora routes over HTTP', () => {
       protocolFeeBps: 30, integratorFeeBps: 20, integrator, feeRecipient: fees, gateMint: none(), shards: 2, maxOrders: 64, dustBond: 0n, ordersTotal: 0, ordersOpen: 0, mergedMask: 3,
       clearing: o.cleared === false ? none() : some({ price: 1_300_000n, matched: 1_000_000_000n, demand: 1_000_000_000n, supply: 1_000_000_000n, rationed: 0, marginalQuantity: 0n, marginalRemaining: 0n, marginalOrders: 0 }),
       noPrintReason: none(), buyerPaid: 2_600_000_000n, baseBought: 0n, baseSold: 0n, sellerPaid: 0n, feesAccrued: 0n, oracle: none(), calendar: none(), settler: none(),
-      settleDeadlineTs: 0n, baseBound: o.cleared !== false, bump: 1, quoteVaultBump: 1, baseVaultBump: 1, bookBump: 1,
+      settleDeadlineTs: 0n, baseBound: o.bound ?? o.cleared !== false, bump: 1, quoteVaultBump: 1, baseVaultBump: 1, bookBump: 1,
     } as never);
     const data = new Uint8Array(CROSS_BODY_LEN);
     data.set(body);
@@ -213,6 +213,14 @@ describe('Meteora routes over HTTP', () => {
   describe('Alpha Vault', () => {
     const init = (over: Record<string, unknown> = {}) => ({ cross: bound, mode: 'prorata', maxBuyingCap: '500000000', startVestingPoint: String(NOW + 3600), endVestingPoint: String(NOW + 7200), ...over });
     const dammPool = async () => (await dammAddresses(bound, base, quote)).pool;
+
+    it('read: a cross that did not print a price has no market, and the read says so with a 200 instead of an error', async () => {
+      const noPrint = await putCross(9n, { state: CrossState.NoPrint, cleared: false, bound: true });
+      const r = await get(`/v1/crosses/${noPrint}/alpha-vault`);
+      expect(r.status).toBe(200);
+      expect(r.body.vault).toBeNull();
+      expect(r.body.note).toMatch(/no market/);
+    });
 
     it('create: needs the DAMM v2 pool first, builds the two token accounts and the vault, and the creator signs as base', async () => {
       const r0 = await post('/v1/tx/alpha-vault-init', init());

@@ -7,6 +7,8 @@ import { random, store } from '../lib/device';
 import { type OrderView, loadOrders } from '../lib/orders';
 import { type Draft, type Phase, check, marketOf, phaseOf, placeOrderBody } from '../lib/order';
 import { explainCalibration } from '../lib/reasons';
+import { PEG_NOTE, pegPrice } from '../lib/peg';
+import { type HaltRead, type SeriesRead, haltBanner, seriesNote } from '../lib/schedule';
 import { type SealedBid, exportBackup, loadBids, nonceFrom, rememberOrder, saltFrom, saveBid } from '../lib/sealed';
 import { type ClassId, type IndicativeRead, type RulesRead, type Standing, blocked, classOptions, clock, endingNow, imbalanceText, needsAck, summaryLines, ticketChecks } from '../lib/rules';
 import { ActionError } from '../lib/tx';
@@ -152,6 +154,7 @@ export function CrossScreen({ route, navigation }: NativeStackScreenProps<RootSt
         </View>
       </Card>
 
+      <ScheduleNotes cross={cross} rules={rules} />
       <RulesCard rules={rules} cross={cross} market={m} />
       <SignedBand band={band} market={m} />
       <Identity view={identity} />
@@ -325,6 +328,13 @@ function OrderTicket({ cross, owner, onPlaced, rules, now, ending }: { cross: Cr
         </View>
       )}
       <Field label={side === 'buy' ? 'Most you would pay per token' : 'Least you would take per token'} value={priceText} onChangeText={setPriceText} keyboardType="decimal-pad" placeholder={formatPrice(BigInt(cross.grid.minPrice), m)} error={checked.ok ? null : checked.priceError} />
+      {priceText === formatPrice(pegPrice(cross.grid, side), m) ? (
+        <Txt variant="small" tone="muted">
+          {PEG_NOTE[side]}
+        </Txt>
+      ) : (
+        <Button label="Take whatever the open prints" variant="secondary" onPress={() => setPriceText(formatPrice(pegPrice(cross.grid, side), m))} />
+      )}
       {ruled && options && side === 'buy' && options.length > 1 ? (
         <View style={{ marginTop: 14, gap: 8 }}>
           <Txt variant="small" tone="muted">
@@ -563,5 +573,49 @@ function RulesCard({ rules, cross, market }: { rules: RulesRead | null | undefin
         </Txt>
       ))}
     </Card>
+  );
+}
+
+/** Two facts that change what a person expects of a cross: it belongs to a recurring series, or it honours a halt that is up now. */
+function ScheduleNotes({ cross, rules }: { cross: CrossDetail; rules: RulesRead | null | undefined }) {
+  const [series, setSeries] = useState<SeriesRead | null>(null);
+  const [halt, setHalt] = useState<HaltRead | null>(null);
+  useEffect(() => {
+    let live = true;
+    // The list is asked first so that a cross made by a person never provokes a 404 for a series that does not exist.
+    void get<{ series: { address: string }[] }>('/v1/series').then(async (l) => {
+      if (!live || !l.ok || !l.data.series.some((x) => x.address === cross.creator)) return;
+      const one = await get<SeriesRead>(`/v1/series/${cross.creator}`);
+      if (live && one.ok) setSeries(one.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, [cross.creator]);
+  const honours = Boolean(rules?.rules?.guards.haltSource);
+  useEffect(() => {
+    if (!honours || !cross.baseMint) {
+      setHalt(null);
+      return;
+    }
+    let live = true;
+    void get<HaltRead>(`/v1/halts/${cross.baseMint}`).then((h) => live && setHalt(h.ok ? h.data : null));
+    return () => {
+      live = false;
+    };
+  }, [honours, cross.baseMint, cross.state]);
+  const banner = haltBanner(halt, cross.state);
+  if (!banner && !series) return null;
+  return (
+    <>
+      {banner ? <Notice tone="error">{banner}</Notice> : null}
+      {series ? (
+        <Card>
+          <Txt variant="small" tone="muted">
+            {seriesNote(series, cross.address)}
+          </Txt>
+        </Card>
+      ) : null}
+    </>
   );
 }

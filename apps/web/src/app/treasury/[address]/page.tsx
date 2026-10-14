@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { NetworkTag, TreasuryStateBadge } from '@/components/treasury/badges';
 import { HolderActions } from '@/components/treasury/holder-actions';
 import { RightsReleaseNote } from '@/components/treasury/release-note';
+import { WindDown } from '@/components/treasury/wind-down';
 import { RightsCards } from '@/components/treasury/rights-cards';
 import { DisclosureStatus, UpdatesFeed } from '@/components/treasury/updates-feed';
 import { get } from '@/lib/api';
@@ -97,7 +98,9 @@ export default async function TreasuryPage({ params }: Params) {
         ) : null}
       </section>
 
-      <HolderActions treasury={t.address} coinMint={t.terms.coinMint} quoteMint={t.terms.quoteMint} />
+      <WindDown treasury={t.address} coinMint={t.terms.coinMint} quoteDecimals={d} detail={{ state: t.state, lapse: t.lapse, snapshot: t.snapshot, balances: { vault: t.balances.vault }, history: t.history ? { redeemedPaid: t.history.redeemedPaid, redemptionCount: t.history.redemptionCount } : null }} />
+
+      <HolderActions treasury={t.address} coinMint={t.terms.coinMint} quoteMint={t.terms.quoteMint} authority={t.terms.authority} />
 
       <section aria-labelledby="terms" className="mt-12">
         <h2 id="terms" className="text-2xl font-semibold tracking-tight">Terms</h2>

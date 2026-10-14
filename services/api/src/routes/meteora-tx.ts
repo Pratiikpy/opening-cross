@@ -273,7 +273,7 @@ export function registerMeteoraTx(app: FastifyInstance, d: MeteoraTxDeps): void 
     const cross = await readCross(addr((req.params as { address: string }).address, 'address'));
     const owner = (req.query as { owner?: string }).owner;
     if (owner !== undefined) addr(owner, 'owner');
-    if (cross.data.state === CrossState.Live || !cross.data.baseBound || cross.data.baseMint === ZERO) return send(reply, { cross: cross.address, vault: null, state: null, note: 'The cross has no market yet, so no Alpha Vault can exist for it.' });
+    if (cross.data.state === CrossState.Live || !cross.data.baseBound || cross.data.baseMint === ZERO || cross.data.clearing.__option !== 'Some') return send(reply, { cross: cross.address, vault: null, state: null, note: 'The cross has no market (it is live, did not print a price, or has no base token bound), so no Alpha Vault can exist for it.' });
     const { a, vault } = await alphaOf(cross);
     const acct = await d.account(vault);
     const state = acct && acct.owner === a.ALPHA_VAULT_PROGRAM_ADDRESS ? decodeAlphaVault(acct.data) : null;

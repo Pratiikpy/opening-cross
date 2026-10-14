@@ -104,17 +104,18 @@ export function IssuerAction({ label, path, body, sign, needs, what, disabled, d
   );
 }
 
-type WalletActionProps = Omit<Props, 'sign'> & { account: UiWalletAccount | null };
+type WalletActionProps = Omit<Props, 'sign'> & { account: UiWalletAccount | null; /** What the line under the off button says when no wallet is connected. */ connectHint?: string };
 
 /** An `IssuerAction` for whoever is connected; with no wallet the button is off and says what to do. */
-export function WalletAction({ account, ...rest }: WalletActionProps) {
+export function WalletAction({ account, connectHint, ...rest }: WalletActionProps) {
   if (!account) {
     return (
       <div className="space-y-2">
         <button type="button" disabled data-testid={rest.testId} className="min-h-11 w-full rounded-full border border-border-strong px-5 py-2.5 text-sm font-medium opacity-50">
           {rest.label}
         </button>
-        <p className="text-xs text-muted">Connect the wallet you issue from to sign this.</p>
+        {rest.disabled && rest.disabledReason ? <p className="text-xs text-muted" data-testid={rest.testId ? `${rest.testId}-reason` : undefined}>{rest.disabledReason}</p> : null}
+        <p className="text-xs text-muted">{connectHint ?? 'Connect the wallet you issue from to sign this.'}</p>
       </div>
     );
   }
