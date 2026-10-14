@@ -35,11 +35,7 @@
     "src/**/*.tsx",
     ".next/types/**/*.ts",
     "test/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next-fix/types/**/*.ts",
-    ".next-fix/dev/types/**/*.ts",
-    ".next-holder/types/**/*.ts",
-    ".next-holder/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

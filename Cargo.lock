@@ -473,11 +473,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross_backing"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+]
+
+[[package]]
 name = "cross_basket"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+]
+
+[[package]]
+name = "cross_bounty"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
 ]
 
 [[package]]
@@ -524,6 +542,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross_graduate"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+ "cross_core",
+]
+
+[[package]]
+name = "cross_listing"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+]
+
+[[package]]
 name = "cross_mandate"
 version = "0.1.0"
 dependencies = [
@@ -540,7 +577,10 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "bytemuck",
+ "cross_core",
+ "cross_graduate",
  "ruint",
+ "solana-sha256-hasher",
 ]
 
 [[package]]

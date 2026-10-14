@@ -4,7 +4,8 @@
 #
 #   scripts/verifiable-build.sh [--ref <git-ref>] [program ...]
 #
-# Programs default to all five protocol programs: cross_core cross_gate cross_settle cross_calendar treasury.
+# Programs default to all protocol programs: the five deployed ones (cross_core cross_gate cross_settle cross_calendar treasury)
+# and the six added in Wave 3D (cross_mandate cross_conviction cross_basket cross_listing cross_bounty cross_backing).
 # Requires Docker and `solana-verify` 0.5.2 (`cargo install solana-verify --version 0.5.2 --locked`).
 #
 # The build runs on a `git archive` of the ref in a temporary directory, never on the working tree, so uncommitted
@@ -19,7 +20,7 @@ if [ "${1:-}" = "--ref" ]; then
   ref=$2
   shift 2
 fi
-programs=${*:-cross_core cross_gate cross_settle cross_calendar treasury}
+programs=${*:-cross_core cross_gate cross_settle cross_calendar treasury cross_mandate cross_conviction cross_basket cross_listing cross_bounty cross_backing}
 root=$(cd "$(dirname "$0")/.." && pwd)
 commit=$(git -C "$root" rev-parse "$ref")
 work=$(mktemp -d)

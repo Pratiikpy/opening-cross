@@ -28,9 +28,12 @@ use cross_core::accounts::Cross;
 
 mod batch;
 mod design;
+mod futarchy;
+mod graduation;
 mod greenshoe;
 mod partner;
 mod pol;
+pub use futarchy::*;
 pub use greenshoe::*;
 pub use partner::*;
 pub use pol::*;
@@ -191,6 +194,11 @@ pub mod cross_settle {
         ctx: Context<SeedDammV2>,
         params: cp_amm::types::InitializeCustomizablePoolParameters,
     ) -> Result<()> {
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::DammV2,
+        )?;
         seed_damm(ctx.accounts, &ctx.bumps, params)
     }
 
@@ -206,6 +214,11 @@ pub mod cross_settle {
     ) -> Result<()> {
         let params = decode_args::<cp_amm::types::InitializeCustomizablePoolParameters>(&params)?;
         batch::check_batched_pool(&params, Clock::get()?.unix_timestamp, window_secs)?;
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::DammV2,
+        )?;
         seed_damm(ctx.accounts, &ctx.bumps, params)
     }
 
@@ -217,6 +230,11 @@ pub mod cross_settle {
         ctx: Context<OpenDlmmPair>,
         params: lb_clmm::types::CustomizableParams,
     ) -> Result<()> {
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::Dlmm,
+        )?;
         open_pair(ctx.accounts, params, [None, None])
     }
 
@@ -231,6 +249,11 @@ pub mod cross_settle {
     ) -> Result<()> {
         let params = decode_args::<lb_clmm::types::CustomizableParams>(&params)?;
         batch::check_batched_pair(&params, Clock::get()?.unix_timestamp, window_secs)?;
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::Dlmm,
+        )?;
         open_pair(ctx.accounts, params, [None, None])
     }
 
@@ -245,10 +268,16 @@ pub mod cross_settle {
         window_secs: i64,
     ) -> Result<()> {
         let params = decode_args::<lb_clmm::types::CustomizableParams>(&params)?;
+        let extra = graduation::extra_accounts(&ctx.accounts.cross.to_account_info())?;
         require!(
-            ctx.remaining_accounts.len() == 2,
+            ctx.remaining_accounts.len() == 2 + extra,
             SettleError::BadgeAccounts
         );
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::Dlmm,
+        )?;
         if window_secs != 0 {
             batch::check_batched_pair(&params, Clock::get()?.unix_timestamp, window_secs)?;
         }
@@ -268,6 +297,11 @@ pub mod cross_settle {
         quote_amount: u64,
         open_time: u64,
     ) -> Result<()> {
+        graduation::require_approved(
+            &ctx.accounts.cross.to_account_info(),
+            ctx.remaining_accounts,
+            graduation::Venue::RaydiumCpmm,
+        )?;
         let cross = read_cross(&ctx.accounts.cross)?;
         require_keys_eq!(
             cross.creator,
@@ -344,6 +378,19 @@ pub mod cross_settle {
             quote_amount
         });
         Ok(())
+    }
+
+    /// MetaDAO adapter (ADR-0657): opens a MetaDAO futarchy DAO whose spot pool starts at P* and puts the creator's liquidity
+    /// into it at that price. `params` is the Borsh encoding of MetaDAO's `InitializeDaoParams`; its first field,
+    /// `twap_initial_observation`, must be P* in MetaDAO's fixed point. Only for crosses whose tokens are legacy SPL tokens.
+    pub fn seed_futarchy_dao<'info>(
+        ctx: Context<'info, SeedFutarchyDao<'info>>,
+        params: Vec<u8>,
+        base_amount: u64,
+        quote_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .run(ctx.remaining_accounts, params, base_amount, quote_amount)
     }
 
     /// Claims the DBC partner's trading fees (the settler PDA is the partner) to an account owned by the
@@ -1046,6 +1093,10 @@ pub enum SettleError {
     BatchNotCompounding,
     #[msg("A batch-opened DAMM v2 pool must open with a fee that decays over time")]
     BatchFeeNotDecaying,
+    #[msg("This cross's graduation is decided by a holder vote: pass the outcome of a passed vote for this venue as the last remaining account")]
+    GraduationNotApproved,
+    #[msg("MetaDAO's futarchy program accepts only legacy SPL Token mints: both tokens of this cross must be legacy tokens")]
+    FutarchyNeedsLegacyTokens,
 }
 
 #[cfg(test)]
