@@ -29,9 +29,3 @@ bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
-
-[dev-dependencies]
-# Host tests only: they pin the layout this program reads out of a cross and out of a graduation outcome.
-core_program = { package = "cross_core", path = "../cross_core", features = ["no-entrypoint"] }
-graduate_program = { package = "cross_graduate", path = "../cross_graduate", features = ["no-entrypoint"] }
-solana-sha256-hasher = "3"

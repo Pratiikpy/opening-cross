@@ -20,7 +20,6 @@ export * from './openDlmmPairBadged.js';
 export * from './openDlmmPairBatched.js';
 export * from './seedDammV2.js';
 export * from './seedDammV2Batched.js';
-export * from './seedFutarchyDao.js';
 export * from './seedRaydiumCpmm.js';
 export * from './settleGreenshoeLevel.js';
 export * from './withdrawPartnerMigrationFee.js';

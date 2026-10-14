@@ -14,10 +14,6 @@ const CLIENTS = [
   { program: 'cross_calendar', pkg: 'cross-calendar-client' },
   { program: 'treasury', pkg: 'treasury-client' },
   { program: 'cross_mandate', pkg: 'cross-mandate-client' },
-  { program: 'cross_graduate', pkg: 'cross-graduate-client' },
-  { program: 'cross_backing', pkg: 'cross-backing-client' },
-  { program: 'cross_bounty', pkg: 'cross-bounty-client' },
-  { program: 'cross_listing', pkg: 'cross-listing-client' },
   { program: 'cross_basket', pkg: 'cross-basket-client' },
   { program: 'cross_conviction', pkg: 'cross-conviction-client' },
 ];

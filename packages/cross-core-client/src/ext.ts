@@ -56,8 +56,6 @@ export const FLAG_RESUMES_HALT = 1 << 1;
 export const FLAG_FEEDS_LENDERS = 1 << 2;
 export const FLAG_STANDARD_GRID = 1 << 3;
 export const FLAG_GUARD_SCALED_UI = 1 << 4;
-/** Graduation to a venue is decided by a holder vote (`cross_graduate`, ADR-0656): the settlement adapters refuse to seed a pool without an approved outcome. */
-export const FLAG_GOVERNED_GRADUATION = 1 << 5;
 export const ORDER_INSIDER = 1;
 
 const maxSize = (d: Decoder<unknown>, what: string): number => {

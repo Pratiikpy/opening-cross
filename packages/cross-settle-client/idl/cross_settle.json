@@ -1684,117 +1684,6 @@
       ]
     },
     {
-      "name": "seed_futarchy_dao",
-      "docs": [
-        "MetaDAO adapter (ADR-0657): opens a MetaDAO futarchy DAO whose spot pool starts at P* and puts the creator's liquidity",
-        "into it at that price. `params` is the Borsh encoding of MetaDAO's `InitializeDaoParams`; its first field,",
-        "`twap_initial_observation`, must be P* in MetaDAO's fixed point. Only for crosses whose tokens are legacy SPL tokens."
-      ],
-      "discriminator": [
-        186,
-        207,
-        26,
-        31,
-        122,
-        52,
-        202,
-        6
-      ],
-      "accounts": [
-        {
-          "name": "creator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "cross"
-        },
-        {
-          "name": "dao",
-          "writable": true
-        },
-        {
-          "name": "base_mint"
-        },
-        {
-          "name": "quote_mint"
-        },
-        {
-          "name": "squads_multisig",
-          "writable": true
-        },
-        {
-          "name": "squads_multisig_vault"
-        },
-        {
-          "name": "squads_program"
-        },
-        {
-          "name": "squads_program_config"
-        },
-        {
-          "name": "squads_program_config_treasury",
-          "writable": true
-        },
-        {
-          "name": "spending_limit",
-          "writable": true
-        },
-        {
-          "name": "amm_base_vault",
-          "writable": true
-        },
-        {
-          "name": "amm_quote_vault",
-          "writable": true
-        },
-        {
-          "name": "creator_base",
-          "writable": true
-        },
-        {
-          "name": "creator_quote",
-          "writable": true
-        },
-        {
-          "name": "amm_position",
-          "writable": true
-        },
-        {
-          "name": "event_authority"
-        },
-        {
-          "name": "futarchy_program",
-          "address": "FUTARELBfJfQ8RDGhg1wdhddq1odMAJUePHFuBYfUxKq"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "params",
-          "type": "bytes"
-        },
-        {
-          "name": "base_amount",
-          "type": "u64"
-        },
-        {
-          "name": "quote_amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "seed_raydium_cpmm",
       "docs": [
         "Raydium CPMM adapter: opens a Raydium constant-product pool for the cross's market whose",
@@ -2356,19 +2245,6 @@
       ]
     },
     {
-      "name": "FutarchyDaoSeeded",
-      "discriminator": [
-        59,
-        127,
-        212,
-        181,
-        97,
-        99,
-        209,
-        221
-      ]
-    },
-    {
       "name": "GreenshoeBidPlaced",
       "discriminator": [
         213,
@@ -2644,16 +2520,6 @@
       "code": 6028,
       "name": "BatchFeeNotDecaying",
       "msg": "A batch-opened DAMM v2 pool must open with a fee that decays over time"
-    },
-    {
-      "code": 6029,
-      "name": "GraduationNotApproved",
-      "msg": "This cross's graduation is decided by a holder vote: pass the outcome of a passed vote for this venue as the last remaining account"
-    },
-    {
-      "code": 6030,
-      "name": "FutarchyNeedsLegacyTokens",
-      "msg": "MetaDAO's futarchy program accepts only legacy SPL Token mints: both tokens of this cross must be legacy tokens"
     }
   ],
   "types": [
@@ -2981,34 +2847,6 @@
           {
             "name": "bin_step",
             "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "FutarchyDaoSeeded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "cross",
-            "type": "pubkey"
-          },
-          {
-            "name": "dao",
-            "type": "pubkey"
-          },
-          {
-            "name": "clearing_price",
-            "type": "u64"
-          },
-          {
-            "name": "base_amount",
-            "type": "u64"
-          },
-          {
-            "name": "quote_amount",
-            "type": "u64"
           }
         ]
       }

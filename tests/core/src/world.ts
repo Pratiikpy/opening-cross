@@ -74,13 +74,9 @@ export class World {
   quoteMint!: Address;
   baseMint!: Address;
   protected nextId = 1n;
-  /** The token program of the world's mints: Token-2022, or legacy SPL Token for programs that accept only that (MetaDAO). */
-  tokenProgram: Address = TOKEN_2022_PROGRAM_ADDRESS;
 
-  static async create(tokenProgram: Address = TOKEN_2022_PROGRAM_ADDRESS): Promise<World> {
+  static async create(): Promise<World> {
     const w = new World();
-    w.tokenProgram = tokenProgram;
-    w.h.tokenProgram = tokenProgram;
     w.admin = await w.h.wallet();
     w.guardian = await w.h.wallet();
     w.feeRecipient = await w.h.wallet();
@@ -124,8 +120,8 @@ export class World {
       creator: this.creator,
       ...(baseMint ? { baseMint } : {}),
       quoteMint: this.quoteMint,
-      baseTokenProgram: this.tokenProgram,
-      quoteTokenProgram: this.tokenProgram,
+      baseTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+      quoteTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       crossId,
       kind: o.kind ?? CrossKind.Launch,
       supplyMode,
