@@ -1,0 +1,920 @@
+{
+  "address": "BSXaBkmhyypBNp5nfwb4GHAL7uDDLVR8Tr3UyHJKsWMz",
+  "metadata": {
+    "name": "cross_bounty",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross bounty: a committed pool that pays automatically when a cross account breaks an invariant, and by an arbiter for what the chain cannot check.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "award",
+      "docs": [
+        "The arbiter pays `amount` for a report the chain cannot check. `evidence` is the hash of the report."
+      ],
+      "discriminator": [
+        180,
+        74,
+        165,
+        67,
+        179,
+        135,
+        27,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "arbiter",
+          "signer": true,
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        },
+        {
+          "name": "reward_mint",
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bounty"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "reward_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "hunter_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "evidence",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_invariant",
+      "docs": [
+        "Pays the reward for invariant `invariant` to the claimant if `cross` breaks it. Each invariant pays once."
+      ],
+      "discriminator": [
+        145,
+        220,
+        65,
+        203,
+        82,
+        167,
+        113,
+        114
+      ],
+      "accounts": [
+        {
+          "name": "claimant",
+          "signer": true
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        },
+        {
+          "name": "reward_mint",
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bounty"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "reward_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "claimant_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "invariant",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "create_bounty",
+      "docs": [
+        "Creates a bounty. `rewards[i]` is paid for invariant `i` (zero leaves it out); the terms never change."
+      ],
+      "discriminator": [
+        122,
+        90,
+        14,
+        143,
+        8,
+        125,
+        200,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "sponsor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "reward_mint"
+        },
+        {
+          "name": "bounty",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  117,
+                  110,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bounty"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "reward_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "arbiter",
+          "type": "pubkey"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        },
+        {
+          "name": "rewards",
+          "type": {
+            "array": [
+              "u64",
+              11
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "fund",
+      "docs": [
+        "Adds to the pool. Anyone may; it can never be taken back before the expiry."
+      ],
+      "discriminator": [
+        218,
+        188,
+        111,
+        221,
+        152,
+        113,
+        174,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "signer": true
+        },
+        {
+          "name": "bounty"
+        },
+        {
+          "name": "reward_mint",
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "funder_token",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bounty"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "reward_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "The sponsor takes back what is left, once the commitment has run."
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "sponsor",
+          "signer": true,
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "bounty"
+        },
+        {
+          "name": "reward_mint",
+          "relations": [
+            "bounty"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bounty"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "reward_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "sponsor_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Bounty",
+      "discriminator": [
+        237,
+        16,
+        105,
+        198,
+        19,
+        69,
+        242,
+        234
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Awarded",
+      "discriminator": [
+        255,
+        24,
+        226,
+        21,
+        157,
+        74,
+        108,
+        62
+      ]
+    },
+    {
+      "name": "BountyCreated",
+      "discriminator": [
+        68,
+        252,
+        247,
+        196,
+        154,
+        247,
+        130,
+        49
+      ]
+    },
+    {
+      "name": "BountyFunded",
+      "discriminator": [
+        142,
+        150,
+        1,
+        35,
+        45,
+        75,
+        188,
+        226
+      ]
+    },
+    {
+      "name": "BountyWithdrawn",
+      "discriminator": [
+        20,
+        146,
+        119,
+        119,
+        163,
+        30,
+        47,
+        147
+      ]
+    },
+    {
+      "name": "InvariantPaid",
+      "discriminator": [
+        119,
+        194,
+        184,
+        131,
+        133,
+        230,
+        254,
+        161
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CommitmentTooShort",
+      "msg": "A bounty must commit its pool for at least thirty days"
+    },
+    {
+      "code": 6001,
+      "name": "NothingToDo",
+      "msg": "Nothing to do"
+    },
+    {
+      "code": 6002,
+      "name": "Expired",
+      "msg": "The bounty has expired"
+    },
+    {
+      "code": 6003,
+      "name": "StillCommitted",
+      "msg": "The pool is committed until the expiry"
+    },
+    {
+      "code": 6004,
+      "name": "UnknownInvariant",
+      "msg": "There is no such invariant"
+    },
+    {
+      "code": 6005,
+      "name": "NotCovered",
+      "msg": "This bounty pays nothing for that invariant"
+    },
+    {
+      "code": 6006,
+      "name": "AlreadyPaid",
+      "msg": "That invariant has already been paid"
+    },
+    {
+      "code": 6007,
+      "name": "NoViolation",
+      "msg": "The cross does not break that invariant"
+    },
+    {
+      "code": 6008,
+      "name": "PoolEmpty",
+      "msg": "The pool is empty"
+    },
+    {
+      "code": 6009,
+      "name": "NotACross",
+      "msg": "The account is not a cross"
+    },
+    {
+      "code": 6010,
+      "name": "WrongMint",
+      "msg": "The token is not the bounty's reward token"
+    },
+    {
+      "code": 6011,
+      "name": "Unauthorized",
+      "msg": "Signer is not allowed to do this"
+    },
+    {
+      "code": 6012,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Awarded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bounty",
+            "type": "pubkey"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "evidence",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bounty",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "arbiter",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "rewards",
+            "type": {
+              "array": [
+                "u64",
+                11
+              ]
+            }
+          },
+          {
+            "name": "paid_mask",
+            "docs": [
+              "Bit `i` is set once invariant `i` has paid."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "awarded",
+            "docs": [
+              "Total paid by the arbiter."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BountyCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bounty",
+            "type": "pubkey"
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "arbiter",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "rewards",
+            "type": {
+              "array": [
+                "u64",
+                11
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BountyFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bounty",
+            "type": "pubkey"
+          },
+          {
+            "name": "funder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BountyWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bounty",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InvariantPaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bounty",
+            "type": "pubkey"
+          },
+          {
+            "name": "invariant",
+            "type": "u8"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "claimant",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

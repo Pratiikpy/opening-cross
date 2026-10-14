@@ -1,0 +1,31 @@
+[package]
+name = "cross_mandate"
+version = "0.1.0"
+description = "Opening Cross auto-invest mandates: an agent places buy orders inside limits the owner set, and the owner can revoke and withdraw at any time."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_mandate"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+[dev-dependencies]
+# Host tests only: they pin the byte offsets this program reads out of a cross against the real types.
+cross_core = { path = "../cross_core", features = ["no-entrypoint"] }

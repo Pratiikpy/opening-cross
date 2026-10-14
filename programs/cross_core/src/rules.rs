@@ -16,7 +16,8 @@ use crate::{
 const SETTABLE_FLAGS: u16 = ext::FLAG_RESUMES_HALT
     | ext::FLAG_FEEDS_LENDERS
     | ext::FLAG_STANDARD_GRID
-    | ext::FLAG_GUARD_SCALED_UI;
+    | ext::FLAG_GUARD_SCALED_UI
+    | ext::FLAG_GOVERNED_GRADUATION;
 
 /// The widest the off-hours widening of the oracle band can be: 50%.
 const MAX_WIDEN_BPS: u32 = 5_000;

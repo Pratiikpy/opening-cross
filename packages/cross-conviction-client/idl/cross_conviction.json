@@ -1,0 +1,777 @@
+{
+  "address": "JAWUTTDhBQQ97w9YiPMv5sjsDxZab7AsSnc9L57zJjz6",
+  "metadata": {
+    "name": "cross_conviction",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross conviction: lock tokens with no early exit and earn a soulbound badge that measures token-days held locked.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "claim_badge",
+      "docs": [
+        "After the lock has run, mints the badge for it, once per lock: the token-days the lock held."
+      ],
+      "discriminator": [
+        111,
+        30,
+        18,
+        17,
+        228,
+        252,
+        239,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "holder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              },
+              {
+                "kind": "account",
+                "path": "lock.nonce",
+                "account": "Lock"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "badge_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "holder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "badge_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  100,
+                  103,
+                  101,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "holder_badge",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_lock",
+      "docs": [
+        "Closes a lock whose tokens were returned and whose badge was minted, giving its rent back."
+      ],
+      "discriminator": [
+        58,
+        254,
+        183,
+        130,
+        151,
+        238,
+        95,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_badge",
+      "docs": [
+        "Creates the holder's badge mint for a token: Token-2022, zero decimals, `NonTransferable`, mint",
+        "authority a program PDA. Idempotent, and anyone may pay for it."
+      ],
+      "discriminator": [
+        205,
+        241,
+        111,
+        140,
+        130,
+        168,
+        227,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "holder"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "badge_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "holder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "badge_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  100,
+                  103,
+                  101,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "lock_tokens",
+      "docs": [
+        "Locks `amount` of a token until `unlock_ts`. The lock records what the vault actually received, so a",
+        "token that takes a transfer fee cannot be credited for more than arrived."
+      ],
+      "discriminator": [
+        136,
+        11,
+        32,
+        232,
+        161,
+        117,
+        54,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "holder_token",
+          "writable": true
+        },
+        {
+          "name": "lock",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "holder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "lock"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "unlock_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "unlock",
+      "docs": [
+        "Returns the tokens to the holder once the lock has run. Nothing else can move them."
+      ],
+      "discriminator": [
+        101,
+        155,
+        40,
+        21,
+        158,
+        189,
+        56,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "lock"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "holder_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Lock",
+      "discriminator": [
+        8,
+        255,
+        36,
+        202,
+        210,
+        22,
+        57,
+        137
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BadgeClaimed",
+      "discriminator": [
+        11,
+        176,
+        119,
+        121,
+        7,
+        255,
+        229,
+        74
+      ]
+    },
+    {
+      "name": "BadgeCreated",
+      "discriminator": [
+        107,
+        1,
+        231,
+        247,
+        164,
+        84,
+        81,
+        23
+      ]
+    },
+    {
+      "name": "Locked",
+      "discriminator": [
+        188,
+        53,
+        118,
+        62,
+        64,
+        12,
+        198,
+        84
+      ]
+    },
+    {
+      "name": "Unlocked",
+      "discriminator": [
+        219,
+        104,
+        74,
+        123,
+        174,
+        92,
+        182,
+        120
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Signer is not the holder of this lock"
+    },
+    {
+      "code": 6001,
+      "name": "NothingToLock",
+      "msg": "Nothing to lock"
+    },
+    {
+      "code": 6002,
+      "name": "BadUnlockTime",
+      "msg": "The unlock time must be between one day and four years from now"
+    },
+    {
+      "code": 6003,
+      "name": "StillLocked",
+      "msg": "The lock has not run yet"
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyWithdrawn",
+      "msg": "The tokens were already returned"
+    },
+    {
+      "code": 6005,
+      "name": "BadgeAlreadyClaimed",
+      "msg": "The badge for this lock was already minted"
+    },
+    {
+      "code": 6006,
+      "name": "TooSmallForABadge",
+      "msg": "This lock is too small to earn one token-day"
+    },
+    {
+      "code": 6007,
+      "name": "LockStillNeeded",
+      "msg": "Return the tokens and mint the badge before closing the lock"
+    },
+    {
+      "code": 6008,
+      "name": "WrongMint",
+      "msg": "The account is not the lock's token"
+    },
+    {
+      "code": 6009,
+      "name": "NotAMint",
+      "msg": "The account is not a token mint"
+    },
+    {
+      "code": 6010,
+      "name": "BadgeMintMismatch",
+      "msg": "The badge mint account is not a Token-2022 mint"
+    },
+    {
+      "code": 6011,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "BadgeClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_days",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BadgeCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "badge_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lock",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Atoms the vault received."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "locked_at",
+            "type": "i64"
+          },
+          {
+            "name": "unlock_ts",
+            "type": "i64"
+          },
+          {
+            "name": "withdrawn",
+            "type": "bool"
+          },
+          {
+            "name": "badge_claimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Locked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "locked_at",
+            "type": "i64"
+          },
+          {
+            "name": "unlock_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Unlocked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

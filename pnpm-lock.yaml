@@ -347,7 +347,71 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
 
+  packages/cross-backing-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-basket-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-bounty-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/cross-calendar-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-conviction-client:
     dependencies:
       '@solana/kit':
         specifier: 8.4.0
@@ -380,6 +444,54 @@ importers:
         version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/cross-gate-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-graduate-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-listing-client:
+    dependencies:
+      '@solana/kit':
+        specifier: 8.4.0
+        version: 8.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)(utf-8-validate@6.0.6)
+      '@solana/program-client-core':
+        specifier: 8.4.0
+        version: 8.4.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/cross-mandate-client:
     dependencies:
       '@solana/kit':
         specifier: 8.4.0
@@ -1398,15 +1510,36 @@ importers:
       '@opening-cross/authenticity':
         specifier: workspace:*
         version: link:../../packages/authenticity
+      '@opening-cross/cross-backing-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-backing-client
+      '@opening-cross/cross-basket-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-basket-client
+      '@opening-cross/cross-bounty-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-bounty-client
       '@opening-cross/cross-calendar-client':
         specifier: workspace:*
         version: link:../../packages/cross-calendar-client
+      '@opening-cross/cross-conviction-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-conviction-client
       '@opening-cross/cross-core-client':
         specifier: workspace:*
         version: link:../../packages/cross-core-client
       '@opening-cross/cross-gate-client':
         specifier: workspace:*
         version: link:../../packages/cross-gate-client
+      '@opening-cross/cross-graduate-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-graduate-client
+      '@opening-cross/cross-listing-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-listing-client
+      '@opening-cross/cross-mandate-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-mandate-client
       '@opening-cross/cross-settle-client':
         specifier: workspace:*
         version: link:../../packages/cross-settle-client
@@ -1512,15 +1645,36 @@ importers:
       '@opening-cross/api':
         specifier: workspace:*
         version: link:../../services/api
+      '@opening-cross/cross-backing-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-backing-client
+      '@opening-cross/cross-basket-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-basket-client
+      '@opening-cross/cross-bounty-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-bounty-client
       '@opening-cross/cross-calendar-client':
         specifier: workspace:*
         version: link:../../packages/cross-calendar-client
+      '@opening-cross/cross-conviction-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-conviction-client
       '@opening-cross/cross-core-client':
         specifier: workspace:*
         version: link:../../packages/cross-core-client
       '@opening-cross/cross-gate-client':
         specifier: workspace:*
         version: link:../../packages/cross-gate-client
+      '@opening-cross/cross-graduate-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-graduate-client
+      '@opening-cross/cross-listing-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-listing-client
+      '@opening-cross/cross-mandate-client':
+        specifier: workspace:*
+        version: link:../../packages/cross-mandate-client
       '@opening-cross/identity-attester':
         specifier: workspace:*
         version: link:../../services/identity-attester

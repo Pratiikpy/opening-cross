@@ -27,7 +27,8 @@
     "dp:treasury": "tsx src/treasury-proof.ts",
     "dp:treasury-ext": "tsx src/treasury-ext-proof.ts",
     "dp:w2d-core": "tsx src/w2d-core-proof.ts",
-    "dp:w3a-builders": "tsx src/w3a-builders-live.ts"
+    "dp:w3a-builders": "tsx src/w3a-builders-live.ts",
+    "dp:w3d": "tsx src/w3d-proof.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
@@ -35,9 +36,16 @@
     "@meteora-ag/presale": "^0.1.1",
     "@opening-cross/adapters": "workspace:*",
     "@opening-cross/api": "workspace:*",
+    "@opening-cross/cross-backing-client": "workspace:*",
+    "@opening-cross/cross-basket-client": "workspace:*",
+    "@opening-cross/cross-bounty-client": "workspace:*",
     "@opening-cross/cross-calendar-client": "workspace:*",
+    "@opening-cross/cross-conviction-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
     "@opening-cross/cross-gate-client": "workspace:*",
+    "@opening-cross/cross-graduate-client": "workspace:*",
+    "@opening-cross/cross-listing-client": "workspace:*",
+    "@opening-cross/cross-mandate-client": "workspace:*",
     "@opening-cross/identity-attester": "workspace:*",
     "@opening-cross/presets": "workspace:*",
     "@opening-cross/sdk": "workspace:*",

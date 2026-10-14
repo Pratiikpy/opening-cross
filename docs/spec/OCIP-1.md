@@ -618,8 +618,10 @@ Every instruction of the four normative programs and of `treasury`, with its 8-b
 | `cross_settle` | `open_dlmm_pair` | `a6c2b662acb01d14` | Anchor default |
 | `cross_settle` | `open_dlmm_pair_badged` | `834af8a9ba4f1d29` | Anchor default |
 | `cross_settle` | `open_dlmm_pair_batched` | `7f59563ad0861265` | Anchor default |
+| `cross_settle` | `open_fixed_price_presale` | `34611f0884997c69` | Anchor default |
 | `cross_settle` | `seed_damm_v2` | `0a846137cc3c4955` | Anchor default |
 | `cross_settle` | `seed_damm_v2_batched` | `b45c59900119f2e8` | Anchor default |
+| `cross_settle` | `seed_futarchy_dao` | `bacf1a1f7a34ca06` | Anchor default |
 | `cross_settle` | `seed_raydium_cpmm` | `f9bcc67f97d40e68` | Anchor default |
 | `cross_settle` | `settle_greenshoe_level` | `61e14a2e76ff1701` | Anchor default |
 | `cross_settle` | `withdraw_partner_migration_fee` | `e799311760c1c129` | Anchor default |
@@ -1959,6 +1961,33 @@ Discriminator `7f59563ad0861265`. Arguments: `params: bytes`, `window_secs: i64`
 | 15 | `system_program` | – | address `11111111111111111111111111111111` |
 <!-- /ocip:ix -->
 
+#### `open_fixed_price_presale`
+
+Opens a Meteora Presale Vault in fixed-price mode at exactly P* (ADR-0663): a second tranche for everyone who did not bid in the call, at the price the call discovered. `args` is the Borsh encoding of the presale's `InitializePresaleArgs`; `q_price` must be `floor(P* * 2^64 / price_scale)`. Remaining accounts are the base token's transfer-hook accounts, described by `hook`, the Borsh encoding of the presale's `RemainingAccountsInfo`.
+
+<!-- ocip:ix cross_settle open_fixed_price_presale -->
+Discriminator `34611f0884997c69`. Arguments: `args: bytes`, `q_price: u128`, `disable_withdraw: u8`, `hook: bytes`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `base` | S |  |
+| 4 | `presale_mint` | – |  |
+| 5 | `quote_token_mint` | – |  |
+| 6 | `presale` | W |  |
+| 7 | `fixed_price_presale_params` | W |  |
+| 8 | `presale_authority` | – |  |
+| 9 | `presale_vault` | W |  |
+| 10 | `quote_token_vault` | W |  |
+| 11 | `payer_presale_token` | W |  |
+| 12 | `base_token_program` | – |  |
+| 13 | `quote_token_program` | – |  |
+| 14 | `system_program` | – | address `11111111111111111111111111111111` |
+| 15 | `event_authority` | – |  |
+| 16 | `presale_program` | – | address `presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj` |
+<!-- /ocip:ix -->
+
 #### `seed_damm_v2_batched`
 
 `seed_damm_v2` for a batch-opened market (ADR-0483): the pool refuses every swap until a start the program checks is at least `window_secs` away, its fee decays from a higher opening fee, and its fees compound back into the pool. During the window the market clears as a series of short crosses instead of trading against the AMM; afterwards the pool opens at the price the last cross printed. `params` is the Borsh encoding of `seed_damm_v2`'s argument.
@@ -1987,6 +2016,38 @@ Discriminator `b45c59900119f2e8`. Arguments: `params: bytes`, `window_secs: i64`
 | 17 | `quote_token_program` | – |  |
 | 18 | `token_2022_program` | – | address `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` |
 | 19 | `system_program` | – | address `11111111111111111111111111111111` |
+<!-- /ocip:ix -->
+
+#### `seed_futarchy_dao`
+
+MetaDAO adapter (ADR-0657): opens a MetaDAO futarchy DAO whose spot pool starts at P* and puts the creator's liquidity into it at that price. `params` is the Borsh encoding of MetaDAO's `InitializeDaoParams`; its first field, `twap_initial_observation`, must be P* in MetaDAO's fixed point. Only for crosses whose tokens are legacy SPL tokens.
+
+<!-- ocip:ix cross_settle seed_futarchy_dao -->
+Discriminator `bacf1a1f7a34ca06`. Arguments: `params: bytes`, `base_amount: u64`, `quote_amount: u64`.
+
+| # | Account | Flags | Notes |
+|---|---|---|---|
+| 1 | `creator` | WS |  |
+| 2 | `cross` | – |  |
+| 3 | `dao` | W |  |
+| 4 | `base_mint` | – |  |
+| 5 | `quote_mint` | – |  |
+| 6 | `squads_multisig` | W |  |
+| 7 | `squads_multisig_vault` | – |  |
+| 8 | `squads_program` | – |  |
+| 9 | `squads_program_config` | – |  |
+| 10 | `squads_program_config_treasury` | W |  |
+| 11 | `spending_limit` | W |  |
+| 12 | `amm_base_vault` | W |  |
+| 13 | `amm_quote_vault` | W |  |
+| 14 | `creator_base` | W |  |
+| 15 | `creator_quote` | W |  |
+| 16 | `amm_position` | W |  |
+| 17 | `event_authority` | – |  |
+| 18 | `futarchy_program` | – | address `FUTARELBfJfQ8RDGhg1wdhddq1odMAJUePHFuBYfUxKq` |
+| 19 | `token_program` | – | address `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` |
+| 20 | `associated_token_program` | – |  |
+| 21 | `system_program` | – | address `11111111111111111111111111111111` |
 <!-- /ocip:ix -->
 
 #### `settle_greenshoe_level`
@@ -2220,6 +2281,8 @@ Events are emitted with Anchor `emit!`: the program writes a log line `Program d
 | `DbcMintBound` | `4bf31afb9699aca4` | `cross: Pubkey`, `base_mint: Pubkey` |
 | `DbcPoolOpened` | `8e5a9cbbc1cde1a5` | `cross: Pubkey`, `config: Pubkey`, `pool: Pubkey`, `base_mint: Pubkey`, `clearing_price: u64`, `sqrt_start_price: u128` |
 | `DlmmPairOpened` | `5a40693cb67e82a1` | `cross: Pubkey`, `lb_pair: Pubkey`, `clearing_price: u64`, `active_id: i32`, `bin_step: u16` |
+| `FixedPricePresaleOpened` | `651bda33877d9168` | `cross: Pubkey`, `presale: Pubkey`, `clearing_price: u64`, `q_price: u128` |
+| `FutarchyDaoSeeded` | `3b7fd4b56163d1dd` | `cross: Pubkey`, `dao: Pubkey`, `clearing_price: u64`, `base_amount: u64`, `quote_amount: u64` |
 | `GreenshoeBidPlaced` | `d57fbf83c6d80c43` | `greenshoe: Pubkey`, `level: u8`, `bin_id: i32`, `amount: u64`, `limit_order: Pubkey` |
 | `GreenshoeCreated` | `34b23f8d46f46b24` | `cross: Pubkey`, `greenshoe: Pubkey`, `budget: u64`, `start_ts: i64`, `expires_ts: i64` |
 | `GreenshoeFinished` | `759dde893480c5a9` | `greenshoe: Pubkey`, `burned: u64`, `returned: u64` |
@@ -2373,6 +2436,9 @@ Custom error codes start at 6000 in declaration order.
 | 6026 | `BatchActivation` | A batch-opened pool needs a timestamp start at least the window away |
 | 6027 | `BatchNotCompounding` | A batch-opened DAMM v2 pool must compound its fees |
 | 6028 | `BatchFeeNotDecaying` | A batch-opened DAMM v2 pool must open with a fee that decays over time |
+| 6029 | `GraduationNotApproved` | This cross's graduation is decided by a holder vote: pass the outcome of a passed vote for this venue as the last remaining account |
+| 6030 | `FutarchyNeedsLegacyTokens` | MetaDAO's futarchy program accepts only legacy SPL Token mints: both tokens of this cross must be legacy tokens |
+| 6031 | `PresaleNotFixedPrice` | A tranche at the clearing price must be a fixed-price presale |
 <!-- /ocip:errors -->
 
 <!-- ocip:errors cross_gate -->

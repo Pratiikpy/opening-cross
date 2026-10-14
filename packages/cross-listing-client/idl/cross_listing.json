@@ -1,0 +1,1241 @@
+{
+  "address": "6VsT7X4G7qjRaredx4Y9q6asGkySiXGVpNr4RrdbxSSi",
+  "metadata": {
+    "name": "cross_listing",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross listing bonds: a lister stakes a bond to list crosses on a venue, gets it back when they end well, and loses it to a settlement that never happened.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "create_venue",
+      "docs": [
+        "Creates a venue with terms that never change. `slash_to` owns the account that receives slashed bonds."
+      ],
+      "discriminator": [
+        162,
+        203,
+        21,
+        140,
+        131,
+        95,
+        73,
+        87
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "bond_mint"
+        },
+        {
+          "name": "venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "min_bond",
+          "type": "u64"
+        },
+        {
+          "name": "release_delay_secs",
+          "type": "i64"
+        },
+        {
+          "name": "slash_to",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "deposit_bond",
+      "docs": [
+        "Adds to a lister's bond on a venue."
+      ],
+      "discriminator": [
+        120,
+        89,
+        18,
+        253,
+        112,
+        125,
+        87,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "lister",
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "venue",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond_mint",
+          "relations": [
+            "venue"
+          ]
+        },
+        {
+          "name": "lister_token",
+          "writable": true
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bond"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "bond_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "list_cross",
+      "docs": [
+        "Lists a cross the lister created, setting aside `min_bond`. Only a cross still taking orders can be listed,",
+        "so a lister cannot list a cross it already knows has gone wrong."
+      ],
+      "discriminator": [
+        57,
+        46,
+        237,
+        41,
+        65,
+        108,
+        220,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "lister",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "venue",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_bond",
+      "docs": [
+        "Opens a lister's bond account and vault on a venue, empty."
+      ],
+      "discriminator": [
+        104,
+        15,
+        47,
+        167,
+        89,
+        122,
+        159,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "lister",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "venue"
+        },
+        {
+          "name": "bond_mint",
+          "relations": [
+            "venue"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bond"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "bond_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_listing",
+      "docs": [
+        "Frees a listing's set-aside bond once its cross has ended without the fault and the delay has passed.",
+        "Permissionless."
+      ],
+      "discriminator": [
+        80,
+        148,
+        109,
+        123,
+        59,
+        4,
+        46,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "lister",
+          "relations": [
+            "listing",
+            "bond"
+          ]
+        },
+        {
+          "name": "venue",
+          "relations": [
+            "listing",
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "relations": [
+            "listing"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "slash_listing",
+      "docs": [
+        "Sends a listing's set-aside bond to the venue's slash account when its cross ended because the settlement",
+        "never happened. Permissionless; the fault is read from the cross account."
+      ],
+      "discriminator": [
+        112,
+        164,
+        107,
+        48,
+        169,
+        174,
+        143,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "lister",
+          "relations": [
+            "listing",
+            "bond"
+          ]
+        },
+        {
+          "name": "venue",
+          "relations": [
+            "listing",
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "relations": [
+            "listing"
+          ]
+        },
+        {
+          "name": "bond_mint",
+          "relations": [
+            "venue"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bond"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "bond_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "slash_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_bond",
+      "docs": [
+        "Takes back bond that no listing has set aside."
+      ],
+      "discriminator": [
+        222,
+        199,
+        141,
+        31,
+        188,
+        93,
+        155,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "lister",
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "venue",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond_mint",
+          "relations": [
+            "venue"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue"
+              },
+              {
+                "kind": "account",
+                "path": "lister"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bond"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "bond_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "lister_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Bond",
+      "discriminator": [
+        224,
+        128,
+        48,
+        251,
+        182,
+        246,
+        111,
+        196
+      ]
+    },
+    {
+      "name": "Listing",
+      "discriminator": [
+        218,
+        32,
+        50,
+        73,
+        43,
+        134,
+        26,
+        58
+      ]
+    },
+    {
+      "name": "Venue",
+      "discriminator": [
+        8,
+        155,
+        85,
+        226,
+        234,
+        173,
+        42,
+        242
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BondDeposited",
+      "discriminator": [
+        210,
+        149,
+        47,
+        232,
+        72,
+        128,
+        248,
+        153
+      ]
+    },
+    {
+      "name": "BondWithdrawn",
+      "discriminator": [
+        111,
+        192,
+        154,
+        231,
+        58,
+        115,
+        130,
+        103
+      ]
+    },
+    {
+      "name": "Listed",
+      "discriminator": [
+        243,
+        173,
+        136,
+        195,
+        125,
+        241,
+        12,
+        99
+      ]
+    },
+    {
+      "name": "ListingReleased",
+      "discriminator": [
+        118,
+        128,
+        112,
+        84,
+        174,
+        125,
+        237,
+        193
+      ]
+    },
+    {
+      "name": "ListingSlashed",
+      "discriminator": [
+        211,
+        129,
+        167,
+        174,
+        57,
+        197,
+        58,
+        130
+      ]
+    },
+    {
+      "name": "VenueCreated",
+      "discriminator": [
+        43,
+        254,
+        195,
+        223,
+        129,
+        54,
+        53,
+        83
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BadTerms",
+      "msg": "A venue needs a positive bond and a release delay of at least a day"
+    },
+    {
+      "code": 6001,
+      "name": "NothingToDo",
+      "msg": "Nothing to do"
+    },
+    {
+      "code": 6002,
+      "name": "BondEncumbered",
+      "msg": "That part of the bond is set aside by an open listing"
+    },
+    {
+      "code": 6003,
+      "name": "NotTheCreator",
+      "msg": "Only the creator of a cross can list it"
+    },
+    {
+      "code": 6004,
+      "name": "CrossNotLive",
+      "msg": "Only a cross still taking orders can be listed"
+    },
+    {
+      "code": 6005,
+      "name": "BondTooSmall",
+      "msg": "The free bond is smaller than the venue's minimum"
+    },
+    {
+      "code": 6006,
+      "name": "NotEnded",
+      "msg": "The cross has not ended in a way that releases the bond, or the delay has not passed"
+    },
+    {
+      "code": 6007,
+      "name": "TooEarly",
+      "msg": "The release delay has not passed"
+    },
+    {
+      "code": 6008,
+      "name": "NoFault",
+      "msg": "The cross did not fail by an unbound settlement"
+    },
+    {
+      "code": 6009,
+      "name": "AlreadySettled",
+      "msg": "This listing was already released or slashed"
+    },
+    {
+      "code": 6010,
+      "name": "NotACross",
+      "msg": "The account is not a cross"
+    },
+    {
+      "code": 6011,
+      "name": "WrongCross",
+      "msg": "The cross is not the one listed"
+    },
+    {
+      "code": 6012,
+      "name": "WrongMint",
+      "msg": "The token is not the venue's bond token"
+    },
+    {
+      "code": 6013,
+      "name": "Unauthorized",
+      "msg": "Signer or account does not match"
+    },
+    {
+      "code": 6014,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Bond",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "lister",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Deposited and still in the vault."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "encumbered",
+            "docs": [
+              "Part of `amount` that open listings have set aside."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BondDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bond",
+            "type": "pubkey"
+          },
+          {
+            "name": "lister",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BondWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bond",
+            "type": "pubkey"
+          },
+          {
+            "name": "lister",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Listed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "lister",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Listing",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "lister",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "release_after",
+            "type": "i64"
+          },
+          {
+            "name": "settled",
+            "docs": [
+              "Released or slashed."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingSlashed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Venue",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "bond_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bond_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_bond",
+            "type": "u64"
+          },
+          {
+            "name": "release_delay_secs",
+            "type": "i64"
+          },
+          {
+            "name": "slash_to",
+            "docs": [
+              "Owner of the token account that receives slashed bonds."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VenueCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "bond_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_bond",
+            "type": "u64"
+          },
+          {
+            "name": "release_delay_secs",
+            "type": "i64"
+          },
+          {
+            "name": "slash_to",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}

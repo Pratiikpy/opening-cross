@@ -1,0 +1,31 @@
+[package]
+name = "cross_graduate"
+version = "0.1.0"
+description = "Opening Cross graduation votes: holders who lock their tokens decide which venue a market graduates to, and the settlement adapters refuse to seed any other."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_graduate"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+[dev-dependencies]
+# Host tests only: they pin the byte offsets this program reads out of a cross against the real types.
+cross_core = { path = "../cross_core", features = ["no-entrypoint"] }

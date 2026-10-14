@@ -1,0 +1,27 @@
+[package]
+name = "cross_bounty"
+version = "0.1.0"
+description = "Opening Cross bounty: a committed pool that pays automatically when a cross account breaks an invariant, and by an arbiter for what the chain cannot check."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_bounty"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

@@ -10,6 +10,8 @@ export * from './dammV2Seeded.js';
 export * from './dbcMintBound.js';
 export * from './dbcPoolOpened.js';
 export * from './dlmmPairOpened.js';
+export * from './fixedPricePresaleOpened.js';
+export * from './futarchyDaoSeeded.js';
 export * from './greenshoeBidPlaced.js';
 export * from './greenshoeCreated.js';
 export * from './greenshoeFinished.js';

@@ -1,0 +1,460 @@
+{
+  "address": "4uNyZ4fSihcnrqASfYHCC35edh3EdndP37jSWqWQZxCp",
+  "metadata": {
+    "name": "cross_basket",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross baskets: a share token backed one for one by fixed amounts of several tokens, minted and redeemed against the vaults by anyone.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "create_basket",
+      "docs": [
+        "Creates a basket and its share mint. Remaining accounts: for each component, in order, its mint and the",
+        "basket's vault for it (the associated token account of the basket PDA, created beforehand)."
+      ],
+      "discriminator": [
+        47,
+        105,
+        155,
+        148,
+        15,
+        169,
+        202,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "basket",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  115,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "basket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "label",
+          "type": "string"
+        },
+        {
+          "name": "units_per_share",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mint_shares",
+      "docs": [
+        "Deposits the backing for `shares` share atoms and mints them. Remaining accounts: for each component, its",
+        "mint, the basket's vault and the depositor's token account."
+      ],
+      "discriminator": [
+        24,
+        196,
+        132,
+        0,
+        183,
+        158,
+        216,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "basket"
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "basket"
+          ]
+        },
+        {
+          "name": "user_shares",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "The share token's program (legacy SPL Token)."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_2022_program",
+          "docs": [
+            "Passed so that a Token-2022 component can be transferred; the transfers name it explicitly."
+          ],
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redeem_shares",
+      "docs": [
+        "Burns `shares` share atoms and pays out their backing, rounded down. Same remaining accounts as `mint_shares`."
+      ],
+      "discriminator": [
+        239,
+        154,
+        224,
+        89,
+        240,
+        196,
+        42,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "basket"
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "basket"
+          ]
+        },
+        {
+          "name": "user_shares",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "The share token's program (legacy SPL Token)."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_2022_program",
+          "docs": [
+            "Passed so that a Token-2022 component can be transferred; the transfers name it explicitly."
+          ],
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Basket",
+      "discriminator": [
+        219,
+        79,
+        107,
+        135,
+        231,
+        243,
+        218,
+        248
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BasketCreated",
+      "discriminator": [
+        26,
+        146,
+        108,
+        155,
+        189,
+        85,
+        8,
+        7
+      ]
+    },
+    {
+      "name": "SharesMinted",
+      "discriminator": [
+        127,
+        139,
+        238,
+        41,
+        118,
+        47,
+        122,
+        39
+      ]
+    },
+    {
+      "name": "SharesRedeemed",
+      "discriminator": [
+        232,
+        166,
+        7,
+        56,
+        67,
+        19,
+        42,
+        117
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BadBasket",
+      "msg": "A basket has one to eight components, a label of at most 32 bytes and a positive amount of each"
+    },
+    {
+      "code": 6001,
+      "name": "BadComponent",
+      "msg": "A component must be a token mint"
+    },
+    {
+      "code": 6002,
+      "name": "DuplicateComponent",
+      "msg": "A component is listed twice"
+    },
+    {
+      "code": 6003,
+      "name": "UnsafeExtension",
+      "msg": "This token has an extension that could break the backing"
+    },
+    {
+      "code": 6004,
+      "name": "BadVault",
+      "msg": "The vault is not the basket's account for that token"
+    },
+    {
+      "code": 6005,
+      "name": "BadAccounts",
+      "msg": "The accounts do not match the basket's components"
+    },
+    {
+      "code": 6006,
+      "name": "NothingToDo",
+      "msg": "Nothing to do"
+    },
+    {
+      "code": 6007,
+      "name": "Insolvent",
+      "msg": "A vault would hold less than the outstanding shares are owed"
+    },
+    {
+      "code": 6008,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Basket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": "string"
+          },
+          {
+            "name": "components",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Component"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BasketCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "basket",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "components",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Component"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Component",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "units_per_share",
+            "docs": [
+              "Atoms of this component in one whole share."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SharesMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "basket",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SharesRedeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "basket",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

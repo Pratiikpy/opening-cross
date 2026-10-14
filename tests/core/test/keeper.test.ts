@@ -150,7 +150,7 @@ describe('keeper', () => {
     w.h.setTime(T0 + 300n);
     const k = keeper(w, await w.h.wallet());
     const r = await runOnce(k);
-    expect(r.failed.map((f) => [f.action.cross, f.error])).toEqual([[guarded.address, 'oracle-guarded cross: no Pyth price update available']]);
+    expect(r.failed.map((f) => [(f.action as { cross: string }).cross, f.error])).toEqual([[guarded.address, 'oracle-guarded cross: no Pyth price update available']]);
     expect(w.view(plain.address).data.state).toBe(CrossState.Finalized);
   });
 

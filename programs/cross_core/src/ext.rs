@@ -23,6 +23,10 @@ pub const FLAG_STANDARD_GRID: u16 = 1 << 3;
 /// dividend) between the creation of the cross and its clear voids the print (ADR-0459, PRODUCT_FEATURES C5).
 pub const FLAG_GUARD_SCALED_UI: u16 = 1 << 4;
 
+/// The base mint's graduation to a venue is decided by a holder vote (`cross_graduate`, ADR-0656): `cross_settle`'s seeding
+/// instructions refuse to open a pool for this cross without an approved outcome for that venue. Set before the first order, like every rule.
+pub const FLAG_GOVERNED_GRADUATION: u16 = 1 << 5;
+
 /// Marks "no bucket": the order was placed before the ending period (or the cross has none).
 pub const NO_BUCKET: u8 = 255;
 /// Ending buckets a cross can have; their shards are numbered `AUX_END_BASE + bucket`.

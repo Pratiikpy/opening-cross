@@ -14,3 +14,4 @@
 - `met_lock.json` — Meteora Met Lock (`locker`) v0.5.0, extracted from `@meteora-ag/met-lock-sdk` 1.0.1 (MIT licence, © Meteora). Interface only; called at its deployed address.
 - `zap.json` — Meteora Zap v0.2.0, extracted from `@meteora-ag/zap-sdk` 1.3.2 (licence per that package). Interface only; no code in this repository calls it yet.
 - `alpha_vault.json` — Meteora Alpha Vault v0.4.0 from the Meteora damm-v2 repository's test helpers (`tests/helpers/idl`, Apache-2.0 per that repository's `license.md`). Its declared address is the local-test one; the adapters call the mainnet id `vaU6kP7i…`. Interface only.
+- `presale.json` — Meteora Presale Vault v0.1.1, extracted from `@meteora-ag/presale` 0.1.1 (licence per that package). Interface only; called at its deployed address `presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj` by `cross_settle::open_fixed_price_presale`.

@@ -1,0 +1,637 @@
+{
+  "address": "HThrduwqRFvjHKPiQiRitsSw5yuGkXmAPkykAvMRQYkp",
+  "metadata": {
+    "name": "cross_backing",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross backing watchdog: halts an asset on chain when its attested backing is missing, stale or below the issuer-chosen coverage of the live supply.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "attest",
+      "docs": [
+        "The attester states how much backing exists, in the mint's own atoms, as of now. The previous statement is",
+        "replaced; the time is the chain's, never the attester's."
+      ],
+      "discriminator": [
+        83,
+        148,
+        120,
+        119,
+        144,
+        139,
+        117,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "attester",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "policy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy.mint",
+                "account": "Policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy.mint",
+                "account": "Policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "backing_atoms",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "check",
+      "docs": [
+        "Halts the asset if its backing cannot be verified right now. Permissionless. Refuses (with `Backed`) when",
+        "the backing is fresh and covers the live supply, so a call that changes nothing says so."
+      ],
+      "discriminator": [
+        238,
+        251,
+        184,
+        43,
+        83,
+        233,
+        244,
+        65
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "attestation",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "watchdog",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  100,
+                  111,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "halt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                209,
+                58,
+                179,
+                140,
+                164,
+                201,
+                129,
+                18,
+                89,
+                17,
+                36,
+                35,
+                135,
+                190,
+                193,
+                151,
+                224,
+                240,
+                63,
+                240,
+                203,
+                67,
+                129,
+                32,
+                113,
+                244,
+                145,
+                167,
+                218,
+                86,
+                121,
+                50
+              ]
+            }
+          }
+        },
+        {
+          "name": "cross_core_program",
+          "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_policy",
+      "docs": [
+        "Opts an asset in. Only the asset's halt-state authority can; the halt state must name this program's watchdog",
+        "for the mint as its venue signer, or the policy could never act. The terms are fixed for good."
+      ],
+      "discriminator": [
+        27,
+        81,
+        33,
+        27,
+        196,
+        103,
+        246,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "halt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                209,
+                58,
+                179,
+                140,
+                164,
+                201,
+                129,
+                18,
+                89,
+                17,
+                36,
+                35,
+                135,
+                190,
+                193,
+                151,
+                224,
+                240,
+                63,
+                240,
+                203,
+                67,
+                129,
+                32,
+                113,
+                244,
+                145,
+                167,
+                218,
+                86,
+                121,
+                50
+              ]
+            }
+          }
+        },
+        {
+          "name": "watchdog",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  100,
+                  111,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "attester",
+          "type": "pubkey"
+        },
+        {
+          "name": "min_coverage_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_age_secs",
+          "type": "i64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Attestation",
+      "discriminator": [
+        152,
+        125,
+        183,
+        86,
+        36,
+        146,
+        121,
+        73
+      ]
+    },
+    {
+      "name": "Policy",
+      "discriminator": [
+        222,
+        135,
+        7,
+        163,
+        235,
+        177,
+        33,
+        68
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Attested",
+      "discriminator": [
+        184,
+        102,
+        113,
+        199,
+        220,
+        197,
+        96,
+        50
+      ]
+    },
+    {
+      "name": "BackingFailed",
+      "discriminator": [
+        144,
+        10,
+        37,
+        227,
+        167,
+        246,
+        135,
+        144
+      ]
+    },
+    {
+      "name": "PolicyCreated",
+      "discriminator": [
+        59,
+        189,
+        65,
+        121,
+        86,
+        157,
+        108,
+        10
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BadPolicy",
+      "msg": "Coverage must be 1% to 200% and the age one minute to thirty days"
+    },
+    {
+      "code": 6001,
+      "name": "WrongHalt",
+      "msg": "The halt state is not this mint's"
+    },
+    {
+      "code": 6002,
+      "name": "Unauthorized",
+      "msg": "Only the halt state's authority can opt the asset in"
+    },
+    {
+      "code": 6003,
+      "name": "WatchdogNotVenueSigner",
+      "msg": "The halt state's venue signer is not this program's watchdog for the mint"
+    },
+    {
+      "code": 6004,
+      "name": "Backed",
+      "msg": "The backing is fresh and covers the supply: nothing to halt"
+    }
+  ],
+  "types": [
+    {
+      "name": "Attestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "backing_atoms",
+            "type": "u64"
+          },
+          {
+            "name": "posted_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Attested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "type": "pubkey"
+          },
+          {
+            "name": "backing_atoms",
+            "type": "u64"
+          },
+          {
+            "name": "posted_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BackingFailed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "docs": [
+              "1 missing, 2 stale, 3 short of the coverage."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          },
+          {
+            "name": "checked_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Policy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_coverage_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_age_secs",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_coverage_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_age_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

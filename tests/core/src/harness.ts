@@ -38,7 +38,7 @@ import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/cross-core-client';
 import { CROSS_GATE_PROGRAM_ADDRESS } from '@opening-cross/cross-gate-client';
 import { CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
 import { TREASURY_PROGRAM_ADDRESS } from '@opening-cross/treasury-client';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import { address } from '@solana/kit';
 
 export const DBC_FIXTURE = `${fileURLToPath(new URL('../../fixtures/', import.meta.url))}dynamic_bonding_curve.so`;
@@ -55,6 +55,10 @@ const EXTRA_PROGRAMS: [string, string][] = [
   ['83EvNHUpKzguAUmyBHJgktVsVLzp3sCXYysgzmToLhs1', 'cross_mandate.so'],
   ['JAWUTTDhBQQ97w9YiPMv5sjsDxZab7AsSnc9L57zJjz6', 'cross_conviction.so'],
   ['4uNyZ4fSihcnrqASfYHCC35edh3EdndP37jSWqWQZxCp', 'cross_basket.so'],
+  ['6VsT7X4G7qjRaredx4Y9q6asGkySiXGVpNr4RrdbxSSi', 'cross_listing.so'],
+  ['BSXaBkmhyypBNp5nfwb4GHAL7uDDLVR8Tr3UyHJKsWMz', 'cross_bounty.so'],
+  ['HThrduwqRFvjHKPiQiRitsSw5yuGkXmAPkykAvMRQYkp', 'cross_backing.so'],
+  ['47f6BhDPCxmW9C9DuuMS2VnbCoU4wnSvjReEwy9Zdke7', 'cross_graduate.so'],
 ];
 
 /** A transaction the harness landed, in the shape an indexer receives it from an RPC node. */
@@ -62,6 +66,8 @@ export type LandedTx = { signature: string; slot: bigint; blockTime: bigint; log
 
 export class Harness {
   readonly svm: LiteSVM;
+  /** The token program the mint, ata, fund and balance helpers use. Token-2022 unless a test asks for legacy SPL Token. */
+  tokenProgram: Address = TOKEN_2022_PROGRAM_ADDRESS;
   /** Every successful transaction, in order — consumed by the indexer tests. */
   readonly landed: LandedTx[] = [];
   constructor() {
@@ -109,7 +115,13 @@ export class Harness {
     }
     const clock = this.svm.getClock();
     this.landed.push({ signature: getSignatureFromTransaction(tx), slot: clock.slot, blockTime: clock.unixTimestamp, logs: res.logs(), err: null });
-    return res.computeUnitsConsumed();
+    const units = res.computeUnitsConsumed();
+    if (process.env.OC_CU_LOG) {
+      // A one-instruction transaction attributes its compute units to that instruction: program, discriminator, units.
+      const only = ixs.length === 1 ? ixs[0] : ixs.filter((i) => i.programAddress !== 'ComputeBudget111111111111111111111111111111' && i.programAddress !== 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL').at(-1);
+      if (only?.data) appendFileSync(process.env.OC_CU_LOG, `${only.programAddress} ${Buffer.from(only.data.slice(0, 8)).toString('hex')} ${units} ${ixs.length}\n`);
+    }
+    return units;
   }
 
   /** Signs and lands a wire transaction built elsewhere (the API), exactly as a wallet would. */
@@ -138,8 +150,8 @@ export class Harness {
     const space = getMintSize();
     await this.send(
       [
-        getCreateAccountInstruction({ payer: authority, newAccount: mint, lamports: this.svm.minimumBalanceForRentExemption(BigInt(space)), space, programAddress: TOKEN_2022_PROGRAM_ADDRESS }),
-        getInitializeMint2Instruction({ mint: mint.address, decimals, mintAuthority: authority.address, freezeAuthority: null }),
+        getCreateAccountInstruction({ payer: authority, newAccount: mint, lamports: this.svm.minimumBalanceForRentExemption(BigInt(space)), space, programAddress: this.tokenProgram }),
+        getInitializeMint2Instruction({ mint: mint.address, decimals, mintAuthority: authority.address, freezeAuthority: null }, { programAddress: this.tokenProgram }),
       ],
       authority,
     );
@@ -147,19 +159,19 @@ export class Harness {
   }
 
   async ata(owner: Address, mint: Address, payer: TransactionSigner): Promise<Address> {
-    const [ata] = await findAssociatedTokenPda({ owner, mint, tokenProgram: TOKEN_2022_PROGRAM_ADDRESS });
-    await this.send([getCreateAssociatedTokenIdempotentInstruction({ payer, ata, owner, mint, tokenProgram: TOKEN_2022_PROGRAM_ADDRESS })], payer);
+    const [ata] = await findAssociatedTokenPda({ owner, mint, tokenProgram: this.tokenProgram });
+    await this.send([getCreateAssociatedTokenIdempotentInstruction({ payer, ata, owner, mint, tokenProgram: this.tokenProgram })], payer);
     return ata;
   }
 
   async fund(mint: Address, authority: TransactionSigner, owner: Address, amount: bigint): Promise<Address> {
     const ata = await this.ata(owner, mint, authority);
-    await this.send([getMintToInstruction({ mint, token: ata, mintAuthority: authority, amount }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS })], authority);
+    await this.send([getMintToInstruction({ mint, token: ata, mintAuthority: authority, amount }, { programAddress: this.tokenProgram })], authority);
     return ata;
   }
 
   async setMintAuthority(mint: Address, current: TransactionSigner, next: Address | null): Promise<void> {
-    await this.send([getSetAuthorityInstruction({ owned: mint, owner: current, authorityType: AuthorityType.MintTokens, newAuthority: next }, { programAddress: TOKEN_2022_PROGRAM_ADDRESS })], current);
+    await this.send([getSetAuthorityInstruction({ owned: mint, owner: current, authorityType: AuthorityType.MintTokens, newAuthority: next }, { programAddress: this.tokenProgram })], current);
   }
 
   balance(tokenAccount: Address): bigint {
@@ -169,7 +181,7 @@ export class Harness {
   }
 
   async balanceOf(owner: Address, mint: Address): Promise<bigint> {
-    const [ata] = await findAssociatedTokenPda({ owner, mint, tokenProgram: TOKEN_2022_PROGRAM_ADDRESS });
+    const [ata] = await findAssociatedTokenPda({ owner, mint, tokenProgram: this.tokenProgram });
     return this.balance(ata);
   }
 

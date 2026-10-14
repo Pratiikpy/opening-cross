@@ -1,0 +1,1632 @@
+{
+  "address": "83EvNHUpKzguAUmyBHJgktVsVLzp3sCXYysgzmToLhs1",
+  "metadata": {
+    "name": "cross_mandate",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross auto-invest mandates: an agent places buy orders inside limits the owner set, and the owner can revoke and withdraw at any time.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "cancel_order",
+      "docs": [
+        "Withdraws an order from a cross during its call window. The owner or the agent may call it,",
+        "also after revocation. The refund lands in the vault and the order's rent in the signer PDA."
+      ],
+      "discriminator": [
+        95,
+        129,
+        237,
+        240,
+        8,
+        49,
+        223,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "base_vault",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "signer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "cross_core_program",
+          "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_mandate",
+      "docs": [
+        "Creates a mandate and its vault. The owner signs and pays; the agent is only named."
+      ],
+      "discriminator": [
+        230,
+        170,
+        158,
+        68,
+        33,
+        169,
+        16,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "agent"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "mandate",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "signer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "limits",
+          "type": {
+            "defined": {
+              "name": "Limits"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fund",
+      "docs": [
+        "Moves quote tokens from the owner into the vault, and optionally SOL into the signer PDA",
+        "(it pays the rent of each order it places and gets it back when the order is claimed)."
+      ],
+      "discriminator": [
+        218,
+        188,
+        111,
+        221,
+        152,
+        113,
+        174,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "owner_quote",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "signer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "place_order",
+      "docs": [
+        "The agent places a buy order in a cross, inside the limits. Remaining accounts are those the",
+        "cross's rules ask `commit_order` for (applicant record, class book, priority pass)."
+      ],
+      "discriminator": [
+        51,
+        194,
+        155,
+        175,
+        109,
+        130,
+        96,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "signer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "protocol"
+        },
+        {
+          "name": "cross",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "pass",
+          "optional": true
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "cross_core_program",
+          "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "escrow",
+          "type": "u64"
+        },
+        {
+          "name": "commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "order_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "reveal_order",
+      "docs": [
+        "Reveals a sealed order the mandate placed. The owner or the agent may call it, also after the",
+        "mandate was revoked or expired: it only completes an order that was authorised when it was placed."
+      ],
+      "discriminator": [
+        25,
+        244,
+        42,
+        219,
+        17,
+        156,
+        211,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "signer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "shard",
+          "writable": true
+        },
+        {
+          "name": "cross_core_program",
+          "address": "F5k8EDDXBF24xgt4Y8MMtwPZFH9TikJvJcNmD1NJQPnZ"
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke",
+      "docs": [
+        "The kill switch. Immediate and permanent: no new order can be placed. Orders already in a cross",
+        "can still be cancelled while the call window is open, claimed after it, and withdrawn."
+      ],
+      "discriminator": [
+        170,
+        23,
+        31,
+        34,
+        133,
+        173,
+        93,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_limits",
+      "docs": [
+        "Replaces the limits. The owner may raise or lower any of them; a revoked mandate stays revoked."
+      ],
+      "discriminator": [
+        207,
+        50,
+        250,
+        67,
+        211,
+        33,
+        70,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "limits",
+          "type": {
+            "defined": {
+              "name": "Limits"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sweep",
+      "docs": [
+        "Moves everything the signer PDA holds of a base token to the owner's own account. Permissionless: the",
+        "destination is fixed to the owner, so a caller can only help. The quote token never goes through",
+        "here: it stays in the vault until the owner withdraws it."
+      ],
+      "discriminator": [
+        40,
+        23,
+        234,
+        175,
+        14,
+        61,
+        154,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "signer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Takes quote tokens out of the vault to the owner's own account. Always allowed."
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "signer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "owner_quote",
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_lamports",
+      "docs": [
+        "Takes SOL out of the signer PDA to the owner. The signer must keep the rent-exempt minimum of an",
+        "empty account or be emptied completely."
+      ],
+      "discriminator": [
+        251,
+        144,
+        115,
+        229,
+        113,
+        247,
+        206,
+        64
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "mandate"
+          ]
+        },
+        {
+          "name": "mandate"
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101,
+                  95,
+                  115,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mandate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Mandate",
+      "discriminator": [
+        113,
+        216,
+        98,
+        159,
+        185,
+        63,
+        55,
+        18
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "LimitsChanged",
+      "discriminator": [
+        124,
+        11,
+        98,
+        161,
+        150,
+        103,
+        33,
+        110
+      ]
+    },
+    {
+      "name": "MandateCreated",
+      "discriminator": [
+        140,
+        30,
+        209,
+        254,
+        5,
+        128,
+        147,
+        113
+      ]
+    },
+    {
+      "name": "MandateFunded",
+      "discriminator": [
+        203,
+        100,
+        172,
+        41,
+        38,
+        98,
+        164,
+        99
+      ]
+    },
+    {
+      "name": "MandateLamportsWithdrawn",
+      "discriminator": [
+        8,
+        104,
+        202,
+        187,
+        254,
+        18,
+        100,
+        188
+      ]
+    },
+    {
+      "name": "MandateOrderPlaced",
+      "discriminator": [
+        158,
+        232,
+        138,
+        237,
+        237,
+        182,
+        19,
+        193
+      ]
+    },
+    {
+      "name": "MandateRevoked",
+      "discriminator": [
+        228,
+        111,
+        181,
+        60,
+        204,
+        58,
+        131,
+        28
+      ]
+    },
+    {
+      "name": "MandateSwept",
+      "discriminator": [
+        123,
+        77,
+        145,
+        201,
+        156,
+        97,
+        32,
+        30
+      ]
+    },
+    {
+      "name": "MandateWithdrawn",
+      "discriminator": [
+        118,
+        27,
+        106,
+        191,
+        107,
+        177,
+        79,
+        39
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Signer is not allowed to do this"
+    },
+    {
+      "code": 6001,
+      "name": "AgentIsOwner",
+      "msg": "The agent must be a different key from the owner"
+    },
+    {
+      "code": 6002,
+      "name": "BadLimits",
+      "msg": "Limits are not valid"
+    },
+    {
+      "code": 6003,
+      "name": "Revoked",
+      "msg": "The mandate was revoked"
+    },
+    {
+      "code": 6004,
+      "name": "Expired",
+      "msg": "The mandate has expired"
+    },
+    {
+      "code": 6005,
+      "name": "OverPerOrderLimit",
+      "msg": "Order is larger than the per-order limit"
+    },
+    {
+      "code": 6006,
+      "name": "OverTotalCap",
+      "msg": "Order would take the mandate over its lifetime cap"
+    },
+    {
+      "code": 6007,
+      "name": "VaultTooLow",
+      "msg": "The vault holds less than the order's escrow"
+    },
+    {
+      "code": 6008,
+      "name": "NotACross",
+      "msg": "The account is not a cross"
+    },
+    {
+      "code": 6009,
+      "name": "WrongQuote",
+      "msg": "The cross is not quoted in the mandate's token"
+    },
+    {
+      "code": 6010,
+      "name": "NotAllowed",
+      "msg": "The cross is not on the mandate's allow list"
+    },
+    {
+      "code": 6011,
+      "name": "NoSupplyReference",
+      "msg": "The cross declares no supply to measure the share against"
+    },
+    {
+      "code": 6012,
+      "name": "OverShareLimit",
+      "msg": "Order could buy more than the share limit of the cross's supply"
+    },
+    {
+      "code": 6013,
+      "name": "NeedRentFunding",
+      "msg": "Fund the signer account with SOL for the order's rent"
+    },
+    {
+      "code": 6014,
+      "name": "NothingToDo",
+      "msg": "Nothing to do"
+    },
+    {
+      "code": 6015,
+      "name": "QuoteStaysInVault",
+      "msg": "The quote token stays in the vault; the owner withdraws it"
+    },
+    {
+      "code": 6016,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AllowKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "BaseMint"
+          },
+          {
+            "name": "Creator"
+          },
+          {
+            "name": "Cross"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllowRule",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "AllowKind"
+              }
+            }
+          },
+          {
+            "name": "key",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Limits",
+      "docs": [
+        "What the owner decides. All of it can be changed by the owner, none of it by the agent."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "max_per_order",
+            "docs": [
+              "Most quote atoms one order may escrow."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_cap",
+            "docs": [
+              "Most quote atoms the mandate may commit over its life (refunded escrow still counts, so the",
+              "figure is a ceiling on activity, not a balance)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_share_bps",
+            "docs": [
+              "Most of a cross's declared supply one order may buy, in basis points, at most 2,500."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "allow",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "AllowRule"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitsChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "limits",
+            "type": {
+              "defined": {
+                "name": "Limits"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Mandate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_per_order",
+            "type": "u64"
+          },
+          {
+            "name": "total_cap",
+            "type": "u64"
+          },
+          {
+            "name": "committed",
+            "docs": [
+              "Quote atoms committed to orders so far."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "allow",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "AllowRule"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "signer_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "limits",
+            "type": {
+              "defined": {
+                "name": "Limits"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateLamportsWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateOrderPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow",
+            "type": "u64"
+          },
+          {
+            "name": "committed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

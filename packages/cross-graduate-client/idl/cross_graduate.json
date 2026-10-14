@@ -1,0 +1,1240 @@
+{
+  "address": "47f6BhDPCxmW9C9DuuMS2VnbCoU4wnSvjReEwy9Zdke7",
+  "metadata": {
+    "name": "cross_graduate",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Opening Cross graduation votes: holders who lock their tokens decide which venue a market graduates to, and the settlement adapters refuse to seed any other.",
+    "repository": "https://github.com/Pratiikpy/opening-cross"
+  },
+  "instructions": [
+    {
+      "name": "cast_vote",
+      "docs": [
+        "Locks `amount` of the token for the whole window behind one venue. A voter can add to its stake, never change venue."
+      ],
+      "discriminator": [
+        20,
+        212,
+        15,
+        189,
+        69,
+        180,
+        69,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "round"
+          ]
+        },
+        {
+          "name": "voter_token",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "venue",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "finalize_round",
+      "docs": [
+        "Settles a round after its window. Permissionless. Passed or failed is decided by `decide` alone."
+      ],
+      "discriminator": [
+        239,
+        160,
+        254,
+        11,
+        254,
+        144,
+        53,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "charter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round.cross",
+                "account": "Round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "round"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_charter",
+      "docs": [
+        "Binds a cross's graduation to a vote. The creator, before the first order, on a cross that carries",
+        "`FLAG_GOVERNED_GRADUATION`. The terms cannot change."
+      ],
+      "discriminator": [
+        118,
+        74,
+        249,
+        108,
+        200,
+        14,
+        52,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross"
+        },
+        {
+          "name": "charter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "quorum_bps",
+          "type": "u16"
+        },
+        {
+          "name": "window_secs",
+          "type": "i64"
+        },
+        {
+          "name": "min_volume",
+          "type": "u64"
+        },
+        {
+          "name": "volume_attester",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "post_volume",
+      "docs": [
+        "The charter's volume attester states the organic volume (in quote atoms) as of now. The latest statement counts."
+      ],
+      "discriminator": [
+        78,
+        85,
+        219,
+        83,
+        103,
+        29,
+        254,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "attester",
+          "signer": true
+        },
+        {
+          "name": "round",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "volume_quote",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "publish_outcome",
+      "docs": [
+        "Publishes the outcome of a passed round, which is what `cross_settle` reads. Permissionless; once."
+      ],
+      "discriminator": [
+        107,
+        174,
+        63,
+        163,
+        19,
+        17,
+        169,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "round"
+        },
+        {
+          "name": "outcome",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  117,
+                  116,
+                  99,
+                  111,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round.cross",
+                "account": "Round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "start_round",
+      "docs": [
+        "Opens a voting round once the cross is finalized and its token exists. The creator only: a round that fails",
+        "uses one of three attempts, so it is not left to anyone who might want to burn them."
+      ],
+      "discriminator": [
+        144,
+        144,
+        43,
+        7,
+        193,
+        42,
+        217,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "charter"
+          ]
+        },
+        {
+          "name": "cross",
+          "relations": [
+            "charter"
+          ]
+        },
+        {
+          "name": "charter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cross"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_vote",
+      "docs": [
+        "Returns a voter's tokens once the window has closed."
+      ],
+      "discriminator": [
+        243,
+        255,
+        70,
+        200,
+        3,
+        242,
+        103,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vote"
+          ]
+        },
+        {
+          "name": "round"
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "round"
+          ]
+        },
+        {
+          "name": "vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "voter_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Charter",
+      "discriminator": [
+        106,
+        1,
+        38,
+        161,
+        57,
+        196,
+        214,
+        195
+      ]
+    },
+    {
+      "name": "Outcome",
+      "discriminator": [
+        131,
+        46,
+        145,
+        156,
+        166,
+        15,
+        46,
+        131
+      ]
+    },
+    {
+      "name": "Round",
+      "discriminator": [
+        87,
+        127,
+        165,
+        51,
+        73,
+        78,
+        116,
+        174
+      ]
+    },
+    {
+      "name": "VoteRecord",
+      "discriminator": [
+        112,
+        9,
+        123,
+        165,
+        234,
+        9,
+        157,
+        167
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CharterCreated",
+      "discriminator": [
+        218,
+        69,
+        103,
+        231,
+        58,
+        196,
+        109,
+        154
+      ]
+    },
+    {
+      "name": "OutcomePublished",
+      "discriminator": [
+        93,
+        204,
+        218,
+        137,
+        71,
+        214,
+        182,
+        187
+      ]
+    },
+    {
+      "name": "RoundFinalized",
+      "discriminator": [
+        43,
+        187,
+        17,
+        193,
+        36,
+        241,
+        48,
+        82
+      ]
+    },
+    {
+      "name": "RoundStarted",
+      "discriminator": [
+        180,
+        209,
+        2,
+        244,
+        238,
+        48,
+        170,
+        120
+      ]
+    },
+    {
+      "name": "VolumePosted",
+      "discriminator": [
+        186,
+        84,
+        29,
+        24,
+        35,
+        112,
+        202,
+        86
+      ]
+    },
+    {
+      "name": "VoteCast",
+      "discriminator": [
+        39,
+        53,
+        195,
+        104,
+        188,
+        17,
+        225,
+        213
+      ]
+    },
+    {
+      "name": "VoteWithdrawn",
+      "discriminator": [
+        124,
+        163,
+        22,
+        0,
+        175,
+        223,
+        243,
+        20
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BadCharter",
+      "msg": "A charter needs a quorum of at least 10%, a window of 3 to 30 days, and an attester when it asks for volume"
+    },
+    {
+      "code": 6001,
+      "name": "NotTheCreator",
+      "msg": "Only the creator of the cross can do this"
+    },
+    {
+      "code": 6002,
+      "name": "TooLate",
+      "msg": "A charter must be created before the first order, while the cross is live"
+    },
+    {
+      "code": 6003,
+      "name": "NotGoverned",
+      "msg": "The cross does not carry the governed-graduation rule"
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyPassed",
+      "msg": "A round already passed"
+    },
+    {
+      "code": 6005,
+      "name": "RoundOpen",
+      "msg": "A round is open or waiting to be finalized"
+    },
+    {
+      "code": 6006,
+      "name": "NoRoundsLeft",
+      "msg": "All three rounds were used"
+    },
+    {
+      "code": 6007,
+      "name": "CrossNotFinalized",
+      "msg": "The cross must be finalized and its token must exist"
+    },
+    {
+      "code": 6008,
+      "name": "NotVoting",
+      "msg": "The round is not open for votes"
+    },
+    {
+      "code": 6009,
+      "name": "UnknownVenue",
+      "msg": "There is no such venue"
+    },
+    {
+      "code": 6010,
+      "name": "VenueLocked",
+      "msg": "A voter cannot change venue within a round"
+    },
+    {
+      "code": 6011,
+      "name": "WindowOpen",
+      "msg": "The voting window has not closed"
+    },
+    {
+      "code": 6012,
+      "name": "NotPassed",
+      "msg": "The round did not pass"
+    },
+    {
+      "code": 6013,
+      "name": "NothingToDo",
+      "msg": "Nothing to do"
+    },
+    {
+      "code": 6014,
+      "name": "NotACross",
+      "msg": "The account is not a cross"
+    },
+    {
+      "code": 6015,
+      "name": "WrongCross",
+      "msg": "The account is not the cross or the token of this charter"
+    },
+    {
+      "code": 6016,
+      "name": "WrongMint",
+      "msg": "The token is not the cross's token"
+    },
+    {
+      "code": 6017,
+      "name": "Unauthorized",
+      "msg": "Signer is not allowed to do this"
+    },
+    {
+      "code": 6018,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Charter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "quorum_bps",
+            "type": "u16"
+          },
+          {
+            "name": "window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "min_volume",
+            "type": "u64"
+          },
+          {
+            "name": "volume_attester",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "rounds",
+            "docs": [
+              "Rounds started so far."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "A round is open or waiting to be finalized."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "passed",
+            "docs": [
+              "A round passed."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharterCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "charter",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "quorum_bps",
+            "type": "u16"
+          },
+          {
+            "name": "window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "min_volume",
+            "type": "u64"
+          },
+          {
+            "name": "volume_attester",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome",
+      "docs": [
+        "What `cross_settle` reads: the venue a passed round chose for this cross."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "u8"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "published_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutcomePublished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outcome",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Round",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "opens_ts",
+            "type": "i64"
+          },
+          {
+            "name": "closes_ts",
+            "type": "i64"
+          },
+          {
+            "name": "quorum_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_volume",
+            "type": "u64"
+          },
+          {
+            "name": "volume_attester",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "tallies",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "locked_total",
+            "type": "u64"
+          },
+          {
+            "name": "volume_quote",
+            "type": "u64"
+          },
+          {
+            "name": "volume_set",
+            "type": "bool"
+          },
+          {
+            "name": "finalized",
+            "type": "bool"
+          },
+          {
+            "name": "passed",
+            "type": "bool"
+          },
+          {
+            "name": "winner",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "passed",
+            "type": "bool"
+          },
+          {
+            "name": "winner",
+            "type": "u8"
+          },
+          {
+            "name": "locked_total",
+            "type": "u64"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "closes_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VolumePosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "volume_quote",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteCast",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "locked_total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

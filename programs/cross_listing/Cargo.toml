@@ -1,0 +1,27 @@
+[package]
+name = "cross_listing"
+version = "0.1.0"
+description = "Opening Cross listing bonds: a lister stakes a bond to list crosses on a venue, gets it back when they end well, and loses it to a settlement that never happened."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cross_listing"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=1.0.2"
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
