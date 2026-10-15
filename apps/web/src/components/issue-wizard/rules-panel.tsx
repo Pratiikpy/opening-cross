@@ -109,6 +109,14 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    id: 'graduation',
+    title: 'Graduation by holder vote',
+    intro: 'Let your holders choose the venue the market opens on. This is set now, before the first order, and cannot be added or removed afterwards.',
+    fields: [
+      { key: 'governedGraduation', label: 'The market opens only on the venue holders vote for', hint: 'You then set a charter on the graduation page before the first order. It needs the graduation program and the batch 2 upgrade of the settlement program, which are built and proved but not on devnet yet: creating the cross is refused while they are not.', kind: 'check' },
+    ],
+  },
+  {
     id: 'referral',
     title: 'Referral',
     intro: 'A referrer shares the protocol’s fee, not yours and not the bidders’. It is paid when the cross is finalized, and never on bids, cancels or refunds.',

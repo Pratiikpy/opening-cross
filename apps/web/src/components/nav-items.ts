@@ -28,4 +28,11 @@ export const MORE_NAV = [
   { href: '/series', label: 'Series' },
   { href: '/arbiter', label: 'Arbiter' },
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/mandates', label: 'Mandates' },
+  { href: '/agents', label: 'Agents' },
+  { href: '/conviction', label: 'Conviction' },
+  { href: '/baskets', label: 'Baskets' },
+  { href: '/listing', label: 'Listing' },
+  { href: '/bounties', label: 'Bounties' },
+  { href: '/backing', label: 'Backing' },
 ];

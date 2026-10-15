@@ -28,9 +28,11 @@ import { SignedBand } from './signed-band';
 import { Tabs } from './tabs';
 import { TimelineView } from './timeline-view';
 import type { Phase } from './timeline';
+import { GraduationPanel } from '@/components/graduation/graduation-panel';
 import { RefundPanel } from './refund-panel';
 import { RulesPanel } from './rules-panel';
 import { SeriesHaltNote } from './series-halt-note';
+import { Wave3dNotes } from './w4-notes';
 import { TokenFacts } from './token-facts';
 import { useIndicative, useRules } from './use-rules';
 import { useSigner } from './use-signer';
@@ -175,6 +177,7 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
       </p>
 
       <SeriesHaltNote cross={cross} rules={rules} />
+      <Wave3dNotes cross={cross} />
 
       <div className="mt-8">
         <Hero cross={cross} book={book} orders={orders} phase={phase} now={now} market={m} ending={ending} indicative={indicative} />
@@ -197,6 +200,9 @@ export function CrossView({ initial, serverNow, initialIdentity, initialBand }: 
                 ),
               },
               { id: 'rules', label: 'Rules', content: <RulesPanel cross={cross} read={rules} market={m} now={now} programs={programs} wallet={account?.address ?? null} standing={standing} /> },
+              ...(rules?.rules?.flags.governedGraduation === true
+                ? [{ id: 'graduation', label: 'Graduation', content: <GraduationPanel cross={cross.address} baseMint={cross.baseMint} baseDecimals={m.baseDecimals} quoteDecimals={m.quoteDecimals} creator={cross.creator} /> }]
+                : []),
               { id: 'book', label: 'Book', content: bookTab },
               { id: 'orders', label: 'Orders', content: <OrdersTab cross={cross} orders={orders} loaded={ordersLoaded} phase={phase} market={m} owner={account?.address ?? null} coarse={ending.kind === 'ending'} /> },
               { id: 'proof', label: 'Proof', content: <ProofTab cross={cross} proof={proof} loaded={proofLoaded} market={m} /> },

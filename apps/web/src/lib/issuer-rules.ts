@@ -11,6 +11,8 @@ import { type Market, formatAtoms, parseAtoms, parsePrice } from './units';
 
 /** The flag bits of `rules.flags` (`FLAG_*` in cross-core-client; a test compares them). */
 export const FLAGS = { resumesHalt: 1 << 1, feedsLenders: 1 << 2, standardGrid: 1 << 3, guardScaledUi: 1 << 4 } as const;
+/** The fifth flag (`FLAG_GOVERNED_GRADUATION`, ADR-0656), kept apart from FLAGS so the API's parity test of those four stays as it is; test/w4b-rules-flag.test.ts compares it. */
+export const GOVERNED_GRADUATION_FLAG = 1 << 5;
 
 export type RulesJson = {
   flags?: number;
@@ -155,6 +157,7 @@ export function buildRules(f: RulesForm, u: RulesUnits): RulesBuild {
   if (f.feedsLenders) flags |= FLAGS.feedsLenders;
   if (f.standardGrid) flags |= FLAGS.standardGrid;
   if (f.guardScaledUi) flags |= FLAGS.guardScaledUi;
+  if (f.governedGraduation) flags |= GOVERNED_GRADUATION_FLAG;
   const guards = set(
     drop({
       minRaiseQuote: quote('minRaise', 'The minimum raise'),
@@ -385,6 +388,7 @@ export function bidderView(r: RulesJson | null, c: ViewContext): ViewItem[] {
   if (g?.gridEstimate && ((r.flags ?? 0) & FLAGS.standardGrid) !== 0) out.push({ id: 'grid', title: 'Standard price grid', text: 'The first price is at least half the published estimate, steps are at most one percent of it, and the estimate lies inside the grid.' });
   if (((r.flags ?? 0) & FLAGS.guardScaledUi) !== 0) out.push({ id: 'scaled-ui', title: 'Voided if the share multiplier changes', text: 'If a stock split or similar action changes the token’s scaled-UI multiplier while the cross is open, the cross does not print.' });
   if (((r.flags ?? 0) & FLAGS.resumesHalt) !== 0) out.push({ id: 'resume', title: 'Lifts a trading halt', text: 'This cross is the one that lifts the halt on its token. It does so only if it prints.' });
+  if (((r.flags ?? 0) & GOVERNED_GRADUATION_FLAG) !== 0) out.push({ id: 'governed', title: 'Graduates by holder vote', text: 'The market opens only on the venue holders vote for. The creator sets a charter before the first order; holders lock tokens behind a venue and the settlement program refuses a pool on any other.' });
   if (((r.flags ?? 0) & FLAGS.feedsLenders) !== 0) out.push({ id: 'lenders', title: 'Feeds the lender price', text: 'A print here can update the price lenders read, only if enough tokens trade.' });
 
   const id = r.identity;

@@ -22,7 +22,7 @@ export function duration(secsText: string): string {
 }
 
 export type RulesJson = {
-  flags: { resumesHalt: boolean; feedsLenders: boolean; standardGrid: boolean; guardScaledUi: boolean };
+  flags: { resumesHalt: boolean; feedsLenders: boolean; standardGrid: boolean; guardScaledUi: boolean; governedGraduation?: boolean };
   guards: { minRaiseQuote: string; maxMatched: string; totalSupply: string; minFloatBps: number; maxFdvX100: number; anchorPrice: string; moveBps: number; gridEstimate: string; haltSource: string | null };
   ending: { endingSecs: number; buckets: number; cancelCutoffSecs: number; randomEnd: boolean; extensionMinSecs: number; extensionMaxSecs: number };
   identity: { capQuote: string; maxOrders: number };

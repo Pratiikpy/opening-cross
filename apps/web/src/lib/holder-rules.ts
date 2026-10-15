@@ -9,7 +9,7 @@ import { formatAtoms, formatPrice, shortAddress } from './units';
 // ---------------------------------------------------------------------------------------------------- what the API serves
 
 export type RulesJson = {
-  flags: { resumesHalt: boolean; feedsLenders: boolean; standardGrid: boolean; guardScaledUi: boolean };
+  flags: { resumesHalt: boolean; feedsLenders: boolean; standardGrid: boolean; guardScaledUi: boolean; /** Present on an API that knows the fifth rule flag (ADR-0656). */ governedGraduation?: boolean };
   guards: { minRaiseQuote: string; maxMatched: string; totalSupply: string; minFloatBps: number; maxFdvX100: number; anchorPrice: string; moveBps: number; gridEstimate: string; haltSource: string | null };
   ending: { endingSecs: number; buckets: number; cancelCutoffSecs: number; randomEnd: boolean; extensionMinSecs: number; extensionMaxSecs: number };
   identity: { capQuote: string; maxOrders: number };
@@ -153,6 +153,7 @@ export function describeRules(r: RulesJson, c: DescribeContext): Section[] {
   if (r.flags.standardGrid) flags.push(`The price grid follows the issuer’s published estimate${BigInt(g.gridEstimate) > 0n ? ` of ${formatPrice(BigInt(g.gridEstimate), m)}` : ''}: it contains it, starts no lower than half of it and moves in steps of at most 1% of it.`);
   if (r.flags.resumesHalt) flags.push('This is a resume cross. A halted token trades again only after a cross like this prints: it is the one-price auction that lifts the halt.');
   if (r.flags.feedsLenders) flags.push('If this cross prints with enough volume, its price is published to the lender price feed that lending markets read.');
+  if (r.flags.governedGraduation) flags.push('The market opens only on the venue holders vote for. Holders lock tokens behind a venue (see the Graduation tab); the settlement program refuses a pool on any other venue, and a failed vote leaves the market without one.');
   add('flags', 'Market options', flags);
 
   // Per-wallet limits.

@@ -9,6 +9,7 @@ import { type Draft, type Phase, check, marketOf, phaseOf, placeOrderBody } from
 import { explainCalibration } from '../lib/reasons';
 import { PEG_NOTE, pegPrice } from '../lib/peg';
 import { type HaltRead, type SeriesRead, haltBanner, seriesNote } from '../lib/schedule';
+import { type BackingRead, type GraduationRead, type ListingsRead, backingBanner, governedNote, listingNote } from '../lib/wave3d';
 import { type SealedBid, exportBackup, loadBids, nonceFrom, rememberOrder, saltFrom, saveBid } from '../lib/sealed';
 import { type ClassId, type IndicativeRead, type RulesRead, type Standing, blocked, classOptions, clock, endingNow, imbalanceText, needsAck, summaryLines, ticketChecks } from '../lib/rules';
 import { ActionError } from '../lib/tx';
@@ -604,11 +605,41 @@ function ScheduleNotes({ cross, rules }: { cross: CrossDetail; rules: RulesRead 
       live = false;
     };
   }, [honours, cross.baseMint, cross.state]);
+  // The Wave 3D programs: listings against a bond, a failing backing policy and a governed graduation. A network without them answers with nothing, and nothing is shown.
+  const [listings, setListings] = useState<ListingsRead['listings']>([]);
+  const [backing, setBacking] = useState<BackingRead | null>(null);
+  const [grad, setGrad] = useState<GraduationRead | null>(null);
+  const governed = rules?.rules?.flags?.governedGraduation === true;
+  useEffect(() => {
+    let live = true;
+    void get<ListingsRead>(`/v1/crosses/${cross.address}/listings`).then((r) => live && setListings(r.ok ? r.data.listings : []));
+    if (cross.baseMint) void get<BackingRead>(`/v1/assets/${cross.baseMint}/backing`).then((r) => live && setBacking(r.ok ? r.data : null));
+    return () => {
+      live = false;
+    };
+  }, [cross.address, cross.baseMint, cross.state]);
+  useEffect(() => {
+    if (!governed) return setGrad(null);
+    let live = true;
+    void get<GraduationRead>(`/v1/crosses/${cross.address}/graduation`).then((r) => live && setGrad(r.ok ? r.data : null));
+    return () => {
+      live = false;
+    };
+  }, [governed, cross.address, cross.state]);
   const banner = haltBanner(halt, cross.state);
-  if (!banner && !series) return null;
+  const backed = backingBanner(backing);
+  const govNote = governedNote(grad);
+  if (!banner && !series && !backed && !govNote && listings.length === 0) return null;
   return (
     <>
       {banner ? <Notice tone="error">{banner}</Notice> : null}
+      {backed ? <Notice tone="error">{backed}</Notice> : null}
+      {govNote ? <Notice>{govNote}</Notice> : null}
+      {listings.map((l) => (
+        <Notice key={l.listing} tone={l.status === 'slashed' ? 'error' : 'plain'}>
+          {listingNote(l)}
+        </Notice>
+      ))}
       {series ? (
         <Card>
           <Txt variant="small" tone="muted">

@@ -51,6 +51,9 @@ export type RulesForm = {
   haltSource: string;
   feedsLenders: boolean;
   calendar: string;
+  // graduation
+  /** The market opens only on the venue holders vote for (rule flag 32, ADR-0656). Set before the first order and never changed. */
+  governedGraduation: boolean;
   // identity
   identityCap: string;
   identityMaxOrders: string;
@@ -104,6 +107,7 @@ export const EMPTY_RULES_FORM: RulesForm = {
   haltSource: '',
   feedsLenders: false,
   calendar: '',
+  governedGraduation: false,
   identityCap: '',
   identityMaxOrders: '',
   reserveSmallPct: '',
@@ -201,6 +205,14 @@ export const RULE_PRESETS: readonly RulePreset[] = [
     needs: ['calendar'],
     yoursToFill: ['gridEstimate'],
     patch: { standardGrid: true, guardScaledUi: true, movePct: '20' },
+  },
+  {
+    id: 'holder-vote-graduation',
+    name: 'Graduation by holder vote',
+    summary: 'The market opens only on the venue your holders vote for, never on one you pick alone. You set a charter before the first order (a quorum of the live supply, a voting window, an optional minimum organic volume with someone to attest it), open a round once the cross is finalized, and holders lock tokens behind a venue. Needs the graduation program and the batch 2 upgrade of the settlement program, which are not on devnet until the operations key is funded.',
+    needs: ['mint'],
+    yoursToFill: [],
+    patch: { governedGraduation: true },
   },
   {
     id: 'oracle-median',

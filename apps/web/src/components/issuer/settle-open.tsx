@@ -8,9 +8,12 @@ import {
   type DammForm, type DbcForm, type DlmmForm, type RaydiumForm,
   EMPTY_DAMM, EMPTY_DBC, EMPTY_DLMM, EMPTY_RAYDIUM, buildDamm, buildDbc, buildDlmm, buildRaydium,
 } from '@/lib/settle-open';
+import { type GraduationRead, venueLabel } from '@/lib/graduation';
+import { readApi } from '@/lib/new-programs';
 import { shortAddress } from '@/lib/units';
 import type { useWallet } from '@/lib/wallet';
 import { WalletAction } from './issuer-action';
+import { GovernedNote, TrancheSteps } from './settle-tranche';
 import { Facts, Pill, Section } from './treasury-ui';
 
 type Account = ReturnType<typeof useWallet>['account'];
@@ -27,6 +30,22 @@ export type Venues = {
 };
 
 const VENUE_LABEL: Record<string, string> = { dbc: 'Meteora DBC continuation', dammV2: 'Meteora DAMM v2 pool', dlmm: 'Meteora DLMM pair', raydiumCpmm: 'Raydium CPMM pool' };
+/** The graduation venue each seeding route opens. The DBC continuation is not a graduation venue and a vote does not gate it (ADR-0656). */
+const GRADUATION_VENUE: Record<string, string> = { 'seed-damm-v2': 'damm_v2', 'open-dlmm-pair': 'dlmm', 'seed-raydium-cpmm': 'raydium_cpmm' };
+
+/** The vote of a governed cross, or null when the cross is not governed or it could not be read (then the API's own refusal still stands). */
+function useGraduation(cross: string, rev: number): GraduationRead | null {
+  const [g, setG] = useState<GraduationRead | null>(null);
+  useEffect(() => {
+    let live = true;
+    void readApi<GraduationRead>(`/v1/crosses/${cross}/graduation`).then((r) => live && setG(r.ok && r.data.governed ? r.data : null));
+    return () => {
+      live = false;
+    };
+  }, [cross, rev]);
+  return g;
+}
+
 const ROUTE_OF: Record<string, string> = { 'open-dbc-pool': 'DBC continuation', 'bind-dbc-mint': 'binding the mint', 'seed-damm-v2': 'DAMM v2 pool', 'open-dlmm-pair': 'DLMM pair', 'seed-raydium-cpmm': 'Raydium CPMM pool' };
 
 /** What the API says can be opened for this cross now. A read that fails is shown as unread, never as "nothing can be opened". */
@@ -70,12 +89,18 @@ export function MarketOpening({ cross, row, account, wallet, reload }: { cross: 
     reload();
   };
   const isCreator = Boolean(venues && wallet && venues.creator === wallet);
+  const graduation = useGraduation(cross, rev);
   const off = (route: string): string | undefined => {
     if (!venues) return 'Reading what can be opened…';
     if (venues.state === 'Live') return 'The cross has not settled yet.';
     if (venues.clearingPrice === null) return 'The cross did not print a price, so there is nothing to open a market at.';
     if (!venues.available.includes(route)) return `This cannot be opened now: ${venues.note}`;
     if (!isCreator) return `Only the wallet that created the cross can open its market (${shortAddress(venues.creator)}).`;
+    const venue = GRADUATION_VENUE[route];
+    if (venue && graduation && graduation.applies !== false) {
+      if (!graduation.outcome) return 'This cross set the governed-graduation rule, and no vote has passed. The settlement program opens a pool only on the venue its holders choose.';
+      if (graduation.outcome.venue !== venue) return `Holders voted for ${venueLabel(graduation.outcome.venue)}, not ${venueLabel(venue)}. The settlement program opens only the venue they chose.`;
+    }
     return undefined;
   };
   return (
@@ -102,12 +127,14 @@ export function MarketOpening({ cross, row, account, wallet, reload }: { cross: 
           {venues.note ? <p className="mt-3 text-sm text-muted">{venues.note}</p> : null}
         </div>
       ) : null}
+      <GovernedNote cross={cross} g={graduation} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Dbc cross={cross} account={account} wallet={wallet} off={off} done={done} />
         <Damm cross={cross} account={account} wallet={wallet} off={off('seed-damm-v2')} decimals={decimals} done={done} />
         <Dlmm cross={cross} account={account} wallet={wallet} off={off('open-dlmm-pair')} done={done} />
         <Raydium cross={cross} account={account} wallet={wallet} off={off('seed-raydium-cpmm')} decimals={decimals} done={done} />
       </div>
+      {venues ? <TrancheSteps cross={cross} clearingPrice={venues.clearingPrice} baseBound={venues.baseBound} creator={venues.creator} account={account} wallet={wallet} graduation={graduation} done={done} /> : null}
       <div className="rounded-lg border border-border p-4 text-sm" data-testid="fee-bridge-note">
         <p className="font-medium">Fees of a DBC pool</p>
         <p className="mt-1 text-muted">
