@@ -14,7 +14,12 @@
     "test": "vitest run test"
   },
   "dependencies": {
+    "@opening-cross/cross-backing-client": "workspace:*",
+    "@opening-cross/cross-bounty-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/cross-graduate-client": "workspace:*",
+    "@opening-cross/cross-listing-client": "workspace:*",
+    "@opening-cross/cross-mandate-client": "workspace:*",
     "@opening-cross/indexer": "workspace:*",
     "@opening-cross/sdk": "workspace:*",
     "@opening-cross/token-safety": "workspace:*",

@@ -63,6 +63,7 @@ import {
   getArbiterRegistryDecoder,
   ARBITER_REGISTRY_DISCRIMINATOR,
   FLAG_FEEDS_LENDERS,
+  FLAG_GOVERNED_GRADUATION,
   FLAG_GUARD_SCALED_UI,
   FLAG_RESUMES_HALT,
   FLAG_STANDARD_GRID,
@@ -124,6 +125,8 @@ import { createSafety, gate } from '../safety.js';
 import { type Lifetime, RequestError, compile, createRuledCrossTxs } from '../tx.js';
 import { addr, bool, hex32, i64, int, json, list, obj, only, opt, u64 } from './_inputs.js';
 import { parseCreateParams, parseRules } from './rules-input.js';
+import { type ReleaseGate } from './program-gate.js';
+import { type ProgramRelease, governedGraduationState, programRelease, settleReleaseGate } from './programs-support.js';
 
 type ChainAccount = { data: Uint8Array; owner: Address };
 
@@ -133,6 +136,9 @@ export type RulesTxDeps = {
   network?: string;
   /** Unix seconds; defaults to the wall clock. Tests inject one. */
   clock?: () => number;
+  /** Replace the release checks for cross_graduate and for the batch 2 build of cross_settle (tests); by default the programs' own bytes are read. */
+  gate?: ProgramRelease;
+  settleGate?: ReleaseGate;
 };
 
 const send = (reply: FastifyReply, v: unknown, status = 200) => reply.code(status).type('application/json').send(json(v));
@@ -143,12 +149,15 @@ const FLAG_NAMES: [number, string][] = [
   [FLAG_FEEDS_LENDERS, 'feedsLenders'],
   [FLAG_STANDARD_GRID, 'standardGrid'],
   [FLAG_GUARD_SCALED_UI, 'guardScaledUi'],
+  [FLAG_GOVERNED_GRADUATION, 'governedGraduation'],
 ];
 const NO_PRINT = ['NoCross', 'BelowMinimumVolume', 'ImbalanceTooHigh', 'SettlementExpired', 'OracleDivergence', 'OracleUnavailable', 'BelowMinimumRaise', 'FloatTooLow', 'FdvTooHigh', 'PriceMoved', 'Halted', 'CorporateAction', 'IssuerPaused', 'OracleDisagreement'];
 
 export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
   const now = () => BigInt(d.clock?.() ?? Math.floor(Date.now() / 1000));
   const safety = createSafety({ account: d.account, ...(d.clock && { now: () => d.clock!() * 1000 }) });
+  const gate3d = d.gate ?? programRelease({ account: d.account, ...(d.clock && { clock: d.clock }) });
+  const settleGate = d.settleGate ?? settleReleaseGate({ account: d.account, ...(d.clock && { clock: d.clock }) });
 
   // Every request runs inside a chain reader, so that the builders behind POST /v1/tx/settle and /v1/tx/finalize (server.ts) can read the
   // rules tail of the cross they build for. See chain-context.ts.
@@ -226,6 +235,15 @@ export function registerRulesTx(app: FastifyInstance, d: RulesTxDeps): void {
       if (issues.length > 0) throw new RequestError(422, `The rules cannot be created: ${issues.map((i) => `${i.field}: ${i.message}`).join(' ')}`, { reason: 'RULES_INVALID', issues });
     }
     const warnings = await mintGate(params);
+    // A governed cross opens a pool only on the venue holders voted for (ADR-0656). Created before cross_graduate and the batch 2 gate exist on the cluster, it could
+    // never be seeded: refuse it here instead of handing out a cross whose creator is locked out of every venue.
+    if (rules && ((rules.flags ?? 0) & FLAG_GOVERNED_GRADUATION) !== 0) {
+      const g = await governedGraduationState({ account: d.account, gate: gate3d, settleGate });
+      if (g.ready === false) {
+        throw new RequestError(409, `Governed graduation is not available on this cluster: ${g.missing.join('; ')}. It is built and proved locally and goes on the cluster when the operations key is funded (docs/HUMAN_TASKS.md H27, H43). A cross created with it now could not open a pool. GET /v1/programs reports the release.`, { reason: 'PROGRAM_NOT_DEPLOYED', feature: 'governedGraduation', missing: g.missing });
+      }
+      if (g.ready === null) warnings.push({ code: 'GOVERNED_UNVERIFIED', severity: 'disclose', message: 'Whether governed graduation is deployed on this cluster could not be checked just now (GET /v1/programs).' } as never);
+    }
     const out = await createRuledCrossTxs({ ...(params as Record<string, unknown>), ...(rules ? { rules } : {}), ...(feed ? { feed } : {}) } as Parameters<typeof createRuledCrossTxs>[0], await d.lifetime());
     return send(reply, { ...out, rules: rules ?? null, issues: [], warnings });
   });

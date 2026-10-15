@@ -6,7 +6,7 @@
 // (for a halt state that does not exist, a feed publisher list the creator is not on, a calendar that does not approve a feed),
 // because those depend on chain state this function does not read.
 import { type Address, type ReadonlyUint8Array, address } from '@solana/kit';
-import { type RulesConfig, SupplyMode, MAX_BUCKETS, MAX_INSIDERS, MAX_REFERRAL_BPS, completeRules, FLAG_FEEDS_LENDERS, FLAG_GUARD_SCALED_UI, FLAG_RESUMES_HALT, FLAG_STANDARD_GRID } from '@opening-cross/cross-core-client';
+import { type RulesConfig, SupplyMode, MAX_BUCKETS, MAX_INSIDERS, MAX_REFERRAL_BPS, completeRules, FLAG_FEEDS_LENDERS, FLAG_GOVERNED_GRADUATION, FLAG_GUARD_SCALED_UI, FLAG_RESUMES_HALT, FLAG_STANDARD_GRID } from '@opening-cross/cross-core-client';
 
 /** The longest lockup, vesting or cliff the program accepts: four years. */
 export const MAX_LOCK_SECS = 4 * 365 * 24 * 60 * 60;
@@ -15,7 +15,7 @@ export const MAX_CHALLENGE_SECS = 30 * 24 * 3_600;
 export const MAX_EXTENSION_SECS = 7 * 24 * 60 * 60;
 export const MAX_MOVE_BPS = 50_000;
 export const MAX_WIDEN_BPS = 5_000;
-const SETTABLE_FLAGS = FLAG_RESUMES_HALT | FLAG_FEEDS_LENDERS | FLAG_STANDARD_GRID | FLAG_GUARD_SCALED_UI;
+const SETTABLE_FLAGS = FLAG_RESUMES_HALT | FLAG_FEEDS_LENDERS | FLAG_STANDARD_GRID | FLAG_GUARD_SCALED_UI | FLAG_GOVERNED_GRADUATION;
 const ZERO = address('11111111111111111111111111111111');
 
 /** The parts of a cross's creation the rules are checked against. */
@@ -59,7 +59,7 @@ export function checkRules(ctx: RuleContext, rules: RulesConfig = {}): RuleIssue
   const deferred = Number(ctx.supplyMode) === SupplyMode.DeferredMint;
   const g = r.guards;
 
-  if ((r.flags & ~SETTABLE_FLAGS) !== 0) bad('FLAGS', 'flags', 'a flag outside the four a creator may set was given');
+  if ((r.flags & ~SETTABLE_FLAGS) !== 0) bad('FLAGS', 'flags', 'a flag outside the five a creator may set was given');
   if (g.maxMatched > 0n && !mints) bad('CAP_NEEDS_MINT', 'guards.maxMatched', 'a hard cap on the base delivered applies to crosses that mint their base token; an escrow cross sells what the seller escrowed');
   const haltSource = g.haltSource === null ? null : typeof g.haltSource === 'string' ? g.haltSource : g.haltSource.__option === 'Some' ? g.haltSource.value : null;
   if (((r.flags & (FLAG_RESUMES_HALT | FLAG_FEEDS_LENDERS)) !== 0 || haltSource) && deferred) bad('NOT_FOR_DEFERRED', 'flags', 'a halt state and the lender feed are keyed by the base mint, which a deferred-mint cross does not have yet');

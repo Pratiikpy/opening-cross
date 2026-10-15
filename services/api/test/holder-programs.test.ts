@@ -141,8 +141,9 @@ describe('GET /v1/programs', () => {
     const reads = { count: 0 };
     const { app } = await ask(FIRST_CORE, FIRST_TREASURY, reads);
     const after = reads.count;
-    // Core and treasury read their program and its data (4); the settle program is absent in this fixture (1).
-    expect(after).toBe(5);
+    // Core and treasury read their program and its data (4); the settle program is absent in this fixture (1), and absent again for the batch 2 instructions (1);
+    // each of the seven Wave 3D programs is absent (1 each).
+    expect(after).toBe(13);
     await app.inject({ method: 'GET', url: '/v1/programs' });
     expect(reads.count).toBe(after);
   });

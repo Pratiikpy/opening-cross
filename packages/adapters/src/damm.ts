@@ -19,7 +19,7 @@ import {
 } from '@meteora-ag/cp-amm-sdk';
 import { CROSS_SETTLE_PROGRAM_ADDRESS, getSeedDammV2Instruction } from '@opening-cross/cross-settle-client';
 import { i64le, rewrapInstruction } from './rewrap.js';
-import { type CrossView, ata } from '@opening-cross/sdk';
+import { type CrossView, ata, governedOutcomeAccount, isGoverned, withAccounts } from '@opening-cross/sdk';
 import { TOKEN_2022, sqrtPriceQ64 } from './index.js';
 
 export const DAMM_V2_PROGRAM_ADDRESS = address('cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG');
@@ -116,7 +116,9 @@ export async function buildSeedDammV2(input: SeedDammInput): Promise<{ instructi
     activationPoint: input.batch ? input.batch.activationPoint : null,
   
   } as Parameters<typeof getSeedDammV2Instruction>[0]);
-  const instruction = input.batch ? rewrapInstruction(original, 'seed_damm_v2_batched', i64le(input.batch.windowSecs)) : original;
+  const wrapped = input.batch ? rewrapInstruction(original, 'seed_damm_v2_batched', i64le(input.batch.windowSecs)) : original;
+  // A cross that set the governed-graduation rule opens a pool only on the venue holders chose: its `Outcome` account is the last remaining account (ADR-0656).
+  const instruction = isGoverned(input.cross.ext) ? withAccounts(wrapped, [await governedOutcomeAccount(input.cross.address)]) : wrapped;
   return { instruction, liquidity, sqrtPrice, addresses: a };
 }
 

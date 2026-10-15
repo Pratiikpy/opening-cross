@@ -34,7 +34,13 @@ export type Action =
   | { kind: 'release-locked'; cross: Address; lockup: Address; owner: Address; nonce: bigint; releasable: bigint } // the vested part of a locked fill
   | { kind: 'spawn-next'; series: Address; feed: boolean } // the next cross of a recurring series, then its missing shards
   | { kind: 'sync-pause'; halt: Address; baseMint: Address; because: 'paused' | 'unpaused' } // copy the mint's pause into the halt state
-  | { kind: 'observe-price'; halt: Address; baseMint: Address; priceUpdate: Address }; // feed a verified Pyth update to the circuit breaker
+  | { kind: 'observe-price'; halt: Address; baseMint: Address; priceUpdate: Address } // feed a verified Pyth update to the circuit breaker
+  | { kind: 'finalize-round'; cross: Address; round: Address; baseMint: Address } // a graduation vote whose window has closed
+  | { kind: 'publish-outcome'; cross: Address; round: Address } // a passed graduation vote: write the account cross_settle reads
+  | { kind: 'release-listing'; cross: Address; listing: Address; lister: Address; venue: Address; bond: Address } // the bond of a listing whose cross ended well
+  | { kind: 'slash-listing'; cross: Address; listing: Address; lister: Address; venue: Address; slashTo: Address; bondMint: Address; bondTokenProgram: Address; createSlashAccount: boolean } // the bond of a listing whose settlement never happened
+  | { kind: 'claim-invariant'; cross: Address; bounty: Address; invariant: number; rewardMint: Address; tokenProgram: Address } // a cross account that breaks an invariant a bounty pays
+  | { kind: 'check-backing'; mint: Address; verdict: 'Missing' | 'Stale' | 'Short' }; // halt an asset whose attested backing cannot be verified
 
 /** The cross an action belongs to, when it belongs to one. */
 export const crossOf = (a: Action): Address | null => ('cross' in a ? a.cross : null);

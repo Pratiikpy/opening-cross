@@ -10,6 +10,7 @@ import { migrate } from './ingest.js';
 import { backfillOrderTerms } from './order-terms.js';
 import { pollOnce } from './rpc-source.js';
 import { type AccountFetcher, reconcileSettled } from './reconcile.js';
+import { PROGRAM_NAMES, type ProgramName, pollProgramsOnce } from './programs.js';
 import { pollSettleOnce } from './settle.js';
 import { pollTreasuryOnce } from './treasury.js';
 
@@ -24,6 +25,14 @@ const reconcileEvery = Number(process.env.RECONCILE_EVERY ?? 60);
 const slowEvery = Math.max(1, Number(process.env.SLOW_EVERY ?? 4));
 // cross_settle programs to follow (a comma-separated list of addresses; the devnet Raydium variant is a second program with the same events).
 const settlePrograms = (process.env.SETTLE_PROGRAMS ?? CROSS_SETTLE_PROGRAM_ADDRESS).split(',').map((a) => a.trim()).filter(Boolean) as Address[];
+
+// The seven Wave 3D programs to follow (a comma-separated list of names such as cross_mandate; default all of them, `none` turns them off). A program the cluster does not have costs one
+// empty signature query per slow tick and changes nothing.
+const wave3dText = (process.env.WAVE3D_PROGRAMS ?? 'all').trim();
+const wave3dPrograms: ProgramName[] = wave3dText === 'all' ? PROGRAM_NAMES : wave3dText === 'none' || wave3dText === '' ? [] : wave3dText.split(',').map((n) => n.trim()).filter(Boolean).map((n) => {
+  if (!(PROGRAM_NAMES as string[]).includes(n)) throw new Error(`unknown WAVE3D_PROGRAMS entry "${n}"; the programs are ${PROGRAM_NAMES.join(', ')}, or all, none`);
+  return n as ProgramName;
+});
 
 const db = new pg.Pool({ connectionString: dbUrl });
 const rpc = createIndexerRpc(rpcUrl);
@@ -66,6 +75,8 @@ for (let tick = 0; ; tick++) {
       if (bound.bound) console.log(JSON.stringify({ at: new Date().toISOString(), crossBindingsRead: bound.bound, remaining: bound.remaining }));
       const tre = await pollTreasuryOnce(db, rpc);
       if (tre) console.log(JSON.stringify({ at: new Date().toISOString(), treasuryEventsApplied: tre }));
+      const wave3d = await pollProgramsOnce(db, rpc, wave3dPrograms);
+      if (wave3d) console.log(JSON.stringify({ at: new Date().toISOString(), wave3dEventsApplied: wave3d }));
       for (const program of settlePrograms) {
         const settled = await pollSettleOnce(db, rpc, program);
         if (settled) console.log(JSON.stringify({ at: new Date().toISOString(), settleEventsApplied: settled, program }));

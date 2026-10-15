@@ -211,7 +211,7 @@ async function apply(db: pg.PoolClient, ev: SettleEventRecord, slot: string): Pr
 }
 
 /** Signatures newer than `until` (exclusive), newest first. */
-async function listSince(rpc: Rpc, program: Address, until: Signature | undefined) {
+export async function listSince(rpc: Rpc, program: Address, until: Signature | undefined) {
   const out: { signature: Signature; slot: bigint }[] = [];
   let before: Signature | undefined;
   for (;;) {

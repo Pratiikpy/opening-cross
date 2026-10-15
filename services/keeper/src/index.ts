@@ -5,3 +5,5 @@ export * from './send.js';
 export * from './halt.js';
 export * from './calendar.js';
 export * from './duties.js';
+export * from './program-duties.js';
+export * from './program-passes.js';

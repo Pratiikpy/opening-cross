@@ -30,6 +30,13 @@ const IDLS: { label: string; file: string }[] = [
   { label: 'Opening Cross settle', file: 'packages/cross-settle-client/idl/cross_settle.json' },
   { label: 'Opening Cross calendar', file: 'packages/cross-calendar-client/idl/cross_calendar.json' },
   { label: 'Opening Cross treasury', file: 'idls/treasury.json' },
+  { label: 'Opening Cross mandate', file: 'packages/cross-mandate-client/idl/cross_mandate.json' },
+  { label: 'Opening Cross conviction', file: 'packages/cross-conviction-client/idl/cross_conviction.json' },
+  { label: 'Opening Cross basket', file: 'packages/cross-basket-client/idl/cross_basket.json' },
+  { label: 'Opening Cross listing', file: 'packages/cross-listing-client/idl/cross_listing.json' },
+  { label: 'Opening Cross bounty', file: 'packages/cross-bounty-client/idl/cross_bounty.json' },
+  { label: 'Opening Cross backing', file: 'packages/cross-backing-client/idl/cross_backing.json' },
+  { label: 'Opening Cross graduate', file: 'packages/cross-graduate-client/idl/cross_graduate.json' },
 ];
 
 const programs: Program[] = [];

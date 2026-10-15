@@ -2,7 +2,7 @@
 // of the two initial deposits — is P* to within one quote atom.
 import { type Address, type Instruction, type TransactionSigner, address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import { getSeedRaydiumCpmmInstruction } from '@opening-cross/cross-settle-client';
-import { type CrossView, ata } from '@opening-cross/sdk';
+import { type CrossView, ata, governedOutcomeAccount, isGoverned, withAccounts } from '@opening-cross/sdk';
 
 export const RAYDIUM_CPMM_PROGRAM_ADDRESS = address('CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C');
 /** Raydium's mainnet pool-creation fee receiver (`create_pool_fee_reveiver`, non-devnet build). */
@@ -81,7 +81,7 @@ export async function buildSeedRaydiumCpmm(input: SeedRaydiumInput): Promise<{ i
   const a = await raydiumAddresses(ammConfig, c.baseMint, c.quoteMint, deployment);
   const quoteAmount = quoteForBase(input.baseAmount, c.clearing.value.price, c.priceScale);
   const [program0, program1] = a.baseIsToken0 ? [c.baseTokenProgram, c.quoteTokenProgram] : [c.quoteTokenProgram, c.baseTokenProgram];
-  const instruction = getSeedRaydiumCpmmInstruction(
+  const original = getSeedRaydiumCpmmInstruction(
     {
       creator: input.creator,
       cross: input.cross.address,
@@ -107,5 +107,7 @@ export async function buildSeedRaydiumCpmm(input: SeedRaydiumInput): Promise<{ i
     },
     deployment.crossSettleProgram ? { programAddress: deployment.crossSettleProgram } : undefined,
   );
+  // A cross that set the governed-graduation rule opens a pool only on the venue holders chose: its `Outcome` account is the last remaining account (ADR-0656).
+  const instruction = isGoverned(input.cross.ext) ? withAccounts(original, [await governedOutcomeAccount(input.cross.address)]) : original;
   return { instruction, quoteAmount, addresses: a };
 }

@@ -45,14 +45,20 @@ import {
 import { calendarSessions } from '@opening-cross/indexer';
 import { type Action, type OpenOrder, type Skip, plan } from './plan.js';
 import { type ChallengeFacts, type HaltFacts, type LockFacts, type SeriesFacts, planExpiries, planHalt, planRelease, planSpawn } from './duties.js';
+import { programPasses } from './program-passes.js';
 
 export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
 
 /** The optional work beyond the lifecycle of a cross. A duty not named is not done. */
-export type Duty = 'refunds' | 'challenges' | 'locks' | 'series' | 'halts';
-export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 'series', 'halts'];
-/** What a keeper does when nobody says otherwise: the duties that cost it nothing beyond transaction fees. `locks` pays for the owner's token account on a first release and `series` for the rent of every cross it spawns, so both are asked for by name. */
-export const DEFAULT_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'halts'];
+export type Duty = 'refunds' | 'challenges' | 'locks' | 'series' | 'halts' | 'graduation' | 'listings' | 'bounties' | 'backing';
+export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 'series', 'halts', 'graduation', 'listings', 'bounties', 'backing'];
+/**
+ * What a keeper does when nobody says otherwise: the duties that cost it nothing beyond transaction fees. `locks` pays for the owner's token account on a first release, `series` for the rent of every
+ * cross it spawns and `listings` for the venue's slash account when a slash is the first thing to reach it, so those are asked for by name; `bounties` sends rewards to the keeper's own wallet, so the
+ * operator asks for that too. `graduation` (finalize a closed vote, publish a passed one) and `backing` (halt an opted-in asset whose backing cannot be verified) are permissionless, cost a fee, and
+ * the program refuses whatever is not due, so they are on. On a cluster without the Wave 3D programs discovery finds nothing and they do nothing.
+ */
+export const DEFAULT_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'halts', 'graduation', 'backing'];
 
 /** `all`, `none`, `default`, or a comma-separated list of duty names; an unknown name is an error, never silently ignored. */
 export function parseDuties(text: string | undefined): Set<Duty> {
@@ -112,6 +118,16 @@ export type KeeperDeps = {
   mintPaused?: (mint: Address) => Promise<boolean | null>;
   /** A recent verified Pyth update for a breaker's feed (hex feed id), when the keeper can supply one (duty `halts`). */
   priceUpdate?: (feedId: string) => Promise<{ account: Address; publishTime: bigint } | null>;
+  /** Graduation charter accounts (duty `graduation`). Each is re-read before use. */
+  charters?: () => Promise<Address[]>;
+  /** Listing accounts that may be released or slashed (duty `listings`). Each is re-read before use. */
+  listings?: () => Promise<Address[]>;
+  /** Bounty accounts (duty `bounties`). Each is re-read before use. */
+  bounties?: () => Promise<Address[]>;
+  /** Every cross a bounty claim should look at, finalized ones included (duty `bounties`); defaults to `crosses`. */
+  bountyCrosses?: () => Promise<Address[]>;
+  /** Backing policy accounts (duty `backing`). Each is re-read before use. */
+  policies?: () => Promise<Address[]>;
 };
 
 export type MintHalt = { code: string; message: string };
@@ -162,6 +178,7 @@ export async function runOnce(d: KeeperDeps): Promise<PassResult> {
   }
   if (duties.has('series') && d.series) await seriesPass(d, now, result);
   if (duties.has('locks') && d.lockups) await locksPass(d, now, result);
+  await programPasses(d, now, result, perform);
   return result;
 }
 
@@ -293,7 +310,7 @@ async function readChallenges(cross: Address, ext: CrossExt, d: KeeperDeps): Pro
 }
 
 /** Runs one action that is not part of a cross's lifecycle loop. Returns whether anything was sent. */
-async function perform(d: KeeperDeps, result: PassResult, action: Action, build: () => Promise<Instruction[][]>): Promise<boolean> {
+export async function perform(d: KeeperDeps, result: PassResult, action: Action, build: () => Promise<Instruction[][]>): Promise<boolean> {
   if (d.dryRun) {
     result.planned.push(action);
     return false;

@@ -16,7 +16,9 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Address, getAddressDecoder } from '@solana/kit';
 import { COMMIT_ORDER_EXT_DISCRIMINATOR, CREATE_CROSS_DISCRIMINATOR, CROSS_CORE_PROGRAM_ADDRESS, DRAW_BEGIN_DISCRIMINATOR, SET_RULES_DISCRIMINATOR } from '@opening-cross/sdk';
-import { CLAIM_PARTNER_FEE_DISCRIMINATOR, CREATE_GREENSHOE_DISCRIMINATOR, CROSS_SETTLE_PROGRAM_ADDRESS, OPEN_DBC_POOL_DISCRIMINATOR } from '@opening-cross/cross-settle-client';
+import { CLAIM_PARTNER_FEE_DISCRIMINATOR, CREATE_GREENSHOE_DISCRIMINATOR, CROSS_SETTLE_PROGRAM_ADDRESS, OPEN_DBC_POOL_DISCRIMINATOR, OPEN_FIXED_PRICE_PRESALE_DISCRIMINATOR, SEED_FUTARCHY_DAO_DISCRIMINATOR } from '@opening-cross/cross-settle-client';
+import { NEW_PROGRAMS, NEW_PROGRAM_KEYS, type NewProgramKey } from './programs-support.js';
+import { NEW_PROGRAM_INSTRUCTIONS } from './programs-catalog.js';
 import { INIT_EXT_DISCRIMINATOR, NAV_REDEEM_DISCRIMINATOR, SPEND_DISCRIMINATOR, STAKE_DISCRIMINATOR, TREASURY_PROGRAM_ADDRESS, VOTE_DISCRIMINATOR } from '@opening-cross/treasury-client';
 
 type ChainAccount = { data: Uint8Array; owner: Address };
@@ -51,6 +53,8 @@ export type ProgramReport = {
   extended: boolean | null;
   checked: { instruction: string; present: boolean }[];
   note: string;
+  /** True when the cluster was read and no program is at the address (as opposed to a program that could not be read). */
+  missing?: true;
 };
 
 async function report(d: ProgramsDeps, address: Address, control: [string, Uint8Array], needs: [string, Uint8Array][], what: string): Promise<ProgramReport> {
@@ -61,7 +65,8 @@ async function report(d: ProgramsDeps, address: Address, control: [string, Uint8
   } catch {
     return unknown('The program account could not be read just now.');
   }
-  if (!program || program.owner !== LOADER || program.data.length < 36) return unknown('No upgradeable program is deployed at this address on this cluster.');
+  if (!program) return { ...unknown('No upgradeable program is deployed at this address on this cluster.'), missing: true };
+  if (program.owner !== LOADER || program.data.length < 36) return unknown('No upgradeable program is deployed at this address on this cluster.');
   const dataAddress = getAddressDecoder().decode(program.data.subarray(4, 36));
   let data: ChainAccount | null;
   try {
@@ -84,10 +89,104 @@ async function report(d: ProgramsDeps, address: Address, control: [string, Uint8
   };
 }
 
+export type NewProgramReport = {
+  address: string;
+  name: string;
+  adr: string;
+  /** True: the program is on this cluster and loads every instruction. False: no program at the address, or one without some instruction. Null: not known (the cluster or the program could not be read, or the scan was not trusted). */
+  deployed: boolean | null;
+  /** Same meaning as `deployed`: a first-release program has no earlier release to be. */
+  extended: boolean | null;
+  deployedSlot: string | null;
+  checked: { instruction: string; present: boolean }[];
+  note: string;
+};
+
+/** The release of one of the seven Wave 3D programs: missing, there with every instruction, there without some, or not known. */
+async function newProgramReport(d: ProgramsDeps, key: NewProgramKey): Promise<NewProgramReport> {
+  const p = NEW_PROGRAMS[key];
+  const base = { address: p.address, name: p.name, adr: p.adr };
+  const unknown = (note: string, deployedSlot: string | null = null): NewProgramReport => ({ ...base, deployed: null, extended: null, deployedSlot, checked: [], note });
+  let program: ChainAccount | null;
+  try {
+    program = await d.account(p.address);
+  } catch {
+    return unknown('The program account could not be read just now.');
+  }
+  if (!program) {
+    return {
+      ...base,
+      deployed: false,
+      extended: false,
+      deployedSlot: null,
+      checked: [],
+      note: `${p.name} is built and proved locally (LiteSVM and a local validator, ${p.adr}) and is not deployed on this cluster until the operations key is funded (docs/HUMAN_TASKS.md H27, H43). Every route of the program answers 409 PROGRAM_NOT_DEPLOYED.`,
+    };
+  }
+  if (program.owner !== LOADER || program.data.length < 36) return unknown(`The account at ${p.address} is not an upgradeable program.`);
+  let data: ChainAccount | null;
+  try {
+    data = await d.account(getAddressDecoder().decode(program.data.subarray(4, 36)));
+  } catch {
+    return unknown('The program data could not be read just now.');
+  }
+  if (!data || data.data.length < HEADER + 64) return unknown('The program data account is missing or too short to hold a program.');
+  const slot = new DataView(data.data.buffer, data.data.byteOffset).getBigUint64(4, true).toString();
+  const elf = data.data.subarray(HEADER);
+  if (!loadsDiscriminator(elf, p.control.discriminator)) return unknown(`The scan could not find ${p.control.name}, which every release has, so it is not trusted.`, slot);
+  const checked = NEW_PROGRAM_INSTRUCTIONS[key].map(([instruction, disc]) => ({ instruction, present: loadsDiscriminator(elf, disc) }));
+  const all = checked.every((c) => c.present);
+  return { ...base, deployed: all, extended: all, deployedSlot: slot, checked, note: all ? `${p.name} is deployed with every instruction.` : `${p.name} is deployed without ${checked.filter((c) => !c.present).map((c) => c.instruction).join(', ')}.` };
+}
+
+export type Feature = { available: boolean | null; needs: string[]; unverified?: string[]; note: string };
+
+/** What a screen may offer: each feature of Wave 3D is available when every program it needs is on the cluster. */
+export function featuresOf(programs: Record<NewProgramKey, NewProgramReport>, settleBatch2: { seedFutarchyDao: boolean | null; openFixedPricePresale: boolean | null }): Record<string, Feature> {
+  const all = (...v: (boolean | null)[]) => (v.some((x) => x === false) ? false : v.every((x) => x === true) ? true : null);
+  const one = (key: NewProgramKey, what: string): Feature => ({
+    available: programs[key].deployed,
+    needs: [NEW_PROGRAMS[key].name],
+    note:
+      programs[key].deployed === true
+        ? `${what} is available.`
+        : programs[key].deployed === false
+          ? `${what} needs ${NEW_PROGRAMS[key].name}, which is not deployed on this cluster (docs/HUMAN_TASKS.md H27, H43).`
+          : `Whether ${what} is available could not be checked just now.`,
+  });
+  const governed = all(programs.crossGraduate.deployed, settleBatch2.seedFutarchyDao);
+  const batch2 = (available: boolean | null, instruction: string, what: string): Feature => ({
+    available,
+    needs: ['cross_settle batch 2'],
+    note: available === true ? `${what} is available.` : available === false ? `${instruction} is in the batch 2 upgrade of cross_settle, which is not deployed on this cluster (docs/HUMAN_TASKS.md H27).` : 'Could not be checked just now.',
+  });
+  return {
+    mandates: one('crossMandate', 'Auto-invest mandates'),
+    conviction: one('crossConviction', 'Conviction locks and badges'),
+    baskets: one('crossBasket', 'Basket tokens'),
+    listing: one('crossListing', 'Stake-bonded listing'),
+    bounty: one('crossBounty', 'The adversarial bounty'),
+    backing: one('crossBacking', 'Automatic pause on missing backing'),
+    governedGraduation: {
+      available: governed,
+      needs: ['cross_graduate', 'cross_settle batch 2 (the gate in the seeding instructions)', 'cross_core batch 2 (rule flag 32)'],
+      unverified: ['cross_core accepts rule flag 32: it is a bit in an existing mask, so no instruction marks it in the program bytes; it ships in the same batch as cross_settle (docs/evidence/W3D-deploy.md)'],
+      note:
+        governed === true
+          ? 'Governed graduation is available.'
+          : governed === false
+            ? 'Governed graduation needs cross_graduate and the batch 2 upgrade of cross_settle and cross_core, which are not both deployed on this cluster (docs/HUMAN_TASKS.md H27, H43). A route refuses to create a governed cross until they are.'
+            : 'Whether governed graduation is available could not be checked just now.',
+    },
+    fixedPricePresale: batch2(settleBatch2.openFixedPricePresale, 'open_fixed_price_presale', 'A fixed-price tranche at the clearing price'),
+    futarchyDao: batch2(settleBatch2.seedFutarchyDao, 'seed_futarchy_dao', 'A MetaDAO futarchy DAO at the clearing price'),
+  };
+}
+
 export function registerHolderPrograms(app: FastifyInstance, d: ProgramsDeps): void {
   const now = () => (d.clock ? d.clock() * 1000 : Date.now());
   const ttl = d.ttlMs ?? 600_000;
-  type Body = { network?: string; checkedAt: number; programs: { crossCore: ProgramReport; treasury: ProgramReport; crossSettle: ProgramReport } };
+  type Body = { network?: string; checkedAt: number; programs: { crossCore: ProgramReport; treasury: ProgramReport; crossSettle: ProgramReport } & Record<NewProgramKey, NewProgramReport>; features: Record<string, Feature> };
   let kept: { at: number; body: Body } | null = null;
   let inflight: Promise<Body> | null = null;
 
@@ -97,7 +196,22 @@ export function registerHolderPrograms(app: FastifyInstance, d: ProgramsDeps): v
       report(d, TREASURY_PROGRAM_ADDRESS, ['spend', SPEND_DISCRIMINATOR as Uint8Array], [['init_ext', INIT_EXT_DISCRIMINATOR as Uint8Array], ['vote', VOTE_DISCRIMINATOR as Uint8Array], ['nav_redeem', NAV_REDEEM_DISCRIMINATOR as Uint8Array], ['stake', STAKE_DISCRIMINATOR as Uint8Array]], 'treasury extension (votes, NAV redemption, distributions)'),
       report(d, CROSS_SETTLE_PROGRAM_ADDRESS, ['open_dbc_pool', OPEN_DBC_POOL_DISCRIMINATOR as Uint8Array], [['claim_partner_fee', CLAIM_PARTNER_FEE_DISCRIMINATOR as Uint8Array], ['create_greenshoe', CREATE_GREENSHOE_DISCRIMINATOR as Uint8Array]], 'settlement extension (partner fees, greenshoe)'),
     ]);
-    return { ...(d.network && { network: d.network }), checkedAt: Math.floor(now() / 1000), programs: { crossCore, treasury, crossSettle } };
+    // The seven Wave 3D programs, and the two batch 2 instructions of cross_settle that no earlier report asked about.
+    const fresh = Object.fromEntries(await Promise.all(NEW_PROGRAM_KEYS.map(async (k) => [k, await newProgramReport(d, k)] as const))) as Record<NewProgramKey, NewProgramReport>;
+    const batch2 = await report(
+      d,
+      CROSS_SETTLE_PROGRAM_ADDRESS,
+      ['open_dbc_pool', OPEN_DBC_POOL_DISCRIMINATOR as Uint8Array],
+      [['seed_futarchy_dao', SEED_FUTARCHY_DAO_DISCRIMINATOR as Uint8Array], ['open_fixed_price_presale', OPEN_FIXED_PRICE_PRESALE_DISCRIMINATOR as Uint8Array]],
+      'batch 2 (governed-graduation gate, MetaDAO adapter, fixed-price presale)',
+    );
+    const has = (name: string): boolean | null => (batch2.missing ? false : batch2.deployedSlot === null || batch2.checked.length === 0 ? null : (batch2.checked.find((c) => c.instruction === name)?.present ?? null));
+    return {
+      ...(d.network && { network: d.network }),
+      checkedAt: Math.floor(now() / 1000),
+      programs: { crossCore, treasury, crossSettle, ...fresh },
+      features: featuresOf(fresh, { seedFutarchyDao: has('seed_futarchy_dao'), openFixedPricePresale: has('open_fixed_price_presale') }),
+    };
   }
 
   app.get('/v1/programs', async (_req, reply: FastifyReply) => {

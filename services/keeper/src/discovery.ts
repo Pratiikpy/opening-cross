@@ -4,6 +4,10 @@
 import { type Address, type Base58EncodedBytes, getBase58Decoder } from '@solana/kit';
 import type pg from 'pg';
 import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, HALT_STATE_DISCRIMINATOR, LOCKUP_DISCRIMINATOR, ORDER_DISCRIMINATOR, SERIES_DISCRIMINATOR, haltStateAddress, lockupAddress } from '@opening-cross/cross-core-client';
+import { CROSS_BACKING_PROGRAM_ADDRESS, POLICY_DISCRIMINATOR } from '@opening-cross/cross-backing-client';
+import { BOUNTY_DISCRIMINATOR, CROSS_BOUNTY_PROGRAM_ADDRESS } from '@opening-cross/cross-bounty-client';
+import { CHARTER_DISCRIMINATOR, CROSS_GRADUATE_PROGRAM_ADDRESS } from '@opening-cross/cross-graduate-client';
+import { CROSS_LISTING_PROGRAM_ADDRESS, LISTING_DISCRIMINATOR } from '@opening-cross/cross-listing-client';
 import type { IndexerRpc } from '@opening-cross/indexer';
 
 /** `creators` limits discovery to crosses made by those creators, so a scoped keeper never reads anyone else's. */
@@ -30,6 +34,22 @@ export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
       (scope.creators ? await db.query(`SELECT address FROM series WHERE authority = ANY($1) ORDER BY created_slot`, [scope.creators]) : await db.query(`SELECT address FROM series ORDER BY created_slot`)).rows.map((r) => r.address as Address),
     // The authority of a halt state is not in the index, so a scoped keeper watches the halt states of the mints of its own crosses only through the program scan.
     halts: async (): Promise<Address[]> => Promise.all((await db.query(`SELECT base_mint FROM halt_states ORDER BY base_mint`)).rows.map((r) => haltStateAddress(r.base_mint as Address))),
+    // The Wave 3D programs (migration 019). On a cluster that lacks them these tables are empty. Graduation and listings follow the scope (a charter's cross, a listing's lister);
+    // bounties and backing policies are protocol-wide, so a scoped keeper does not narrow them.
+    charters: async (): Promise<Address[]> =>
+      (scope.creators
+        ? await db.query(`SELECT c.charter FROM graduation_charters c JOIN crosses x ON x.address = c.cross_address WHERE x.creator = ANY($1) ORDER BY c.created_slot`, [scope.creators])
+        : await db.query(`SELECT charter FROM graduation_charters ORDER BY created_slot`)
+      ).rows.map((r) => r.charter as Address),
+    listings: async (): Promise<Address[]> =>
+      (scope.creators
+        ? await db.query(`SELECT listing FROM listing_listings WHERE status = 'open' AND lister = ANY($1) ORDER BY created_slot`, [scope.creators])
+        : await db.query(`SELECT listing FROM listing_listings WHERE status = 'open' ORDER BY created_slot`)
+      ).rows.map((r) => r.listing as Address),
+    bounties: async (): Promise<Address[]> => (await db.query(`SELECT address FROM bounties WHERE expires_at > extract(epoch FROM now()) ORDER BY created_slot`)).rows.map((r) => r.address as Address),
+    // Every cross, finalized ones included: an invariant such as "finalized with an order still open" can only show on one.
+    bountyCrosses: async (): Promise<Address[]> => (await db.query(`SELECT address FROM crosses ORDER BY created_slot DESC LIMIT 2000`)).rows.map((r) => r.address as Address),
+    policies: async (): Promise<Address[]> => (await db.query(`SELECT policy FROM backing_policies ORDER BY created_slot`)).rows.map((r) => r.policy as Address),
   };
 }
 
@@ -80,6 +100,19 @@ export function fromProgramAccounts(rpc: IndexerRpc, program: Address = CROSS_CO
       const find = (creator?: Address) => scan(rpc, program, HALT_STATE_DISCRIMINATOR as Uint8Array, creator ? [{ memcmp: { offset: 40n, bytes: creator as unknown as Base58EncodedBytes, encoding: 'base58' as const } }] : []);
       return scope.creators ? (await Promise.all(scope.creators.map((c) => find(c)))).flat() : find();
     },
+    // The Wave 3D programs: accounts of one kind by discriminator. A charter names its cross then its creator (offset 40) and a listing its venue then its lister (offset 40), so a scope is a
+    // server-side filter for both; a bounty or a backing policy is protocol-wide. A program the cluster does not have has no accounts: the scan answers an empty list.
+    charters: async (): Promise<Address[]> => {
+      const find = (creator?: Address) => scan(rpc, CROSS_GRADUATE_PROGRAM_ADDRESS, CHARTER_DISCRIMINATOR as Uint8Array, creator ? [{ memcmp: { offset: 40n, bytes: creator as unknown as Base58EncodedBytes, encoding: 'base58' as const } }] : []);
+      return scope.creators ? (await Promise.all(scope.creators.map((c) => find(c)))).flat() : find();
+    },
+    listings: async (): Promise<Address[]> => {
+      const find = (lister?: Address) => scan(rpc, CROSS_LISTING_PROGRAM_ADDRESS, LISTING_DISCRIMINATOR as Uint8Array, lister ? [{ memcmp: { offset: 40n, bytes: lister as unknown as Base58EncodedBytes, encoding: 'base58' as const } }] : []);
+      return scope.creators ? (await Promise.all(scope.creators.map((c) => find(c)))).flat() : find();
+    },
+    bounties: (): Promise<Address[]> => scan(rpc, CROSS_BOUNTY_PROGRAM_ADDRESS, BOUNTY_DISCRIMINATOR as Uint8Array, []),
+    bountyCrosses: (): Promise<Address[]> => scan(rpc, program, CROSS_DISCRIMINATOR as Uint8Array, []),
+    policies: (): Promise<Address[]> => scan(rpc, CROSS_BACKING_PROGRAM_ADDRESS, POLICY_DISCRIMINATOR as Uint8Array, []),
   };
 }
 

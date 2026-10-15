@@ -121,6 +121,8 @@ const CATEGORY_RULES: [RegExp, Category][] = [
   [/unauthori|notauthori|invalidauthority|notapproved|signer|owner(?!ship)|admin|operator|creator|authority/i, 'authority'],
   [/notinitialized|uninitialized|accountnot|invalidaccount|constraint(?!signer)|accountowned|invalidprogram|seeds|addressmismatch|mismatch/i, 'account'],
   [/pause|halt|notstarted|ended|closed|expired|already|migrat|notready|finished|completed|state|window|deadline/i, 'state'],
+  // The Wave 3D programs (mandates, locks, listings, bounties, backing, graduation votes): a thing that is revoked, still locked or committed, in the wrong round, or already backed.
+  [/revoked|stilllocked|stillcommitted|encumbered|roundopen|norounds|notvoting|notended|tooearly|toolate|^backed$/i, 'state'],
 ];
 
 function categorise(name: string): Category {

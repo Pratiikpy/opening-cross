@@ -2,9 +2,11 @@
 // DATABASE_URL switches discovery to the indexer. Runs a pass every PASS_MS. Transactions are landed over
 // plain HTTP (see send.ts), so no WebSocket endpoint is needed.
 //
-//   KEEPER_DUTIES         which optional duties to do: a comma-separated list of refunds, challenges, locks, series, halts; or all, none, default.
-//                         default = refunds, challenges, halts. locks (pays for a first token account per owner) and series (pays the rent of every cross
-//                         it spawns, which is not returned) are done only when named.
+//   KEEPER_DUTIES         which optional duties to do: a comma-separated list of refunds, challenges, locks, series, halts, graduation, listings, bounties, backing; or all, none, default.
+//                         default = refunds, challenges, halts, graduation, backing. locks (pays for a first token account per owner), series (pays the rent of every cross
+//                         it spawns, which is not returned), listings (a slash creates the venue's slash account when it is missing) and bounties (the reward of a claim is paid
+//                         to this keeper's wallet) are done only when named. graduation, listings, bounties and backing are the Wave 3D programs: on a cluster without them
+//                         discovery finds nothing and they do nothing (docs/HUMAN_TASKS.md H27, H43).
 //   KEEPER_DRY_RUN        1: plan everything, send nothing, and log what would have been sent (the lifecycle of crosses included).
 //   KEEPER_MIN_RELEASE    base atoms below which a vesting release waits for more to vest (default 1; the last release is always sent).
 //   KEEPER_BREAKER_FEEDS  comma-separated hex Pyth feed ids whose sponsored push-oracle account the keeper may feed to a halt state's circuit breaker.

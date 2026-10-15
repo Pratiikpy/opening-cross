@@ -2081,20 +2081,68 @@ export const PROGRAMS: readonly ProgramTable[] = [
     "The locked design requires at least 20% of the liquidity locked permanently"
    ],
    "6016": [
+    "WrongPair",
+    "Not a DLMM pair of this cross's mints that is open for trading"
+   ],
+   "6017": [
+    "GreenshoeBudget",
+    "The greenshoe budget is below 10% of what the cross raised, above a level's share, or exceeds the budget"
+   ],
+   "6018": [
+    "GreenshoeWindow",
+    "Bids are only accepted inside the greenshoe week, and the period and window parameters must be sane"
+   ],
+   "6019": [
+    "GreenshoeLevel",
+    "That greenshoe level is invalid, already placed, not placed, or already settled"
+   ],
+   "6020": [
+    "GreenshoeBin",
+    "The bid must sit in the bin nearest its level, strictly below the active bin"
+   ],
+   "6021": [
+    "GreenshoeRateLimit",
+    "This period's greenshoe deployment cap is used up"
+   ],
+   "6022": [
+    "GreenshoeNotExpired",
+    "The greenshoe week has not ended"
+   ],
+   "6023": [
+    "BadArgs",
+    "The argument bytes are not the Borsh encoding of the expected parameters"
+   ],
+   "6024": [
+    "BadgeAccounts",
+    "Pass exactly two badge accounts: base then quote, or the DLMM program id for none"
+   ],
+   "6025": [
     "BatchWindow",
     "A batch window must be between 30 seconds and 7 days"
    ],
-   "6017": [
+   "6026": [
     "BatchActivation",
     "A batch-opened pool needs a timestamp start at least the window away"
    ],
-   "6018": [
+   "6027": [
     "BatchNotCompounding",
     "A batch-opened DAMM v2 pool must compound its fees"
    ],
-   "6019": [
+   "6028": [
     "BatchFeeNotDecaying",
     "A batch-opened DAMM v2 pool must open with a fee that decays over time"
+   ],
+   "6029": [
+    "GraduationNotApproved",
+    "This cross's graduation is decided by a holder vote: pass the outcome of a passed vote for this venue as the last remaining account"
+   ],
+   "6030": [
+    "FutarchyNeedsLegacyTokens",
+    "MetaDAO's futarchy program accepts only legacy SPL Token mints: both tokens of this cross must be legacy tokens"
+   ],
+   "6031": [
+    "PresaleNotFixedPrice",
+    "A tranche at the clearing price must be a fixed-price presale"
    ]
   }
  },
@@ -2187,6 +2235,585 @@ export const PROGRAMS: readonly ProgramTable[] = [
     "The grace period after the lapse has not ended"
    ],
    "6011": [
+    "Overflow",
+    "Arithmetic overflow"
+   ],
+   "6012": [
+    "NotExtended",
+    "This treasury has no extension: call init_ext first"
+   ],
+   "6013": [
+    "AlreadyExtended",
+    "This treasury is already extended"
+   ],
+   "6014": [
+    "Disabled",
+    "This feature is not enabled for the treasury"
+   ],
+   "6015": [
+    "NavMode",
+    "NAV mode is on: team spending is frozen while holders can redeem"
+   ],
+   "6016": [
+    "AssignmentRequired",
+    "The IP and asset assignment has not been recorded"
+   ],
+   "6017": [
+    "AlreadyAssigned",
+    "The assignment is already recorded"
+   ],
+   "6018": [
+    "DisclosureOverdue",
+    "A holder's disclosure request is overdue"
+   ],
+   "6019": [
+    "NotHolder",
+    "Only a holder of enough coins may do this"
+   ],
+   "6020": [
+    "WrongProposalId",
+    "The id must be the next one"
+   ],
+   "6021": [
+    "WrongProposal",
+    "That account does not belong to this proposal or treasury"
+   ],
+   "6022": [
+    "VotingClosed",
+    "Voting on this proposal is closed"
+   ],
+   "6023": [
+    "VotingOpen",
+    "Voting on this proposal is still open"
+   ],
+   "6024": [
+    "TimelockPending",
+    "The timelock after the vote has not ended"
+   ],
+   "6025": [
+    "ProposalExpired",
+    "The proposal expired before it was executed"
+   ],
+   "6026": [
+    "ProposalFailed",
+    "The proposal did not reach quorum and a majority"
+   ],
+   "6027": [
+    "AlreadyExecuted",
+    "The proposal was already executed"
+   ],
+   "6028": [
+    "OverProposalCap",
+    "The spend exceeds the share of the vault one proposal may move"
+   ],
+   "6029": [
+    "WrongDestination",
+    "The destination is not the one the proposal names"
+   ],
+   "6030": [
+    "NavClosed",
+    "The NAV window is not open"
+   ],
+   "6031": [
+    "NavLimit",
+    "This period's NAV redemption limit is used up"
+   ],
+   "6032": [
+    "InsiderExcluded",
+    "Insiders cannot redeem at NAV"
+   ],
+   "6033": [
+    "ZeroPayout",
+    "The redemption would pay nothing"
+   ],
+   "6034": [
+    "NothingToClaim",
+    "There is nothing to claim"
+   ],
+   "6035": [
+    "RoundOpen",
+    "The round has not ended yet"
+   ],
+   "6036": [
+    "RoundClosed",
+    "The payment window for this round has closed"
+   ],
+   "6037": [
+    "RoundNotLate",
+    "The payment window for this round has not closed"
+   ],
+   "6038": [
+    "BadRevenueData",
+    "The attestation's data is not a revenue figure"
+   ],
+   "6039": [
+    "TrancheNotEligible",
+    "This round is not eligible for a tranche"
+   ],
+   "6040": [
+    "GrantInvalid",
+    "The grant terms are invalid"
+   ],
+   "6041": [
+    "LockupTooShort",
+    "The grant lockup is shorter than the treasury's minimum"
+   ],
+   "6042": [
+    "MilestoneNotReady",
+    "The lockup has not ended"
+   ],
+   "6043": [
+    "AlreadyReleased",
+    "The milestone was already released"
+   ],
+   "6044": [
+    "GrantExpired",
+    "The grant has expired or was burned"
+   ],
+   "6045": [
+    "GrantNotExpired",
+    "The grant has not expired"
+   ],
+   "6046": [
+    "WrongBeneficiary",
+    "The coin account is not the grant's beneficiary"
+   ],
+   "6047": [
+    "WindowOpen",
+    "The withdraw-only window is still open"
+   ],
+   "6048": [
+    "AlreadySwept",
+    "The leftover was already swept"
+   ],
+   "6049": [
+    "WrongRecovery",
+    "The recovery account does not match"
+   ],
+   "6050": [
+    "WoundDown",
+    "The treasury was wound down and swept"
+   ]
+  }
+ },
+ {
+  "address": "83EvNHUpKzguAUmyBHJgktVsVLzp3sCXYysgzmToLhs1",
+  "name": "cross_mandate",
+  "label": "Opening Cross mandate",
+  "version": "0.1.0",
+  "source": "packages/cross-mandate-client/idl/cross_mandate.json",
+  "errors": {
+   "6000": [
+    "Unauthorized",
+    "Signer is not allowed to do this"
+   ],
+   "6001": [
+    "AgentIsOwner",
+    "The agent must be a different key from the owner"
+   ],
+   "6002": [
+    "BadLimits",
+    "Limits are not valid"
+   ],
+   "6003": [
+    "Revoked",
+    "The mandate was revoked"
+   ],
+   "6004": [
+    "Expired",
+    "The mandate has expired"
+   ],
+   "6005": [
+    "OverPerOrderLimit",
+    "Order is larger than the per-order limit"
+   ],
+   "6006": [
+    "OverTotalCap",
+    "Order would take the mandate over its lifetime cap"
+   ],
+   "6007": [
+    "VaultTooLow",
+    "The vault holds less than the order's escrow"
+   ],
+   "6008": [
+    "NotACross",
+    "The account is not a cross"
+   ],
+   "6009": [
+    "WrongQuote",
+    "The cross is not quoted in the mandate's token"
+   ],
+   "6010": [
+    "NotAllowed",
+    "The cross is not on the mandate's allow list"
+   ],
+   "6011": [
+    "NoSupplyReference",
+    "The cross declares no supply to measure the share against"
+   ],
+   "6012": [
+    "OverShareLimit",
+    "Order could buy more than the share limit of the cross's supply"
+   ],
+   "6013": [
+    "NeedRentFunding",
+    "Fund the signer account with SOL for the order's rent"
+   ],
+   "6014": [
+    "NothingToDo",
+    "Nothing to do"
+   ],
+   "6015": [
+    "QuoteStaysInVault",
+    "The quote token stays in the vault; the owner withdraws it"
+   ],
+   "6016": [
+    "Overflow",
+    "Arithmetic overflow"
+   ]
+  }
+ },
+ {
+  "address": "JAWUTTDhBQQ97w9YiPMv5sjsDxZab7AsSnc9L57zJjz6",
+  "name": "cross_conviction",
+  "label": "Opening Cross conviction",
+  "version": "0.1.0",
+  "source": "packages/cross-conviction-client/idl/cross_conviction.json",
+  "errors": {
+   "6000": [
+    "Unauthorized",
+    "Signer is not the holder of this lock"
+   ],
+   "6001": [
+    "NothingToLock",
+    "Nothing to lock"
+   ],
+   "6002": [
+    "BadUnlockTime",
+    "The unlock time must be between one day and four years from now"
+   ],
+   "6003": [
+    "StillLocked",
+    "The lock has not run yet"
+   ],
+   "6004": [
+    "AlreadyWithdrawn",
+    "The tokens were already returned"
+   ],
+   "6005": [
+    "BadgeAlreadyClaimed",
+    "The badge for this lock was already minted"
+   ],
+   "6006": [
+    "TooSmallForABadge",
+    "This lock is too small to earn one token-day"
+   ],
+   "6007": [
+    "LockStillNeeded",
+    "Return the tokens and mint the badge before closing the lock"
+   ],
+   "6008": [
+    "WrongMint",
+    "The account is not the lock's token"
+   ],
+   "6009": [
+    "NotAMint",
+    "The account is not a token mint"
+   ],
+   "6010": [
+    "BadgeMintMismatch",
+    "The badge mint account is not a Token-2022 mint"
+   ],
+   "6011": [
+    "Overflow",
+    "Arithmetic overflow"
+   ]
+  }
+ },
+ {
+  "address": "4uNyZ4fSihcnrqASfYHCC35edh3EdndP37jSWqWQZxCp",
+  "name": "cross_basket",
+  "label": "Opening Cross basket",
+  "version": "0.1.0",
+  "source": "packages/cross-basket-client/idl/cross_basket.json",
+  "errors": {
+   "6000": [
+    "BadBasket",
+    "A basket has one to eight components, a label of at most 32 bytes and a positive amount of each"
+   ],
+   "6001": [
+    "BadComponent",
+    "A component must be a token mint"
+   ],
+   "6002": [
+    "DuplicateComponent",
+    "A component is listed twice"
+   ],
+   "6003": [
+    "UnsafeExtension",
+    "This token has an extension that could break the backing"
+   ],
+   "6004": [
+    "BadVault",
+    "The vault is not the basket's account for that token"
+   ],
+   "6005": [
+    "BadAccounts",
+    "The accounts do not match the basket's components"
+   ],
+   "6006": [
+    "NothingToDo",
+    "Nothing to do"
+   ],
+   "6007": [
+    "Insolvent",
+    "A vault would hold less than the outstanding shares are owed"
+   ],
+   "6008": [
+    "Overflow",
+    "Arithmetic overflow"
+   ]
+  }
+ },
+ {
+  "address": "6VsT7X4G7qjRaredx4Y9q6asGkySiXGVpNr4RrdbxSSi",
+  "name": "cross_listing",
+  "label": "Opening Cross listing",
+  "version": "0.1.0",
+  "source": "packages/cross-listing-client/idl/cross_listing.json",
+  "errors": {
+   "6000": [
+    "BadTerms",
+    "A venue needs a positive bond and a release delay of at least a day"
+   ],
+   "6001": [
+    "NothingToDo",
+    "Nothing to do"
+   ],
+   "6002": [
+    "BondEncumbered",
+    "That part of the bond is set aside by an open listing"
+   ],
+   "6003": [
+    "NotTheCreator",
+    "Only the creator of a cross can list it"
+   ],
+   "6004": [
+    "CrossNotLive",
+    "Only a cross still taking orders can be listed"
+   ],
+   "6005": [
+    "BondTooSmall",
+    "The free bond is smaller than the venue's minimum"
+   ],
+   "6006": [
+    "NotEnded",
+    "The cross has not ended in a way that releases the bond, or the delay has not passed"
+   ],
+   "6007": [
+    "TooEarly",
+    "The release delay has not passed"
+   ],
+   "6008": [
+    "NoFault",
+    "The cross did not fail by an unbound settlement"
+   ],
+   "6009": [
+    "AlreadySettled",
+    "This listing was already released or slashed"
+   ],
+   "6010": [
+    "NotACross",
+    "The account is not a cross"
+   ],
+   "6011": [
+    "WrongCross",
+    "The cross is not the one listed"
+   ],
+   "6012": [
+    "WrongMint",
+    "The token is not the venue's bond token"
+   ],
+   "6013": [
+    "Unauthorized",
+    "Signer or account does not match"
+   ],
+   "6014": [
+    "Overflow",
+    "Arithmetic overflow"
+   ]
+  }
+ },
+ {
+  "address": "BSXaBkmhyypBNp5nfwb4GHAL7uDDLVR8Tr3UyHJKsWMz",
+  "name": "cross_bounty",
+  "label": "Opening Cross bounty",
+  "version": "0.1.0",
+  "source": "packages/cross-bounty-client/idl/cross_bounty.json",
+  "errors": {
+   "6000": [
+    "CommitmentTooShort",
+    "A bounty must commit its pool for at least thirty days"
+   ],
+   "6001": [
+    "NothingToDo",
+    "Nothing to do"
+   ],
+   "6002": [
+    "Expired",
+    "The bounty has expired"
+   ],
+   "6003": [
+    "StillCommitted",
+    "The pool is committed until the expiry"
+   ],
+   "6004": [
+    "UnknownInvariant",
+    "There is no such invariant"
+   ],
+   "6005": [
+    "NotCovered",
+    "This bounty pays nothing for that invariant"
+   ],
+   "6006": [
+    "AlreadyPaid",
+    "That invariant has already been paid"
+   ],
+   "6007": [
+    "NoViolation",
+    "The cross does not break that invariant"
+   ],
+   "6008": [
+    "PoolEmpty",
+    "The pool is empty"
+   ],
+   "6009": [
+    "NotACross",
+    "The account is not a cross"
+   ],
+   "6010": [
+    "WrongMint",
+    "The token is not the bounty's reward token"
+   ],
+   "6011": [
+    "Unauthorized",
+    "Signer is not allowed to do this"
+   ],
+   "6012": [
+    "Overflow",
+    "Arithmetic overflow"
+   ]
+  }
+ },
+ {
+  "address": "HThrduwqRFvjHKPiQiRitsSw5yuGkXmAPkykAvMRQYkp",
+  "name": "cross_backing",
+  "label": "Opening Cross backing",
+  "version": "0.1.0",
+  "source": "packages/cross-backing-client/idl/cross_backing.json",
+  "errors": {
+   "6000": [
+    "BadPolicy",
+    "Coverage must be 1% to 200% and the age one minute to thirty days"
+   ],
+   "6001": [
+    "WrongHalt",
+    "The halt state is not this mint's"
+   ],
+   "6002": [
+    "Unauthorized",
+    "Only the halt state's authority can opt the asset in"
+   ],
+   "6003": [
+    "WatchdogNotVenueSigner",
+    "The halt state's venue signer is not this program's watchdog for the mint"
+   ],
+   "6004": [
+    "Backed",
+    "The backing is fresh and covers the supply: nothing to halt"
+   ]
+  }
+ },
+ {
+  "address": "47f6BhDPCxmW9C9DuuMS2VnbCoU4wnSvjReEwy9Zdke7",
+  "name": "cross_graduate",
+  "label": "Opening Cross graduate",
+  "version": "0.1.0",
+  "source": "packages/cross-graduate-client/idl/cross_graduate.json",
+  "errors": {
+   "6000": [
+    "BadCharter",
+    "A charter needs a quorum of at least 10%, a window of 3 to 30 days, and an attester when it asks for volume"
+   ],
+   "6001": [
+    "NotTheCreator",
+    "Only the creator of the cross can do this"
+   ],
+   "6002": [
+    "TooLate",
+    "A charter must be created before the first order, while the cross is live"
+   ],
+   "6003": [
+    "NotGoverned",
+    "The cross does not carry the governed-graduation rule"
+   ],
+   "6004": [
+    "AlreadyPassed",
+    "A round already passed"
+   ],
+   "6005": [
+    "RoundOpen",
+    "A round is open or waiting to be finalized"
+   ],
+   "6006": [
+    "NoRoundsLeft",
+    "All three rounds were used"
+   ],
+   "6007": [
+    "CrossNotFinalized",
+    "The cross must be finalized and its token must exist"
+   ],
+   "6008": [
+    "NotVoting",
+    "The round is not open for votes"
+   ],
+   "6009": [
+    "UnknownVenue",
+    "There is no such venue"
+   ],
+   "6010": [
+    "VenueLocked",
+    "A voter cannot change venue within a round"
+   ],
+   "6011": [
+    "WindowOpen",
+    "The voting window has not closed"
+   ],
+   "6012": [
+    "NotPassed",
+    "The round did not pass"
+   ],
+   "6013": [
+    "NothingToDo",
+    "Nothing to do"
+   ],
+   "6014": [
+    "NotACross",
+    "The account is not a cross"
+   ],
+   "6015": [
+    "WrongCross",
+    "The account is not the cross or the token of this charter"
+   ],
+   "6016": [
+    "WrongMint",
+    "The token is not the cross's token"
+   ],
+   "6017": [
+    "Unauthorized",
+    "Signer is not allowed to do this"
+   ],
+   "6018": [
     "Overflow",
     "Arithmetic overflow"
    ]

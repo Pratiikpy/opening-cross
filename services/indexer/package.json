@@ -14,8 +14,15 @@
     "test": "vitest run test"
   },
   "dependencies": {
+    "@opening-cross/cross-backing-client": "workspace:*",
+    "@opening-cross/cross-basket-client": "workspace:*",
+    "@opening-cross/cross-bounty-client": "workspace:*",
     "@opening-cross/cross-calendar-client": "workspace:*",
+    "@opening-cross/cross-conviction-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/cross-graduate-client": "workspace:*",
+    "@opening-cross/cross-listing-client": "workspace:*",
+    "@opening-cross/cross-mandate-client": "workspace:*",
     "@opening-cross/cross-settle-client": "workspace:*",
     "@opening-cross/treasury-client": "workspace:*",
     "@solana/kit": "8.4.0",

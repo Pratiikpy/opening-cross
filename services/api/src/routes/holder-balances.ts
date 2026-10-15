@@ -35,7 +35,7 @@ export function tokenAmount(data: Uint8Array): bigint {
 const json = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? x.toString() : x));
 const send = (reply: FastifyReply, v: unknown, status = 200) => reply.code(status).type('application/json').send(json(v));
 
-async function rpcLamports(a: Address): Promise<bigint> {
+export async function rpcLamports(a: Address): Promise<bigint> {
   const urls = (process.env.RPC_URL ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   let last: unknown = new Error('RPC_URL is not set');
   for (const url of urls) {

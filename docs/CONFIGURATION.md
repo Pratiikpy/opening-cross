@@ -109,6 +109,22 @@ The off-chain layer under the Wave 2D programs. Nothing in it needs a new variab
 | `services/api` | (none) | | | Registers `registerRulesTx`, `registerRulesRead`, `registerTreasuryTx`, `registerSettleTx`. `registerRulesTx` also installs a hook that runs every request inside a chain reader (`src/chain-context.ts`), which the builders behind `POST /v1/tx/settle` and `/v1/tx/finalize` use to read a cross's rules tail. `@opening-cross/adapters` (Meteora's SDK) is loaded on the first use of a `cross_settle` route, not at start. |
 | `packages/verifier` | `conformance/generate_v3.py` | | | `python packages/verifier/conformance/generate_v3.py` rewrites `conformance/v3.json`. Its values are computed with Python integers from the specification and the program source, not by running the Rust code. |
 
+## The seven Wave 3D programs (workstream W4A)
+
+The off-chain layer under `cross_mandate`, `cross_conviction`, `cross_basket`, `cross_listing`, `cross_bounty`, `cross_backing` and `cross_graduate` and the batch 2 upgrade of `cross_settle`. The programs are not deployed on devnet until the operator funding steps H27 and H43: every route refuses with `PROGRAM_NOT_DEPLOYED` until then, and the indexer and keeper find nothing. Reference: `docs/api/W4A-new-programs.md`.
+
+| Process | Variable | Required | Default | Meaning |
+|---|---|---|---|---|
+| `services/indexer` | `WAVE3D_PROGRAMS` | no | all seven | Comma list of the programs to follow (`cross_mandate`, `cross_conviction`, `cross_basket`, `cross_listing`, `cross_bounty`, `cross_backing`, `cross_graduate`), each under its own cursor (`rpc:<program id>`); `none` turns them off. |
+| `services/indexer` | migration `019_wave3d_programs.sql` | applied on start | | Additive and idempotent; eighteen tables. |
+| `services/keeper` | `KEEPER_DUTIES` | no | `default` | Adds `graduation` and `backing` to `default`, and `listings` and `bounties`, which are named only (`all` includes them). `bounties` pays rewards to the keeper wallet; `listings` may pay the rent of a venue's slash account. |
+| `services/backing-attester` | `RPC_URL` | yes | | Solana RPC. |
+| | `ATTESTER_KEYPAIR` | yes | | Path to the keypair of the attester named in the assets' policies. Keep it off the repository. |
+| | `ATTESTER_CONFIG` | yes | | Path to the JSON file naming each asset and its source (`token-accounts`, `http-json` over https, `file-json`). A header value written `env:NAME` is read from the environment. |
+| | `PASS_MS` | no | `30000` | Time between passes. |
+| | `ATTESTER_DRY_RUN` | no | unset | `1` plans and sends nothing. |
+| `services/api`, `services/mcp` | (none) | | | `registerMandateTx`, `registerConvictionTx`, `registerBasketTx`, `registerListingTx`, `registerBountyTx`, `registerBackingTx`, `registerGraduateTx`, `registerSettleWave3dTx` are installed by the server; the MCP server holds no key. |
+
 ## Web app (`apps/web`)
 
 These are inlined at build time: change one and rebuild.

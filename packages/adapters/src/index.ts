@@ -225,5 +225,7 @@ export * from './metlock.js';
 export * from './alphavault.js';
 export * from './health.js';
 export * from './greenshoe.js';
+export * from './presale.js';
+export * from './futarchy.js';
 export * from './rewrap.js';
 export * from './checks.js';

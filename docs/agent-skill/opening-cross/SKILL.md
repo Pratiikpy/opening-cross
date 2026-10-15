@@ -297,6 +297,87 @@ What to know before acting:
 - **The fairness proof of a cross with rules is schema v2** (`opening-cross/fairness-proof/v2`) and lists `rules.checks` and `rules.limits`: read
   the limits aloud. A cross without rules still gets v1.
 
+## The seven Wave 3D programs
+
+`cross_mandate` (auto-invest mandates), `cross_conviction` (locks and a soulbound badge), `cross_basket` (basket tokens), `cross_listing` (stake-bonded listing), `cross_bounty` (the adversarial bounty), `cross_backing` (automatic pause on missing backing) and `cross_graduate` (graduation by holder vote), with the fixed-price tranche and the MetaDAO adapter of `cross_settle` and the fifth rule flag of `cross_core`, are built and proved on LiteSVM and a local validator and are **not deployed on devnet** (`docs/HUMAN_TASKS.md`, H27 and H43). A transaction route answers 409 `PROGRAM_NOT_DEPLOYED` until its program is on the cluster; a read answers `release.deployed: false` with a note. `GET /v1/programs` has `programs` (each with `deployed`) and `features` (what may be offered): say a feature is live only when its `available` is `true`. Request and response shapes: `docs/api/W4A-new-programs.md`.
+
+Who signs what, for a mandate: the owner creates, funds, re-limits, revokes and withdraws; the agent places orders; either cancels and reveals. An agent key signs **only** `place_order`, `cancel_order` and `reveal_order`: run `POST /v1/mandates/check-transaction` on a draft before signing it and refuse anything it does not call ok. Nothing an agent can sign moves the mandate's funds anywhere but into a cross.
+
+<!-- routes-wave3d:begin -->
+| Method | Path | Returns |
+|---|---|---|
+| POST | `/v1/tx/mandate-create` | create an auto-invest mandate: an owner funds a vault and names one agent who can only place buy orders inside the owner's limits (per order, lifetime cap, at most 25% of a cross's supply, expiry, allow list). |
+| POST | `/v1/tx/mandate-fund` | add quote tokens to a mandate's vault and SOL to its signer account (the owner). |
+| POST | `/v1/tx/mandate-set-limits` | replace a mandate's limits (the owner; never on a revoked mandate). |
+| POST | `/v1/tx/mandate-revoke` | the kill switch: immediate and permanent (the owner). |
+| POST | `/v1/tx/mandate-withdraw` | take quote tokens out of the vault, at any time (the owner). |
+| POST | `/v1/tx/mandate-withdraw-lamports` | take SOL out of the mandate's signer account; it keeps the rent of an empty account or is emptied (the owner). |
+| POST | `/v1/tx/mandate-sweep` | send the base token a filled order left in the mandate to the owner (anyone). |
+| POST | `/v1/tx/mandate-place-order` | the agent's buy order, inside the limits: refused with the program's own reason when a limit would be. |
+| POST | `/v1/tx/mandate-cancel-order` | cancel a mandate's order while its cross takes cancels; the refund goes to the vault (owner or agent). |
+| POST | `/v1/tx/mandate-reveal-order` | reveal a mandate's sealed order (owner or agent). |
+| POST | `/v1/mandates/check-transaction` | run on a transaction before signing it with an agent key: ok only for place_order, cancel_order, reveal_order and compute-budget instructions. |
+| GET | `/v1/mandates/:address` | a mandate from chain: limits, committed, vault and SOL balances, status, what stops the agent now. |
+| GET | `/v1/mandates` | mandates from the index (?owner=&agent=&limit=). |
+| GET | `/v1/owners/:owner/mandates` | an owner's mandates. |
+| GET | `/v1/mandates/:address/activity` | a mandate's events and the orders it placed. |
+| POST | `/v1/tx/conviction-lock` | lock tokens with no early exit for a day to four years. |
+| POST | `/v1/tx/conviction-unlock` | take the tokens back once the lock has run. |
+| POST | `/v1/tx/conviction-claim-badge` | mint the soulbound badge that counts the token-days kept locked, once per lock. |
+| POST | `/v1/tx/conviction-close-lock` | close a lock whose tokens are back and whose badge is claimed. |
+| GET | `/v1/conviction/locks/:address` | one conviction lock from chain. |
+| GET | `/v1/owners/:owner/conviction` | a wallet's conviction locks and badges. |
+| GET | `/v1/conviction/mints/:mint` | what is locked behind a token. |
+| POST | `/v1/tx/basket-create` | create a basket token backed by fixed amounts of one to eight tokens. |
+| POST | `/v1/tx/basket-mint` | mint shares: every component paid in, rounded up. |
+| POST | `/v1/tx/basket-redeem` | redeem shares: every component paid out, rounded down. |
+| GET | `/v1/baskets/:address` | a basket from chain: components, vault balances, share supply, backing per share, solvency. |
+| GET | `/v1/baskets/:address/quote` | what a mint costs or a redemption pays per component (?shares=&side=mint|redeem). |
+| GET | `/v1/baskets` | baskets from the index. |
+| POST | `/v1/tx/listing-create-venue` | create a listing venue with fixed terms: the bond token, the minimum bond, the release delay, where a slashed bond goes. |
+| POST | `/v1/tx/listing-open-bond` | open a lister's bond on a venue. |
+| POST | `/v1/tx/listing-deposit-bond` | deposit into a bond. |
+| POST | `/v1/tx/listing-withdraw-bond` | withdraw the part of a bond no open listing has set aside. |
+| POST | `/v1/tx/listing-list-cross` | list a cross you created that still takes orders; the venue's minimum bond is set aside. |
+| POST | `/v1/tx/listing-release` | release a listing's bond after the delay when its cross ended well (anyone). |
+| POST | `/v1/tx/listing-slash` | slash a listing's bond to the venue when its cross ended because its settlement never happened (anyone). |
+| GET | `/v1/listing/venues/:venue` | a venue's terms from chain, and a lister's bond on it (?lister=). |
+| GET | `/v1/listing/venues` | venues from the index. |
+| GET | `/v1/listing/venues/:venue/listings` | a venue's listings. |
+| GET | `/v1/crosses/:address/listings` | the venues that listed a cross. |
+| GET | `/v1/listing/listings/:address` | one listing and what can be done with it now: release, slash, wait or settled. |
+| POST | `/v1/tx/bounty-create` | create an adversarial bounty: a pool committed for at least thirty days, a reward per invariant, an arbiter. |
+| POST | `/v1/tx/bounty-fund` | add to a bounty's pool (anyone). |
+| POST | `/v1/tx/bounty-claim-invariant` | claim the reward for a cross account that breaks one of eleven invariants; paid by the program, once per invariant. |
+| POST | `/v1/tx/bounty-award` | the arbiter awards a report the chain cannot check, before the expiry. |
+| POST | `/v1/tx/bounty-withdraw` | the sponsor withdraws, only from the expiry on. |
+| GET | `/v1/bounties/:address` | a bounty from chain: the pool, the expiry, what each invariant pays and whether it has paid. |
+| GET | `/v1/bounties` | bounties from the index. |
+| GET | `/v1/bounties/:address/payouts` | what a bounty paid and to whom. |
+| GET | `/v1/crosses/:address/invariants` | which of the eleven invariants a cross account breaks right now (none for an honest cross). |
+| POST | `/v1/tx/backing-init-halt-state` | create a halt state that names the backing watchdog as its venue signer. |
+| POST | `/v1/tx/backing-create-policy` | opt an asset in to the automatic pause: the attester, the committed coverage, the longest age of a statement. |
+| POST | `/v1/tx/backing-attest` | the policy's attester states the backing, in the mint's own atoms. |
+| POST | `/v1/tx/backing-check` | anyone halts an opted-in asset whose attested backing is missing, stale or short. |
+| GET | `/v1/assets/:mint/backing` | an asset's backing policy, last statement, live supply, verdict now and halt state. |
+| GET | `/v1/backing/policies` | opted-in assets from the index. |
+| POST | `/v1/tx/graduate-init-charter` | set the charter of a governed cross before its first order: quorum, voting window, optional volume gate. |
+| POST | `/v1/tx/graduate-start-round` | the creator opens a graduation vote once the cross is finalized. |
+| POST | `/v1/tx/graduate-cast-vote` | lock tokens behind a venue (DAMM v2, DLMM, Raydium CPMM or MetaDAO) until the window ends. |
+| POST | `/v1/tx/graduate-post-volume` | the charter's attester states the organic volume. |
+| POST | `/v1/tx/graduate-finalize-round` | anyone decides a round after its window: quorum and a strict majority. |
+| POST | `/v1/tx/graduate-publish-outcome` | anyone publishes the outcome of a passed round, the account the seeding instructions read. |
+| POST | `/v1/tx/graduate-withdraw-vote` | take locked tokens back after the window. |
+| GET | `/v1/crosses/:address/graduation` | the charter, every round with its tally and verdict now, the outcome and the seeding instruction it allows. |
+| GET | `/v1/graduation/rounds/:round` | one round, and a voter's lock (?voter=). |
+| POST | `/v1/tx/open-fixed-price-presale` | open a fixed-price tranche at exactly the clearing price through Meteora's Presale Vault (the creator signs). |
+| POST | `/v1/tx/seed-futarchy-dao` | open a MetaDAO futarchy DAO whose spot pool starts at the clearing price (legacy SPL tokens only). |
+<!-- routes-wave3d:end -->
+
+MCP tools: `oc_get_mandate`, `oc_list_mandates`, `oc_get_mandate_activity`, `oc_check_agent_transaction`, `oc_draft_mandate_place_order`, `oc_draft_mandate_cancel_order`, `oc_draft_mandate_reveal_order`, `oc_draft_mandate_revoke`, `oc_draft_mandate_withdraw`, `oc_get_conviction`, `oc_get_conviction_lock`, `oc_get_basket`, `oc_quote_basket`, `oc_list_baskets`, `oc_get_listing_venue`, `oc_get_listing`, `oc_get_cross_listings`, `oc_get_bounty`, `oc_list_bounties`, `oc_get_cross_invariants`, `oc_get_backing`, `oc_get_graduation`, `oc_get_graduation_round`, and `oc_get_program_release` for the release. The tool catalog is `services/mcp/src/tools.ts`.
+
+Keeper duties (`services/keeper`, `KEEPER_DUTIES`): `graduation` finalizes a closed vote and publishes a passed one, `backing` halts an opted-in asset whose backing cannot be verified (both on by default; with no program on the cluster they find nothing), `listings` releases or slashes a listing (it may pay for the venue's slash account, so it is named) and `bounties` claims an invariant a cross account breaks into the keeper's own wallet (named too). The backing statements are signed by `services/backing-attester` from a configured source; a source that fails leaves the statement to age out, which halts the asset.
+
 ## Verify a cross
 
 Never tell a user a cross cleared fairly because the API said so. Recompute it.

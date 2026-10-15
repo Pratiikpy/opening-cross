@@ -6,7 +6,7 @@ import { AccountRole, type Address, type Instruction, type TransactionSigner, ad
 import { PublicKey } from '@solana/web3.js';
 import { getOpenDlmmPairInstruction } from '@opening-cross/cross-settle-client';
 import { i64le, rewrapInstruction } from './rewrap.js';
-import { type CrossView, ata } from '@opening-cross/sdk';
+import { type CrossView, ata, governedOutcomeAccount, isGoverned, withAccounts } from '@opening-cross/sdk';
 
 export const DLMM_PROGRAM_ADDRESS = address('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 const PROGRAM = new PublicKey(DLMM_PROGRAM_ADDRESS);
@@ -122,16 +122,14 @@ export async function buildOpenDlmmPair(input: OpenDlmmInput): Promise<{ instruc
   } as Parameters<typeof getOpenDlmmPairInstruction>[0]);
   const window = i64le(input.batch?.windowSecs ?? 0);
   const instruction = input.badges ? rewrapInstruction(original, 'open_dlmm_pair_badged', window) : input.batch ? rewrapInstruction(original, 'open_dlmm_pair_batched', window) : original;
-  if (input.badges) {
-    // The badge instruction reads two remaining accounts, base then quote: the mint's badge, or the DLMM program for none.
-    const slot = (has: boolean | undefined, mint: Address): Address => (has ? dlmmTokenBadgeAddress(mint) : DLMM_PROGRAM_ADDRESS);
-    return {
-      instruction: { ...instruction, accounts: [...(instruction.accounts ?? []), { address: slot(input.badges.base, c.baseMint), role: AccountRole.READONLY }, { address: slot(input.badges.quote, c.quoteMint), role: AccountRole.READONLY }] } as Instruction,
-      activeId,
-      addresses: a,
-    };
-  }
-  return { instruction, activeId, addresses: a };
+  // The badge instruction reads two remaining accounts, base then quote: the mint's badge, or the DLMM program for none. A cross that set the governed-graduation rule
+  // names its `Outcome` account last, after them (ADR-0656).
+  const slot = (has: boolean | undefined, mint: Address): Address => (has ? dlmmTokenBadgeAddress(mint) : DLMM_PROGRAM_ADDRESS);
+  const badged = input.badges
+    ? ({ ...instruction, accounts: [...(instruction.accounts ?? []), { address: slot(input.badges.base, c.baseMint), role: AccountRole.READONLY }, { address: slot(input.badges.quote, c.quoteMint), role: AccountRole.READONLY }] } as Instruction)
+    : instruction;
+  const final = isGoverned(input.cross.ext) ? withAccounts(badged, [await governedOutcomeAccount(input.cross.address)]) : badged;
+  return { instruction: final, activeId, addresses: a };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

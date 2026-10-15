@@ -38,6 +38,14 @@ import { registerChallenges } from './routes/challenges.js';
 import { registerTreasury } from './routes/treasury.js';
 import { registerTreasuryTx } from './routes/treasury-tx.js';
 import { registerW2A } from './routes/w2a.js';
+import { registerMandateTx } from './routes/mandate-tx.js';
+import { registerConvictionTx } from './routes/conviction-tx.js';
+import { registerBasketTx } from './routes/basket-tx.js';
+import { registerListingTx } from './routes/listing-tx.js';
+import { registerBountyTx } from './routes/bounty-tx.js';
+import { registerBackingTx } from './routes/backing-tx.js';
+import { registerGraduateTx } from './routes/graduate-tx.js';
+import { registerSettleWave3dTx } from './routes/settle-wave3d-tx.js';
 import { type Lifetime, RequestError, cancelTx, claimTx, createCrossTxs, finalizeTx, initShardsTxs, placeOrderTx, revealTx, settleTxs } from './tx.js';
 
 export type ChainAccount = { data: Uint8Array; owner: Address };
@@ -862,6 +870,18 @@ export async function buildServer(d: ApiDeps) {
   registerChallenges(app, { account: d.account, ...(d.clock && { clock: d.clock }) });
   registerIssuerTx(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
   registerIssuerBoard(app, { db: d.db, curators: new Set((process.env.ISSUER_CURATORS ?? '').split(',').map((a) => a.trim()).filter(Boolean)), ...(d.clock && { clock: d.clock }) });
+  // The seven Wave 3D programs (ADR-0650 to ADR-0656): built and proved locally, not deployed until the operations key is funded (H27, H43).
+  {
+    const wave3d = { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.clock && { clock: d.clock }) };
+    registerMandateTx(app, wave3d);
+    registerConvictionTx(app, wave3d);
+    registerBasketTx(app, wave3d);
+    registerListingTx(app, wave3d);
+    registerBountyTx(app, wave3d);
+    registerBackingTx(app, wave3d);
+    registerGraduateTx(app, wave3d);
+    registerSettleWave3dTx(app, { account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
+  }
   registerHolderPrograms(app, { account: d.account, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }), ...(d.programsTtlMs !== undefined && { ttlMs: d.programsTtlMs }) });
   const holder = await registerHolderRoutes(app, d);
   app.addHook('onClose', async () => holder.stop());

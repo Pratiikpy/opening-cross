@@ -40,6 +40,7 @@ import {
 } from '@opening-cross/cross-settle-client';
 import { type Lifetime, RequestError, compile } from '../tx.js';
 import { addr, bool, int, json, obj, only, opt, u64 } from './_inputs.js';
+import { requireGraduationApproval } from './programs-support.js';
 import { HEAVY_UNITS, type ReleaseGate, computeUnits, fits, releaseGate, requireInstruction, requireProgram } from './program-gate.js';
 
 type ChainAccount = { data: Uint8Array; owner: Address };
@@ -268,6 +269,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
     const release = await need(batch ? 'seed_damm_v2_batched' : 'seed_damm_v2', (batch ? SEED_DAMM_V2_BATCHED_DISCRIMINATOR : SEED_DAMM_V2_DISCRIMINATOR) as Uint8Array);
     clearingPrice(cross);
     bound(cross);
+    const graduation = await requireGraduationApproval(d.account, cross, 0);
     if (alphaVault && !batch) throw new RequestError(422, 'An Alpha Vault binding needs a batch start: before the start only the vault can buy, so there must be a start.', { reason: 'ALPHA_NEEDS_BATCH' });
     if (batch && collectFeeMode !== null && collectFeeMode !== 2) throw new RequestError(422, 'A batch-opened pool compounds its fees: collectFeeMode is 2 (or left out).', { reason: 'BatchNotCompounding' });
     const a = await import('@opening-cross/adapters');
@@ -333,7 +335,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
       positionNftMint: addrs.positionNftMint,
       liquidity: seeded.liquidity,
       ...(batch && { landBy: batch.activationPoint - BigInt(batch.windowSecs), note: 'The program refuses a start less than the window away when the transaction lands: send before landBy.' }),
-      release,
+      ...(graduation.governed && { graduation }), release,
     });
   });
 
@@ -361,6 +363,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
     const release = await need(variant[0], variant[1] as Uint8Array);
     clearingPrice(cross);
     bound(cross);
+    const graduation = await requireGraduationApproval(d.account, cross, 1);
     const a = await import('@opening-cross/adapters');
     if (batch) {
       const issues = a.checkBatchStart({ now: now(), windowSecs: batch.windowSecs, activationPoint: batch.activationPoint });
@@ -403,7 +406,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
       lbPair: addrs.lbPair,
       activeId: opened.activeId,
       ...(batch && { landBy: batch.activationPoint - BigInt(batch.windowSecs), note: 'The program refuses a start less than the window away when the transaction lands: send before landBy.' }),
-      release,
+      ...(graduation.governed && { graduation }), release,
     });
   });
 
@@ -421,6 +424,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
     const release = await need('seed_raydium_cpmm', SEED_RAYDIUM_CPMM_DISCRIMINATOR as Uint8Array);
     clearingPrice(cross);
     bound(cross);
+    const graduation = await requireGraduationApproval(d.account, cross, 2);
     const a = await import('@opening-cross/adapters');
     const deployment = d.network === 'devnet' ? a.RAYDIUM_DEVNET : a.RAYDIUM_MAINNET;
     const c = cross.data;
@@ -437,7 +441,7 @@ export function registerSettleOpenTx(app: FastifyInstance, d: SettleOpenDeps): v
     await balance(creator, c.quoteMint, c.quoteTokenProgram, 'quote', seeded.quoteAmount);
     const ixs = [computeUnits(HEAVY_UNITS), seeded.instruction];
     const bytes = fits(creator, ixs, 'Raydium pool seeding');
-    return send(reply, { ...compile(creator, ixs, await d.lifetime()), bytes, cross: cross.address, pool: seeded.addresses.pool, quoteAmount: seeded.quoteAmount, release });
+    return send(reply, { ...compile(creator, ixs, await d.lifetime()), bytes, cross: cross.address, pool: seeded.addresses.pool, quoteAmount: seeded.quoteAmount, ...(graduation.governed && { graduation }), release });
   });
 
   // ----------------------------------------------------------------------------------------------------------------- what a cross has opened
