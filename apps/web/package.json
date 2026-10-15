@@ -15,6 +15,7 @@
   "dependencies": {
     "@opening-cross/presets": "workspace:*",
     "@solana/kit": "8.4.0",
+    "@solana/program-client-core": "8.4.0",
     "@solana/react": "8.4.0",
     "@solana/wallet-standard-features": "^1.5.0",
     "@wallet-standard/core": "^1.1.2",
