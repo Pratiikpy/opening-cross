@@ -10,11 +10,14 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Address, createNoopSigner } from '@solana/kit';
 import { OPEN_DBC_POOL_DISCRIMINATOR, OPEN_FIXED_PRICE_PRESALE_DISCRIMINATOR, SEED_FUTARCHY_DAO_DISCRIMINATOR, CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
+import { CROSS_GATE_PROGRAM_ADDRESS } from '@opening-cross/cross-gate-client';
 import { CrossState, SPL_TOKEN_PROGRAM, ata } from '@opening-cross/sdk';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { type Lifetime, RequestError, compile } from '../tx.js';
 import { addr, bool, int, i64, json, obj, only, opt, u64 } from './_inputs.js';
 import { HEAVY_UNITS, type ReleaseGate, computeUnits, fits, releaseGate, requireInstruction, requireProgram } from './program-gate.js';
 import { type AccountReader, readCross, requireGraduationApproval, tokenBalance } from './programs-support.js';
+import { transferHookProgram } from './meteora-tx.js';
 
 export type SettleWave3dDeps = {
   account: AccountReader;
@@ -77,7 +80,12 @@ export function registerSettleWave3dTx(app: FastifyInstance, d: SettleWave3dDeps
     const held = await tokenBalance(d.account, await ata(creator, c.baseMint, c.baseTokenProgram));
     if (held === null) throw new RequestError(409, `${creator} has no base token account; the tranche's supply is moved from it.`, { reason: 'NO_BASE_ACCOUNT' });
     if (held < terms.supply) throw new RequestError(422, `${creator} holds ${held} of the base token; the tranche needs ${terms.supply}.`, { reason: 'INSUFFICIENT_BASE', have: held, need: terms.supply });
-    const built = await a.buildOpenFixedPricePresale({ cross, creator: createNoopSigner(creator), base: createNoopSigner(base), terms, disableWithdraw });
+    // A base token with the cross_gate hook (a launch minted through the DBC continuation) moves into the vault through a hooked transfer: the hook's accounts are added. Any other hook
+    // is refused, because a transfer built without its accounts would fail.
+    const mintAccount = await d.account(c.baseMint);
+    const hookProgram = mintAccount && mintAccount.owner === TOKEN_2022_PROGRAM_ADDRESS ? transferHookProgram(mintAccount.data) : null;
+    if (hookProgram && hookProgram !== CROSS_GATE_PROGRAM_ADDRESS) throw new RequestError(422, `The base mint ${c.baseMint} runs the transfer hook ${hookProgram}, whose accounts this API does not know; only cross_gate (${CROSS_GATE_PROGRAM_ADDRESS}) is built.`, { reason: 'UNKNOWN_TRANSFER_HOOK', program: hookProgram });
+    const built = await a.buildOpenFixedPricePresale({ cross, creator: createNoopSigner(creator), base: createNoopSigner(base), terms, disableWithdraw, transferHook: hookProgram !== null });
     const ixs = [computeUnits(HEAVY_UNITS), built.instruction];
     const bytes = fits(creator, ixs, 'fixed-price presale');
     return send(reply, {
@@ -88,6 +96,7 @@ export function registerSettleWave3dTx(app: FastifyInstance, d: SettleWave3dDeps
       clearingPrice: built.clearingPrice,
       qPrice: built.qPrice,
       supply: terms.supply,
+      transferHook: hookProgram !== null,
       note: 'The price is the cross\'s clearing price to the last bit Meteora stores (floor of P* x 2^64 / price scale); the adapter refuses any other. The buyer\'s deposit, claim and the unsold refund are Meteora\'s program. The presale is not a graduation venue and the vote does not gate it.',
       release,
     });

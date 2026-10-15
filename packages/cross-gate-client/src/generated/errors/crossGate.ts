@@ -41,12 +41,80 @@ export const CROSS_GATE_ERROR__ATTESTATION_INVALID = 0x177d; // 6013
 export const CROSS_GATE_ERROR__ATTESTATION_STILL_VALID = 0x177e; // 6014
 /** OwnerAllowed: Owner holds a pass; permissionless freeze is not allowed */
 export const CROSS_GATE_ERROR__OWNER_ALLOWED = 0x177f; // 6015
+/** UseRulesPath: This gate has compliance rules: use the terms-bearing instructions */
+export const CROSS_GATE_ERROR__USE_RULES_PATH = 0x1780; // 6016
+/** RulesAlreadyActive: Compliance rules are already active on this gate */
+export const CROSS_GATE_ERROR__RULES_ALREADY_ACTIVE = 0x1781; // 6017
+/** RulesNotActive: This gate has no compliance rules */
+export const CROSS_GATE_ERROR__RULES_NOT_ACTIVE = 0x1782; // 6018
+/** BadRules: The rules are malformed */
+export const CROSS_GATE_ERROR__BAD_RULES = 0x1783; // 6019
+/** BadTerms: The terms are malformed */
+export const CROSS_GATE_ERROR__BAD_TERMS = 0x1784; // 6020
+/** CountryUnknown: The wallet's country is unknown, so it cannot satisfy a country list */
+export const CROSS_GATE_ERROR__COUNTRY_UNKNOWN = 0x1785; // 6021
+/** CountryNotAllowed: The wallet's country is not allowed for this token */
+export const CROSS_GATE_ERROR__COUNTRY_NOT_ALLOWED = 0x1786; // 6022
+/** TierTooLow: The wallet's tier is below the minimum for this token */
+export const CROSS_GATE_ERROR__TIER_TOO_LOW = 0x1787; // 6023
+/** MissingFlags: The wallet lacks a flag this token requires */
+export const CROSS_GATE_ERROR__MISSING_FLAGS = 0x1788; // 6024
+/** HolderCapReached: The investor cap for this token has been reached */
+export const CROSS_GATE_ERROR__HOLDER_CAP_REACHED = 0x1789; // 6025
+/** IssuanceNotOpen: Passes cannot be issued yet */
+export const CROSS_GATE_ERROR__ISSUANCE_NOT_OPEN = 0x178a; // 6026
+/** IssuanceClosed: Passes can no longer be issued */
+export const CROSS_GATE_ERROR__ISSUANCE_CLOSED = 0x178b; // 6027
+/** TermsExpired: The terms have already expired */
+export const CROSS_GATE_ERROR__TERMS_EXPIRED = 0x178c; // 6028
+/** WalletDenied: This wallet is denied */
+export const CROSS_GATE_ERROR__WALLET_DENIED = 0x178d; // 6029
+/** IdentityAlreadyBound: This identity already holds a live pass on another wallet */
+export const CROSS_GATE_ERROR__IDENTITY_ALREADY_BOUND = 0x178e; // 6030
+/** WrongPreviousPass: The previous holder's pass account is not the one for this identity */
+export const CROSS_GATE_ERROR__WRONG_PREVIOUS_PASS = 0x178f; // 6031
+/** IdentityMismatch: The identity does not match the attestation */
+export const CROSS_GATE_ERROR__IDENTITY_MISMATCH = 0x1790; // 6032
+/** BadAttestationData: The attestation data is not an identity record */
+export const CROSS_GATE_ERROR__BAD_ATTESTATION_DATA = 0x1791; // 6033
+/** NotAttestedPass: Only an attested pass can be refreshed */
+export const CROSS_GATE_ERROR__NOT_ATTESTED_PASS = 0x1792; // 6034
+/** NotExpired: The pass has not expired and its attestation still holds */
+export const CROSS_GATE_ERROR__NOT_EXPIRED = 0x1793; // 6035
+/** StillConforms: The terms still satisfy the rules */
+export const CROSS_GATE_ERROR__STILL_CONFORMS = 0x1794; // 6036
+/** NotDenied: The wallet is not denied */
+export const CROSS_GATE_ERROR__NOT_DENIED = 0x1795; // 6037
+/** RulesAccountsMissing: The transfer hook was not given the accounts this gate's transfer rules need */
+export const CROSS_GATE_ERROR__RULES_ACCOUNTS_MISSING = 0x1796; // 6038
+/** Blackout: Transfers by this wallet are blocked in this window */
+export const CROSS_GATE_ERROR__BLACKOUT = 0x1797; // 6039
+/** VolumeLimit: This transfer exceeds the wallet's volume limit for the window */
+export const CROSS_GATE_ERROR__VOLUME_LIMIT = 0x1798; // 6040
+/** VolumeMissing: The wallet's volume account is missing or wrong */
+export const CROSS_GATE_ERROR__VOLUME_MISSING = 0x1799; // 6041
+/** OverIdentityCap: This order would exceed the identity's allocation cap */
+export const CROSS_GATE_ERROR__OVER_IDENTITY_CAP = 0x179a; // 6042
+/** NotCross: Only an account owned by the cross program may call this */
+export const CROSS_GATE_ERROR__NOT_CROSS = 0x179b; // 6043
+/** WrongAccount: The account is not the one this instruction expects */
+export const CROSS_GATE_ERROR__WRONG_ACCOUNT = 0x179c; // 6044
+/** WrongGate: This cross does not sell this token */
+export const CROSS_GATE_ERROR__WRONG_GATE = 0x179d; // 6045
+/** PassExists: This wallet already holds a pass */
+export const CROSS_GATE_ERROR__PASS_EXISTS = 0x179e; // 6046
+/** NoVolumeLimit: This gate has no affiliate volume limit */
+export const CROSS_GATE_ERROR__NO_VOLUME_LIMIT = 0x179f; // 6047
+/** NotAffiliate: The wallet's terms do not carry the affiliate flag */
+export const CROSS_GATE_ERROR__NOT_AFFILIATE = 0x17a0; // 6048
+/** Overflow: Arithmetic overflow */
+export const CROSS_GATE_ERROR__OVERFLOW = 0x17a1; // 6049
 
-export type CrossGateError = typeof CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__ATTESTATION_INVALID | typeof CROSS_GATE_ERROR__ATTESTATION_STILL_VALID | typeof CROSS_GATE_ERROR__LOCK_ACTIVE | typeof CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN | typeof CROSS_GATE_ERROR__LOCKED | typeof CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL | typeof CROSS_GATE_ERROR__NOT_MINT_AUTHORITY | typeof CROSS_GATE_ERROR__NOT_ON_ALLOWLIST | typeof CROSS_GATE_ERROR__NOT_TRANSFERRING | typeof CROSS_GATE_ERROR__OWNER_ALLOWED | typeof CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED | typeof CROSS_GATE_ERROR__SAS_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__UNAUTHORIZED | typeof CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM | typeof CROSS_GATE_ERROR__WRONG_META_LIST;
+export type CrossGateError = typeof CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__ATTESTATION_INVALID | typeof CROSS_GATE_ERROR__ATTESTATION_STILL_VALID | typeof CROSS_GATE_ERROR__BAD_ATTESTATION_DATA | typeof CROSS_GATE_ERROR__BAD_RULES | typeof CROSS_GATE_ERROR__BAD_TERMS | typeof CROSS_GATE_ERROR__BLACKOUT | typeof CROSS_GATE_ERROR__COUNTRY_NOT_ALLOWED | typeof CROSS_GATE_ERROR__COUNTRY_UNKNOWN | typeof CROSS_GATE_ERROR__HOLDER_CAP_REACHED | typeof CROSS_GATE_ERROR__IDENTITY_ALREADY_BOUND | typeof CROSS_GATE_ERROR__IDENTITY_MISMATCH | typeof CROSS_GATE_ERROR__ISSUANCE_CLOSED | typeof CROSS_GATE_ERROR__ISSUANCE_NOT_OPEN | typeof CROSS_GATE_ERROR__LOCK_ACTIVE | typeof CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN | typeof CROSS_GATE_ERROR__LOCKED | typeof CROSS_GATE_ERROR__MISSING_FLAGS | typeof CROSS_GATE_ERROR__NOT_AFFILIATE | typeof CROSS_GATE_ERROR__NOT_ATTESTED_PASS | typeof CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL | typeof CROSS_GATE_ERROR__NOT_CROSS | typeof CROSS_GATE_ERROR__NOT_DENIED | typeof CROSS_GATE_ERROR__NOT_EXPIRED | typeof CROSS_GATE_ERROR__NOT_MINT_AUTHORITY | typeof CROSS_GATE_ERROR__NOT_ON_ALLOWLIST | typeof CROSS_GATE_ERROR__NOT_TRANSFERRING | typeof CROSS_GATE_ERROR__NO_VOLUME_LIMIT | typeof CROSS_GATE_ERROR__OVERFLOW | typeof CROSS_GATE_ERROR__OVER_IDENTITY_CAP | typeof CROSS_GATE_ERROR__OWNER_ALLOWED | typeof CROSS_GATE_ERROR__PASS_EXISTS | typeof CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED | typeof CROSS_GATE_ERROR__RULES_ACCOUNTS_MISSING | typeof CROSS_GATE_ERROR__RULES_ALREADY_ACTIVE | typeof CROSS_GATE_ERROR__RULES_NOT_ACTIVE | typeof CROSS_GATE_ERROR__SAS_NOT_CONFIGURED | typeof CROSS_GATE_ERROR__STILL_CONFORMS | typeof CROSS_GATE_ERROR__TERMS_EXPIRED | typeof CROSS_GATE_ERROR__TIER_TOO_LOW | typeof CROSS_GATE_ERROR__UNAUTHORIZED | typeof CROSS_GATE_ERROR__USE_RULES_PATH | typeof CROSS_GATE_ERROR__VOLUME_LIMIT | typeof CROSS_GATE_ERROR__VOLUME_MISSING | typeof CROSS_GATE_ERROR__WALLET_DENIED | typeof CROSS_GATE_ERROR__WRONG_ACCOUNT | typeof CROSS_GATE_ERROR__WRONG_GATE | typeof CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM | typeof CROSS_GATE_ERROR__WRONG_META_LIST | typeof CROSS_GATE_ERROR__WRONG_PREVIOUS_PASS;
 
 let crossGateErrorMessages: Record<CrossGateError, string> | undefined;
 if (process.env['NODE_ENV'] !== 'production') {
-  crossGateErrorMessages = { [CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED]: `This gate has no allowlist`, [CROSS_GATE_ERROR__ATTESTATION_INVALID]: `Attestation is missing, foreign, expired or not for this wallet`, [CROSS_GATE_ERROR__ATTESTATION_STILL_VALID]: `Attestation is still valid`, [CROSS_GATE_ERROR__LOCK_ACTIVE]: `Lock has not expired`, [CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN]: `An active lock can only be raised or extended`, [CROSS_GATE_ERROR__LOCKED]: `Transfer would take the balance below an active lock`, [CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL]: `Gate check was not invoked by Token ACL`, [CROSS_GATE_ERROR__NOT_MINT_AUTHORITY]: `Signer is not the mint authority`, [CROSS_GATE_ERROR__NOT_ON_ALLOWLIST]: `Proof does not place this wallet on the allowlist`, [CROSS_GATE_ERROR__NOT_TRANSFERRING]: `Hook executed outside a Token-2022 transfer`, [CROSS_GATE_ERROR__OWNER_ALLOWED]: `Owner holds a pass; permissionless freeze is not allowed`, [CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED]: `Owner does not hold a pass for this token`, [CROSS_GATE_ERROR__SAS_NOT_CONFIGURED]: `This gate does not accept SAS attestations`, [CROSS_GATE_ERROR__UNAUTHORIZED]: `Signer is not the gate authority`, [CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM]: `Mint's transfer hook does not point at this program`, [CROSS_GATE_ERROR__WRONG_META_LIST]: `Extra-account-meta list is not this mint's thaw or freeze list` };
+  crossGateErrorMessages = { [CROSS_GATE_ERROR__ALLOWLIST_NOT_CONFIGURED]: `This gate has no allowlist`, [CROSS_GATE_ERROR__ATTESTATION_INVALID]: `Attestation is missing, foreign, expired or not for this wallet`, [CROSS_GATE_ERROR__ATTESTATION_STILL_VALID]: `Attestation is still valid`, [CROSS_GATE_ERROR__BAD_ATTESTATION_DATA]: `The attestation data is not an identity record`, [CROSS_GATE_ERROR__BAD_RULES]: `The rules are malformed`, [CROSS_GATE_ERROR__BAD_TERMS]: `The terms are malformed`, [CROSS_GATE_ERROR__BLACKOUT]: `Transfers by this wallet are blocked in this window`, [CROSS_GATE_ERROR__COUNTRY_NOT_ALLOWED]: `The wallet's country is not allowed for this token`, [CROSS_GATE_ERROR__COUNTRY_UNKNOWN]: `The wallet's country is unknown, so it cannot satisfy a country list`, [CROSS_GATE_ERROR__HOLDER_CAP_REACHED]: `The investor cap for this token has been reached`, [CROSS_GATE_ERROR__IDENTITY_ALREADY_BOUND]: `This identity already holds a live pass on another wallet`, [CROSS_GATE_ERROR__IDENTITY_MISMATCH]: `The identity does not match the attestation`, [CROSS_GATE_ERROR__ISSUANCE_CLOSED]: `Passes can no longer be issued`, [CROSS_GATE_ERROR__ISSUANCE_NOT_OPEN]: `Passes cannot be issued yet`, [CROSS_GATE_ERROR__LOCK_ACTIVE]: `Lock has not expired`, [CROSS_GATE_ERROR__LOCK_CANNOT_WEAKEN]: `An active lock can only be raised or extended`, [CROSS_GATE_ERROR__LOCKED]: `Transfer would take the balance below an active lock`, [CROSS_GATE_ERROR__MISSING_FLAGS]: `The wallet lacks a flag this token requires`, [CROSS_GATE_ERROR__NOT_AFFILIATE]: `The wallet's terms do not carry the affiliate flag`, [CROSS_GATE_ERROR__NOT_ATTESTED_PASS]: `Only an attested pass can be refreshed`, [CROSS_GATE_ERROR__NOT_CALLED_BY_TOKEN_ACL]: `Gate check was not invoked by Token ACL`, [CROSS_GATE_ERROR__NOT_CROSS]: `Only an account owned by the cross program may call this`, [CROSS_GATE_ERROR__NOT_DENIED]: `The wallet is not denied`, [CROSS_GATE_ERROR__NOT_EXPIRED]: `The pass has not expired and its attestation still holds`, [CROSS_GATE_ERROR__NOT_MINT_AUTHORITY]: `Signer is not the mint authority`, [CROSS_GATE_ERROR__NOT_ON_ALLOWLIST]: `Proof does not place this wallet on the allowlist`, [CROSS_GATE_ERROR__NOT_TRANSFERRING]: `Hook executed outside a Token-2022 transfer`, [CROSS_GATE_ERROR__NO_VOLUME_LIMIT]: `This gate has no affiliate volume limit`, [CROSS_GATE_ERROR__OVERFLOW]: `Arithmetic overflow`, [CROSS_GATE_ERROR__OVER_IDENTITY_CAP]: `This order would exceed the identity's allocation cap`, [CROSS_GATE_ERROR__OWNER_ALLOWED]: `Owner holds a pass; permissionless freeze is not allowed`, [CROSS_GATE_ERROR__PASS_EXISTS]: `This wallet already holds a pass`, [CROSS_GATE_ERROR__RECIPIENT_NOT_ALLOWED]: `Owner does not hold a pass for this token`, [CROSS_GATE_ERROR__RULES_ACCOUNTS_MISSING]: `The transfer hook was not given the accounts this gate's transfer rules need`, [CROSS_GATE_ERROR__RULES_ALREADY_ACTIVE]: `Compliance rules are already active on this gate`, [CROSS_GATE_ERROR__RULES_NOT_ACTIVE]: `This gate has no compliance rules`, [CROSS_GATE_ERROR__SAS_NOT_CONFIGURED]: `This gate does not accept SAS attestations`, [CROSS_GATE_ERROR__STILL_CONFORMS]: `The terms still satisfy the rules`, [CROSS_GATE_ERROR__TERMS_EXPIRED]: `The terms have already expired`, [CROSS_GATE_ERROR__TIER_TOO_LOW]: `The wallet's tier is below the minimum for this token`, [CROSS_GATE_ERROR__UNAUTHORIZED]: `Signer is not the gate authority`, [CROSS_GATE_ERROR__USE_RULES_PATH]: `This gate has compliance rules: use the terms-bearing instructions`, [CROSS_GATE_ERROR__VOLUME_LIMIT]: `This transfer exceeds the wallet's volume limit for the window`, [CROSS_GATE_ERROR__VOLUME_MISSING]: `The wallet's volume account is missing or wrong`, [CROSS_GATE_ERROR__WALLET_DENIED]: `This wallet is denied`, [CROSS_GATE_ERROR__WRONG_ACCOUNT]: `The account is not the one this instruction expects`, [CROSS_GATE_ERROR__WRONG_GATE]: `This cross does not sell this token`, [CROSS_GATE_ERROR__WRONG_HOOK_PROGRAM]: `Mint's transfer hook does not point at this program`, [CROSS_GATE_ERROR__WRONG_META_LIST]: `Extra-account-meta list is not this mint's thaw or freeze list`, [CROSS_GATE_ERROR__WRONG_PREVIOUS_PASS]: `The previous holder's pass account is not the one for this identity` };
 }
 
 export function getCrossGateErrorMessage(code: CrossGateError): string {

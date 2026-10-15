@@ -4,6 +4,7 @@ import pg from 'pg';
 import { migrate } from './ingest.js';
 import { createIndexerRpc } from './rpc.js';
 import { pollTreasuryOnce } from './treasury.js';
+import { backfillTreasuryMovements } from './treasury-movements.js';
 
 const dbUrl = process.env.DATABASE_URL;
 const rpcUrl = process.env.RPC_URL;
@@ -16,6 +17,7 @@ const db = new pg.Pool({ connectionString: dbUrl });
 const rpc = createIndexerRpc(rpcUrl);
 
 await migrate(db);
+await backfillTreasuryMovements(db);
 for (;;) {
   try {
     const n = await pollTreasuryOnce(db, rpc);

@@ -16,14 +16,18 @@
   "types": "src/index.ts",
   "files": [
     "src",
-    "clearing.wasm"
+    "clearing.wasm",
+    "clearing-v2.wasm"
   ],
   "scripts": {
     "build": "cargo build -p clearing-wasm --release --target wasm32-unknown-unknown && wasm-opt -Oz --strip-debug --strip-producers ../../target/wasm32-unknown-unknown/release/clearing_wasm.wasm -o clearing.wasm",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:v2": "cargo build --manifest-path rust/Cargo.toml --release --target wasm32-unknown-unknown && cp rust/target/wasm32-unknown-unknown/release/clearing_wasm_v2.wasm clearing-v2.wasm",
+    "test:browser": "node test/browser/run.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "@types/node": "^22.20.5",
     "typescript": "7.0.2",
     "vitest": "5.0.3"

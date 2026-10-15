@@ -18,7 +18,7 @@ describe('duty names', () => {
     expect([...parseDuties(undefined)].sort()).toEqual([...DEFAULT_DUTIES].sort());
     expect(parseDuties('listings').has('listings')).toBe(true);
     expect(parseDuties('listings,bounties').has('bounties')).toBe(true);
-    expect(parseDuties('all').size).toBe(9);
+    expect(parseDuties('all').size).toBe(10); // the nine of Wave 3D and before, and partner-fees
     expect(parseDuties('none').size).toBe(0);
     expect(() => parseDuties('listing')).toThrow(/unknown keeper duty "listing".*graduation, listings, bounties, backing/);
   });

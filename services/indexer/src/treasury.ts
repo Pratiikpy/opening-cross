@@ -94,6 +94,7 @@ import {
 import { UnattributableLogs, toJson } from './decode.js';
 import type { ChainTx } from './ingest.js';
 import type { IndexerRpc as Rpc } from './rpc.js';
+import { recordMovement } from './treasury-movements.js';
 
 export type TreasuryEventRecord =
   | { name: 'TreasuryCreated'; data: TreasuryCreatedEvent }
@@ -208,6 +209,8 @@ export async function ingestTreasuryTransaction(db: pg.Pool, tx: ChainTx): Promi
       );
       if (res.rowCount === 0) continue;
       await apply(client, ev, tx, treasury ?? '');
+      // The event's movement of value, if it has one, in the same database transaction (ADR-0930).
+      await recordMovement(client, { signature: tx.signature, seq, slot: tx.slot.toString(), blockTime: tx.blockTime?.toString() ?? null, treasury: treasury ?? '', name: ev.name, payload: toJson(ev.data) as Record<string, unknown> });
       applied++;
     }
     await client.query('COMMIT');

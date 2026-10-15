@@ -40,7 +40,8 @@ export type Action =
   | { kind: 'release-listing'; cross: Address; listing: Address; lister: Address; venue: Address; bond: Address } // the bond of a listing whose cross ended well
   | { kind: 'slash-listing'; cross: Address; listing: Address; lister: Address; venue: Address; slashTo: Address; bondMint: Address; bondTokenProgram: Address; createSlashAccount: boolean } // the bond of a listing whose settlement never happened
   | { kind: 'claim-invariant'; cross: Address; bounty: Address; invariant: number; rewardMint: Address; tokenProgram: Address } // a cross account that breaks an invariant a bounty pays
-  | { kind: 'check-backing'; mint: Address; verdict: 'Missing' | 'Stale' | 'Short' }; // halt an asset whose attested backing cannot be verified
+  | { kind: 'check-backing'; mint: Address; verdict: 'Missing' | 'Stale' | 'Short' } // halt an asset whose attested backing cannot be verified
+  | { kind: 'claim-partner-fee'; cross: Address; baseFee: bigint; quoteFee: bigint }; // the protocol's accrued trading fees in a DBC pool, to the cross's fee recipient
 
 /** The cross an action belongs to, when it belongs to one. */
 export const crossOf = (a: Action): Address | null => ('cross' in a ? a.cross : null);

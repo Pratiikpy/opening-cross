@@ -9,6 +9,8 @@
 //   mint mode, at finalize = floor(buyer_paid * total_bps / 10_000)             finalize
 //   protocol share         = floor(fees * protocol_bps / total_bps)             finalize
 //   integrator share       = fees - protocol share                              finalize
+//   referral               = floor(protocol share * referral_bps / 10_000)      finalize (ADR-0460; paid out of the protocol share)
+//   fee recipient receives = protocol share - referral                          finalize
 // A fee is never charged on a bid, a cancel or a refund.
 
 export const KINDS = ['launch', 'reopen', 'tender', 'recurring'] as const;
@@ -88,6 +90,35 @@ export type FinalizeInputs = {
 export function expectedFinalizeFees(i: FinalizeInputs): FeeSplit {
   const total = i.supplyMode === 'escrow' ? i.feesAccrued : mulBps(i.buyerPaid, totalFeeBps(i.protocolBps, i.integratorBps));
   return splitFees(total, i.protocolBps, i.integratorBps);
+}
+
+/** The most of the protocol fee a cross can promise a referrer: half (`MAX_REFERRAL_BPS`, programs/cross_core/src/ext.rs, ADR-0460). */
+export const MAX_REFERRAL_BPS = 5_000;
+
+/**
+ * The referrer's part of the protocol fee, as `finalize` pays it: `floor(protocolFee * shareBps / 10_000)`, and nothing when either figure is zero.
+ * It comes out of the protocol's fee only; the integrator's fee, every bidder's price and every seller's proceeds are untouched (ADR-0460).
+ */
+export function referralShare(protocolFee: bigint, shareBps: number): bigint {
+  u64(protocolFee, 'protocol fee');
+  bpsOf(shareBps, 'referral share', MAX_REFERRAL_BPS);
+  return shareBps > 0 && protocolFee > 0n ? (protocolFee * BigInt(shareBps)) / BPS : 0n;
+}
+
+/** The fee split with the referrer's part taken out of the protocol's: `protocolNet` is what the protocol fee recipient receives. */
+export type FeeDistribution = FeeSplit & { readonly referral: bigint; readonly protocolNet: bigint };
+
+/** What `finalize` transfers to each of the three fee payees, given the cross's referral share (0 when it names no referrer). */
+export function distributeFees(total: bigint, protocolBps: number, integratorBps: number, referralShareBps = 0): FeeDistribution {
+  const split = splitFees(total, protocolBps, integratorBps);
+  const referral = referralShare(split.protocol, referralShareBps);
+  return { ...split, referral, protocolNet: split.protocol - referral };
+}
+
+/** The fees `finalize` transfers, referral included, from the cross account's own counters and the cross's referral share. */
+export function expectedFinalizeDistribution(i: FinalizeInputs & { readonly referralShareBps?: number }): FeeDistribution {
+  const total = i.supplyMode === 'escrow' ? i.feesAccrued : mulBps(i.buyerPaid, totalFeeBps(i.protocolBps, i.integratorBps));
+  return distributeFees(total, i.protocolBps, i.integratorBps, i.referralShareBps ?? 0);
 }
 
 /** What one seller pays in escrow mode, from the gross proceeds of their fill: the program's per-claim fee. */

@@ -119,7 +119,7 @@ export const TOOLS: readonly ToolDef[] = [
     name: 'oc_quote_route',
     title: 'Where would this order get the best price?',
     description:
-      'Ranks the venues that can fill one order right now: the live crosses of the pair (indicative price on the current book, net of fees) and a Jupiter route (mainnet only). Every venue left out comes with its reason; Meteora pools are not priced here. A quote only: nothing is signed or sent. `amount` is in base-token atoms; prices are quote atoms per one whole base token.',
+      'Ranks the venues that can fill one order right now: the live crosses of the pair (indicative price on the current book, net of fees), the Meteora DAMM v2 pool and DLMM pair the adapters open for the pair (priced from the accounts of the pool itself, fee included, executable now, with the route a swap would take) and a Jupiter route (mainnet only). Every venue left out comes with its reason, including a pool that does not exist for the pair. A quote only: nothing is signed or sent. `amount` is in base-token atoms; prices are quote atoms per one whole base token.',
     kind: 'read',
     inputSchema: obj({ base: ADDRESS, quote: ADDRESS, side: { type: 'string', enum: ['buy', 'sell'] }, amount: U64 }, ['base', 'quote', 'side', 'amount']),
     request: (a) => ({ method: 'GET', path: `/v1/router/quote?base=${enc(str(a.base))}&quote=${enc(str(a.quote))}&side=${enc(str(a.side))}&amount=${enc(str(a.amount))}` }),
@@ -363,6 +363,43 @@ export const TOOLS: readonly ToolDef[] = [
     kind: 'read',
     inputSchema: obj({ treasury: ADDRESS }, ['treasury']),
     request: (a) => ({ method: 'GET', path: `/v1/treasuries/${enc(str(a.treasury))}/rounds` }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_list_treasury_movements',
+    title: 'Value that left or entered a treasury',
+    description:
+      "Every event that moved value across a treasury's boundary, newest first: an allowance spend, an executed spend proposal, a tranche or milestone release, a sweep, a redemption (at the price or at NAV), a distribution deposit, a revenue round paid. Each row has its kind, direction (out or in), asset (quote or coin), amount in atoms, counterparty where the event names one, the transaction, the slot and time, and `teamOutflow`: true for the three outflows the program's team guard covers. Filter by kind (comma separated), direction, asset, teamOutflow, counterparty, minAmount and sinceSlot; page with `before` set to the previous answer's `next`. Quote and coin amounts are never added together.",
+    kind: 'read',
+    inputSchema: obj(
+      {
+        treasury: ADDRESS,
+        kind: { type: 'string', description: 'One or several kinds, comma separated: spend, proposal_spend, tranche_release, grant_release, sweep, redemption, nav_redemption, distribution_deposit, revenue_share.' },
+        direction: { type: 'string', enum: ['out', 'in'] },
+        asset: { type: 'string', enum: ['quote', 'coin'] },
+        teamOutflow: { type: 'boolean', description: 'When true, only the outflows the team guard covers.' },
+        counterparty: ADDRESS,
+        minAmount: { ...U64, description: 'At least this many atoms of the asset the movement is in.' },
+        sinceSlot: { ...U64, description: 'Movements in this slot or later.' },
+        before: { type: 'string', description: 'The `next` of the previous page.' },
+        limit: { type: 'integer', minimum: 1, maximum: 200 },
+      },
+      ['treasury'],
+    ),
+    request: (a) => {
+      const q = [
+        a.kind !== undefined ? `kind=${enc(str(a.kind))}` : '',
+        a.direction !== undefined ? `direction=${enc(str(a.direction))}` : '',
+        a.asset !== undefined ? `asset=${enc(str(a.asset))}` : '',
+        a.teamOutflow === true ? 'teamOutflow=true' : a.teamOutflow === false ? 'teamOutflow=false' : '',
+        a.counterparty !== undefined ? `counterparty=${enc(str(a.counterparty))}` : '',
+        a.minAmount !== undefined ? `minAmount=${enc(str(a.minAmount))}` : '',
+        a.sinceSlot !== undefined ? `sinceSlot=${enc(str(a.sinceSlot))}` : '',
+        a.before !== undefined ? `before=${enc(str(a.before))}` : '',
+        a.limit !== undefined ? `limit=${enc(str(a.limit))}` : '',
+      ].filter(Boolean);
+      return { method: 'GET', path: `/v1/treasuries/${enc(str(a.treasury))}/movements${q.length > 0 ? `?${q.join('&')}` : ''}` };
+    },
     untrusted: [],
   },
   {
@@ -663,6 +700,75 @@ export const TOOLS: readonly ToolDef[] = [
     kind: 'read',
     inputSchema: obj({ round: ADDRESS, voter: ADDRESS }, ['round']),
     request: (a) => ({ method: 'GET', path: `/v1/graduation/rounds/${enc(str(a.round))}${a.voter ? `?voter=${enc(str(a.voter))}` : ''}` }),
+    untrusted: [],
+  },
+  // ---- two markets a cleared cross can open without a pool (cross_settle batch 2: X3 ADR-0657, B4 ADR-0663). Not deployed to devnet until docs/HUMAN_TASKS.md H27: until then the API
+  // refuses the draft with 409 PROGRAM_NOT_DEPLOYED and says so. Only the cross's creator can open either, so the creator is the wallet that signs.
+  {
+    name: 'oc_draft_open_fixed_price_presale',
+    title: 'Draft: open a fixed-price tranche at the clearing price',
+    description:
+      "Builds the UNSIGNED transaction that opens a Meteora Presale Vault in fixed-price mode at exactly the cross's clearing price, so everyone who did not bid can buy a tranche at the price the call discovered. Only the cross's CREATOR signs it, and so does `base`, a fresh keypair address you generate (Meteora derives the presale's address from it; it is not a wallet that holds anything). The API refuses with the program's own reason when the cross has not cleared, the creator does not hold `terms.supply` of the base token, or a term is invalid. Amounts are decimal strings in token atoms, times are Unix seconds. Buyers deposit, claim and get the unsold refund through Meteora's own program, not this server.",
+    kind: 'draft',
+    inputSchema: obj(
+      {
+        ...crossArg,
+        creator: { ...ADDRESS, description: "The cross's creator: the wallet that signs and whose base tokens fund the tranche." },
+        base: { ...ADDRESS, description: 'A fresh keypair address that also signs once; the presale address is derived from it. Use a new one for every tranche.' },
+        terms: obj(
+          {
+            maxCap: { ...U64, description: 'Most quote tokens the tranche accepts.' },
+            minCap: { ...U64, description: 'Fewest quote tokens for the tranche to succeed.' },
+            start: { ...U64, description: 'Unix seconds when deposits open.' },
+            end: { ...U64, description: 'Unix seconds when deposits close.' },
+            supply: { ...U64, description: 'Base tokens put into the tranche.' },
+            buyerMinDeposit: U64,
+            buyerMaxDeposit: U64,
+            depositFeeBps: { type: 'integer', minimum: 0, maximum: 10000 },
+            immediatelyReleaseBps: { type: 'integer', minimum: 0, maximum: 65535 },
+            lockDuration: U64,
+            vestDuration: U64,
+            unsoldTokenAction: { type: 'integer', minimum: 0, maximum: 255, description: '0 refunds the unsold tokens to the creator, 1 burns them.' },
+          },
+          ['maxCap', 'minCap', 'start', 'end', 'supply', 'buyerMinDeposit', 'buyerMaxDeposit'],
+        ),
+        disableWithdraw: { type: 'boolean', description: 'When true, buyers cannot withdraw a deposit before the sale ends.' },
+      },
+      ['cross', 'creator', 'base', 'terms'],
+    ),
+    request: (a) => ({ method: 'POST', path: '/v1/tx/open-fixed-price-presale', body: pick(a, ['cross', 'creator', 'base', 'terms', 'disableWithdraw']) }),
+    untrusted: [],
+  },
+  {
+    name: 'oc_draft_open_futarchy_dao',
+    title: 'Draft: open a MetaDAO futarchy DAO at the clearing price',
+    description:
+      "Builds the UNSIGNED transaction that opens a MetaDAO futarchy DAO whose spot pool starts at the cross's clearing price and puts the opening liquidity into it, in one instruction. Only the cross's CREATOR signs it. Legacy SPL Token mints only (a Token-2022 cross is refused with FUTARCHY_NEEDS_LEGACY_TOKENS) and the quote token must have 6 decimals. Give `baseAmount`; the quote side is derived from the clearing price unless you pass `quoteAmount`, and the API refuses a pair that does not price the base at the clearing price to within one quote atom. A cross with the governed-graduation rule needs a passed vote that chose MetaDAO. Everything after the DAO exists (proposals, conditional markets, the TWAP) is MetaDAO's program.",
+    kind: 'draft',
+    inputSchema: obj(
+      {
+        ...crossArg,
+        creator: { ...ADDRESS, description: "The cross's creator: the wallet that signs and whose tokens seed the pool." },
+        baseAmount: { ...U64, description: 'Base tokens put into the DAO pool; above zero.' },
+        quoteAmount: { ...U64, description: 'Quote tokens put in with them. Leave out to have it derived from the clearing price.' },
+        nonce: { ...U64, description: 'Selects the DAO address with the creator; leave out to have the API pick the first free one.' },
+        settings: obj(
+          {
+            twapMaxObservationChangePerUpdate: U64,
+            twapStartDelaySeconds: { type: 'integer', minimum: 0, maximum: 4294967295 },
+            minQuoteFutarchicLiquidity: U64,
+            minBaseFutarchicLiquidity: U64,
+            baseToStake: U64,
+            passThresholdBps: { type: 'integer', minimum: 0, maximum: 65535 },
+            secondsPerProposal: { type: 'integer', minimum: 0, maximum: 4294967295 },
+            teamSponsoredPassThresholdBps: { type: 'integer', minimum: -32768, maximum: 32767 },
+          },
+          [],
+        ),
+      },
+      ['cross', 'creator', 'baseAmount'],
+    ),
+    request: (a) => ({ method: 'POST', path: '/v1/tx/seed-futarchy-dao', body: pick(a, ['cross', 'creator', 'baseAmount', 'quoteAmount', 'nonce', 'settings']) }),
     untrusted: [],
   },
 ];

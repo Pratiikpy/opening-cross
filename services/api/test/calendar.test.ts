@@ -178,10 +178,9 @@ describe.skipIf(!url)('calendar indexer and routes against Postgres', () => {
       clock: () => clock,
       account: async (a) => chain.get(a) ?? null,
       lifetime: async () => ({ blockhash: '4NCYB3kRT8sCNodPNuCZo8VkwveZSHhg7R7mrRBFM1Uy' as never, lastValidBlockHeight: 100n }),
+      // The tests change the chain between two requests, so no calendar read may be reused.
+      calendarChainTtlMs: 0,
     });
-    // Once server.ts wires the routes itself they exist already; registering twice would throw.
-    const { registerCalendar } = await import('../src/routes/calendar.js');
-    if (!app.hasRoute({ method: 'GET', url: '/v1/calendar' })) registerCalendar(app, { db, network: 'devnet', clock: () => clock, account: async (a) => chain.get(a) ?? null, lifetime: async () => ({ blockhash: '4NCYB3kRT8sCNodPNuCZo8VkwveZSHhg7R7mrRBFM1Uy' as never, lastValidBlockHeight: 100n }) }, { chainTtlMs: 0 });
   });
   afterAll(async () => {
     await app?.close();

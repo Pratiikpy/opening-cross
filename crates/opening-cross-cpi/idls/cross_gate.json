@@ -9,6 +9,40 @@
   },
   "instructions": [
     {
+      "name": "allow_wallet",
+      "docs": [
+        "Lifts a denial."
+      ],
+      "discriminator": [
+        32,
+        0,
+        157,
+        78,
+        181,
+        160,
+        38,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "denied",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "can_freeze_permissionless",
       "docs": [
         "Token ACL: may anyone freeze `owner`'s account? Yes if the mint is allowlisted and the",
@@ -199,6 +233,199 @@
       "args": []
     },
     {
+      "name": "claim_pass_attested",
+      "docs": [
+        "Self-service pass from an issuer-signed identity attestation (`oc-identity` v1) and,",
+        "when the gate has an accreditation attester, an accreditation attestation. Anyone may",
+        "submit a wallet's attestations; the terms come from the attestation, not the caller."
+      ],
+      "discriminator": [
+        100,
+        138,
+        162,
+        94,
+        208,
+        183,
+        139,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "identity_attestation"
+        },
+        {
+          "name": "accreditation_attestation",
+          "optional": true
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "identity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "previous_pass"
+        },
+        {
+          "name": "volume",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  108,
+                  117,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "identity",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "claim_pass_merkle",
       "docs": [
         "Self-service pass from an allowlist: anyone may submit the proof for a wallet."
@@ -257,6 +484,200 @@
         }
       ],
       "args": [
+        {
+          "name": "proof",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_pass_merkle_terms",
+      "docs": [
+        "Self-service pass from a terms-bearing allowlist: anyone may submit the proof."
+      ],
+      "discriminator": [
+        147,
+        105,
+        125,
+        80,
+        79,
+        40,
+        65,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "args.identity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "previous_pass"
+        },
+        {
+          "name": "volume",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  108,
+                  117,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TermsData"
+            }
+          }
+        },
         {
           "name": "proof",
           "type": {
@@ -372,6 +793,75 @@
       ]
     },
     {
+      "name": "deny_wallet",
+      "docs": [
+        "Blocks a wallet from obtaining a pass (sanctions hit, court order, issuer decision)."
+      ],
+      "discriminator": [
+        56,
+        105,
+        98,
+        116,
+        228,
+        40,
+        207,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "denied",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "reason",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "execute",
       "docs": [
         "Transfer hook: called by Token-2022 during every transfer."
@@ -465,7 +955,7 @@
       ],
       "args": [
         {
-          "name": "_amount",
+          "name": "amount",
           "type": "u64"
         }
       ]
@@ -532,6 +1022,194 @@
         {
           "name": "owner",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "grant_pass_terms",
+      "docs": [
+        "The authority grants a pass with terms. The same issuance rules apply: an authority",
+        "cannot violate its own rules without publicly changing them."
+      ],
+      "discriminator": [
+        148,
+        38,
+        109,
+        63,
+        242,
+        48,
+        139,
+        243
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pass",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "args.identity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "previous_pass"
+        },
+        {
+          "name": "volume",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  108,
+                  117,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TermsData"
+            }
+          }
         }
       ]
     },
@@ -776,6 +1454,682 @@
       "args": []
     },
     {
+      "name": "init_rules",
+      "docs": [
+        "Switches the gate to compliance rules and reallocates the config account to hold them.",
+        "`rules.passes` is the number of live passes issued before the rules existed."
+      ],
+      "discriminator": [
+        21,
+        127,
+        246,
+        37,
+        36,
+        140,
+        232,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "rules",
+          "type": {
+            "defined": {
+              "name": "Rules"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "open_volume",
+      "docs": [
+        "Opens the affiliate-volume account of a wallet whose terms carry the affiliate flag. Anyone",
+        "may pay for it. `issue` opens it with the pass, so this is for a wallet that became an",
+        "affiliate afterwards (a refreshed attestation) or for a gate that switched the volume limit",
+        "on after the pass was issued; until it exists such a wallet cannot transfer."
+      ],
+      "discriminator": [
+        200,
+        225,
+        195,
+        94,
+        160,
+        197,
+        46,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "terms",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "terms.owner",
+                "account": "Terms"
+              }
+            ]
+          }
+        },
+        {
+          "name": "volume",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  108,
+                  117,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "terms.owner",
+                "account": "Terms"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "receive_locked",
+      "docs": [
+        "After a gated cross pays base tokens to `owner`, applies the gate's resale-lock policy:",
+        "the received amount is locked for the policy's duration, on top of any lock still active."
+      ],
+      "discriminator": [
+        180,
+        97,
+        41,
+        22,
+        173,
+        179,
+        214,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "docs": [
+            "The cross. Only `cross_core` can sign for one of its accounts."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "lock",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "refresh_terms",
+      "docs": [
+        "Anyone re-reads a wallet's attestations and updates its terms in place (a changed tier,",
+        "cap or expiry). The identity cannot change, and the new terms must satisfy the rules."
+      ],
+      "discriminator": [
+        76,
+        202,
+        104,
+        34,
+        163,
+        177,
+        238,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "identity_attestation"
+        },
+        {
+          "name": "accreditation_attestation",
+          "optional": true
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "terms.owner",
+                "account": "Terms"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_allocation",
+      "docs": [
+        "Returns reserved allocation (a cancel or a refund). It never fails for want of an account",
+        "and never fails on arithmetic, so a refund can always be paid."
+      ],
+      "discriminator": [
+        234,
+        221,
+        36,
+        238,
+        125,
+        121,
+        19,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "cross",
+          "docs": [
+            "The cross. Only `cross_core` can sign for one of its accounts."
+          ],
+          "signer": true
+        },
+        {
+          "name": "alloc",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "reserve_allocation",
+      "docs": [
+        "Reserves `amount` quote atoms of a wallet's per-identity allocation in `cross`. Only the",
+        "cross program can sign for the `cross` account. A gate with no cap for these terms",
+        "reserves nothing and succeeds."
+      ],
+      "discriminator": [
+        189,
+        113,
+        224,
+        245,
+        82,
+        95,
+        197,
+        226
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "cross",
+          "docs": [
+            "The cross. Only `cross_core` can sign for one of its accounts."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "terms",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "terms.owner",
+                "account": "Terms"
+              }
+            ]
+          }
+        },
+        {
+          "name": "alloc",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "revoke_denied",
+      "docs": [
+        "Anyone closes the pass of a wallet the compliance officer has denied."
+      ],
+      "discriminator": [
+        35,
+        252,
+        108,
+        145,
+        167,
+        164,
+        64,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "pass",
+          "writable": true
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true
+        },
+        {
+          "name": "volume",
+          "writable": true
+        },
+        {
+          "name": "identity_attestation"
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_expired",
+      "docs": [
+        "Anyone closes a pass whose terms have expired, or whose SAS attestation no longer holds."
+      ],
+      "discriminator": [
+        79,
+        187,
+        63,
+        183,
+        15,
+        109,
+        59,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "pass",
+          "writable": true
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true
+        },
+        {
+          "name": "volume",
+          "writable": true
+        },
+        {
+          "name": "identity_attestation"
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_nonconforming",
+      "docs": [
+        "Anyone closes a pass whose terms no longer satisfy the current rules."
+      ],
+      "discriminator": [
+        128,
+        171,
+        244,
+        11,
+        168,
+        31,
+        109,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "pass",
+          "writable": true
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true
+        },
+        {
+          "name": "volume",
+          "writable": true
+        },
+        {
+          "name": "identity_attestation"
+        },
+        {
+          "name": "denied",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "revoke_pass",
       "docs": [
         "Revokes a pass and returns its rent to the authority."
@@ -804,6 +2158,82 @@
         },
         {
           "name": "pass",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_pass_terms",
+      "docs": [
+        "The authority closes a pass with whatever hangs off it (terms, identity binding, volume).",
+        "Also revokes passes issued before the rules existed (their terms account does not exist)."
+      ],
+      "discriminator": [
+        167,
+        227,
+        8,
+        145,
+        57,
+        50,
+        79,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "pass",
+          "writable": true
+        },
+        {
+          "name": "terms",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "GateConfig"
+              },
+              {
+                "kind": "account",
+                "path": "pass.owner",
+                "account": "Pass"
+              }
+            ]
+          }
+        },
+        {
+          "name": "binding",
+          "writable": true
+        },
+        {
+          "name": "volume",
           "writable": true
         }
       ],
@@ -937,11 +2367,11 @@
       "accounts": [
         {
           "name": "authority",
+          "docs": [
+            "The gate authority or the rules' lock delegate; checked in the handler."
+          ],
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "config"
@@ -1029,6 +2459,45 @@
       ]
     },
     {
+      "name": "set_rules",
+      "docs": [
+        "Replaces the rules. The live-pass counter is kept; everything else is the authority's."
+      ],
+      "discriminator": [
+        66,
+        148,
+        196,
+        43,
+        232,
+        210,
+        174,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "rules",
+          "type": {
+            "defined": {
+              "name": "Rules"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "set_sas_requirement",
       "docs": [
         "Sets (or clears) the SAS credential and schema that entitle wallets to passes."
@@ -1068,9 +2537,122 @@
           }
         }
       ]
+    },
+    {
+      "name": "update_hook_metas",
+      "docs": [
+        "Rewrites the mint's transfer-hook extra-account-meta list to the layout the rules need, which",
+        "adds the sender's terms and affiliate volume and the receiver's terms to the three accounts",
+        "every list carries. A gate must run it once after `init_rules`: until then the hook refuses",
+        "transfers (it fails closed rather than skip the rules). Gates without rules keep the short",
+        "list, so clients of existing hooked mints are unaffected."
+      ],
+      "discriminator": [
+        230,
+        78,
+        0,
+        111,
+        34,
+        12,
+        87,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "extra_metas",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "Denied",
+      "discriminator": [
+        89,
+        134,
+        47,
+        134,
+        233,
+        38,
+        48,
+        86
+      ]
+    },
     {
       "name": "GateConfig",
       "discriminator": [
@@ -1109,9 +2691,35 @@
         57,
         44
       ]
+    },
+    {
+      "name": "Terms",
+      "discriminator": [
+        223,
+        24,
+        40,
+        223,
+        249,
+        219,
+        14,
+        97
+      ]
     }
   ],
   "events": [
+    {
+      "name": "AllocationChanged",
+      "discriminator": [
+        197,
+        173,
+        31,
+        152,
+        165,
+        67,
+        217,
+        85
+      ]
+    },
     {
       "name": "AllowlistRootChanged",
       "discriminator": [
@@ -1191,6 +2799,45 @@
       ]
     },
     {
+      "name": "PassClosed",
+      "discriminator": [
+        122,
+        76,
+        69,
+        52,
+        68,
+        10,
+        33,
+        223
+      ]
+    },
+    {
+      "name": "PassIssued",
+      "discriminator": [
+        3,
+        79,
+        230,
+        42,
+        134,
+        99,
+        166,
+        144
+      ]
+    },
+    {
+      "name": "RulesChanged",
+      "discriminator": [
+        246,
+        127,
+        52,
+        2,
+        91,
+        27,
+        175,
+        157
+      ]
+    },
+    {
       "name": "SasRequirementChanged",
       "discriminator": [
         98,
@@ -1201,6 +2848,32 @@
         113,
         106,
         101
+      ]
+    },
+    {
+      "name": "TermsRefreshed",
+      "discriminator": [
+        238,
+        235,
+        52,
+        174,
+        82,
+        46,
+        51,
+        244
+      ]
+    },
+    {
+      "name": "WalletDenied",
+      "discriminator": [
+        132,
+        225,
+        181,
+        203,
+        53,
+        54,
+        251,
+        248
       ]
     }
   ],
@@ -1284,9 +2957,228 @@
       "code": 6015,
       "name": "OwnerAllowed",
       "msg": "Owner holds a pass; permissionless freeze is not allowed"
+    },
+    {
+      "code": 6016,
+      "name": "UseRulesPath",
+      "msg": "This gate has compliance rules: use the terms-bearing instructions"
+    },
+    {
+      "code": 6017,
+      "name": "RulesAlreadyActive",
+      "msg": "Compliance rules are already active on this gate"
+    },
+    {
+      "code": 6018,
+      "name": "RulesNotActive",
+      "msg": "This gate has no compliance rules"
+    },
+    {
+      "code": 6019,
+      "name": "BadRules",
+      "msg": "The rules are malformed"
+    },
+    {
+      "code": 6020,
+      "name": "BadTerms",
+      "msg": "The terms are malformed"
+    },
+    {
+      "code": 6021,
+      "name": "CountryUnknown",
+      "msg": "The wallet's country is unknown, so it cannot satisfy a country list"
+    },
+    {
+      "code": 6022,
+      "name": "CountryNotAllowed",
+      "msg": "The wallet's country is not allowed for this token"
+    },
+    {
+      "code": 6023,
+      "name": "TierTooLow",
+      "msg": "The wallet's tier is below the minimum for this token"
+    },
+    {
+      "code": 6024,
+      "name": "MissingFlags",
+      "msg": "The wallet lacks a flag this token requires"
+    },
+    {
+      "code": 6025,
+      "name": "HolderCapReached",
+      "msg": "The investor cap for this token has been reached"
+    },
+    {
+      "code": 6026,
+      "name": "IssuanceNotOpen",
+      "msg": "Passes cannot be issued yet"
+    },
+    {
+      "code": 6027,
+      "name": "IssuanceClosed",
+      "msg": "Passes can no longer be issued"
+    },
+    {
+      "code": 6028,
+      "name": "TermsExpired",
+      "msg": "The terms have already expired"
+    },
+    {
+      "code": 6029,
+      "name": "WalletDenied",
+      "msg": "This wallet is denied"
+    },
+    {
+      "code": 6030,
+      "name": "IdentityAlreadyBound",
+      "msg": "This identity already holds a live pass on another wallet"
+    },
+    {
+      "code": 6031,
+      "name": "WrongPreviousPass",
+      "msg": "The previous holder's pass account is not the one for this identity"
+    },
+    {
+      "code": 6032,
+      "name": "IdentityMismatch",
+      "msg": "The identity does not match the attestation"
+    },
+    {
+      "code": 6033,
+      "name": "BadAttestationData",
+      "msg": "The attestation data is not an identity record"
+    },
+    {
+      "code": 6034,
+      "name": "NotAttestedPass",
+      "msg": "Only an attested pass can be refreshed"
+    },
+    {
+      "code": 6035,
+      "name": "NotExpired",
+      "msg": "The pass has not expired and its attestation still holds"
+    },
+    {
+      "code": 6036,
+      "name": "StillConforms",
+      "msg": "The terms still satisfy the rules"
+    },
+    {
+      "code": 6037,
+      "name": "NotDenied",
+      "msg": "The wallet is not denied"
+    },
+    {
+      "code": 6038,
+      "name": "RulesAccountsMissing",
+      "msg": "The transfer hook was not given the accounts this gate's transfer rules need"
+    },
+    {
+      "code": 6039,
+      "name": "Blackout",
+      "msg": "Transfers by this wallet are blocked in this window"
+    },
+    {
+      "code": 6040,
+      "name": "VolumeLimit",
+      "msg": "This transfer exceeds the wallet's volume limit for the window"
+    },
+    {
+      "code": 6041,
+      "name": "VolumeMissing",
+      "msg": "The wallet's volume account is missing or wrong"
+    },
+    {
+      "code": 6042,
+      "name": "OverIdentityCap",
+      "msg": "This order would exceed the identity's allocation cap"
+    },
+    {
+      "code": 6043,
+      "name": "NotCross",
+      "msg": "Only an account owned by the cross program may call this"
+    },
+    {
+      "code": 6044,
+      "name": "WrongAccount",
+      "msg": "The account is not the one this instruction expects"
+    },
+    {
+      "code": 6045,
+      "name": "WrongGate",
+      "msg": "This cross does not sell this token"
+    },
+    {
+      "code": 6046,
+      "name": "PassExists",
+      "msg": "This wallet already holds a pass"
+    },
+    {
+      "code": 6047,
+      "name": "NoVolumeLimit",
+      "msg": "This gate has no affiliate volume limit"
+    },
+    {
+      "code": 6048,
+      "name": "NotAffiliate",
+      "msg": "The wallet's terms do not carry the affiliate flag"
+    },
+    {
+      "code": 6049,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
     }
   ],
   "types": [
+    {
+      "name": "AffiliateLimit",
+      "docs": [
+        "Rule-144-style volume limit for affiliate-flagged wallets: at most `max_amount` token atoms",
+        "may leave such a wallet in any `window_secs` window."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "max_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllocationChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cross",
+            "type": "pubkey"
+          },
+          {
+            "name": "key",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "reserved",
+            "type": "u64"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "AllowlistRootChanged",
       "type": {
@@ -1346,6 +3238,54 @@
                 "name": "Mode"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CountryPolicy",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "Allow"
+          },
+          {
+            "name": "Deny"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Denied",
+      "docs": [
+        "A wallet the compliance officer has blocked from holding a pass."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          },
+          {
+            "name": "since",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -1459,6 +3399,21 @@
       }
     },
     {
+      "name": "LockPolicy",
+      "docs": [
+        "Resale lock applied to tokens a wallet receives from a gated cross."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duration_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Mode",
       "type": {
         "kind": "enum",
@@ -1533,6 +3488,282 @@
       }
     },
     {
+      "name": "PassClosed",
+      "docs": [
+        "`reason`: 0 authority, 1 expired, 2 no longer conforms, 3 denied, 4 attestation gone."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PassIssued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "identity",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "country",
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          },
+          {
+            "name": "source",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Rules",
+      "docs": [
+        "The issuer's rules for who may hold the token and how. `passes` is a counter the program",
+        "maintains; everything else is set by the gate authority."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "country_policy",
+            "type": {
+              "defined": {
+                "name": "CountryPolicy"
+              }
+            }
+          },
+          {
+            "name": "countries",
+            "docs": [
+              "Bit `n` set = ISO 3166-1 numeric code `n` is on the list."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                125
+              ]
+            }
+          },
+          {
+            "name": "min_tier",
+            "docs": [
+              "Minimum tier (0 = any). Tiers: 1 retail, 2 accredited or professional, 3 qualified."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "required_flags",
+            "docs": [
+              "Flags every holder must carry."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "one_identity_one_pass",
+            "docs": [
+              "A second wallet of an identity that already holds a live pass is refused."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "max_passes",
+            "docs": [
+              "Investor cap: live passes may not exceed this (0 = no cap)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "passes",
+            "docs": [
+              "Live passes issued under these rules. Maintained by the program."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "default_cap",
+            "docs": [
+              "Per-identity cap in quote atoms applied when a wallet's terms carry none (0 = no cap)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "issuance_start",
+            "docs": [
+              "Passes can only be issued inside this window (0 = unbounded on that side)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "issuance_end",
+            "type": "i64"
+          },
+          {
+            "name": "identity",
+            "docs": [
+              "Issuer-signed identity attestations (`oc-identity` v1) that entitle a wallet to a pass."
+            ],
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "SasRequirement"
+                }
+              }
+            }
+          },
+          {
+            "name": "accreditation",
+            "docs": [
+              "Issuer-signed accreditation attestations (`oc-accreditation` v1)."
+            ],
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "SasRequirement"
+                }
+              }
+            }
+          },
+          {
+            "name": "allowlist_root",
+            "docs": [
+              "Merkle root of terms-bearing allowlist leaves."
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "lock_policy",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "LockPolicy"
+                }
+              }
+            }
+          },
+          {
+            "name": "lock_delegate",
+            "docs": [
+              "May call `set_lock` (never weakening) besides the authority: a keeper that applies resale",
+              "locks."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "blackouts",
+            "docs": [
+              "Transfers by affiliate-flagged wallets are refused inside these windows."
+            ],
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "TimeWindow"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "affiliate_limit",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "AffiliateLimit"
+                }
+              }
+            }
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RulesChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "rules",
+            "type": {
+              "defined": {
+                "name": "Rules"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "SasRequirement",
       "type": {
         "kind": "struct",
@@ -1566,6 +3797,195 @@
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Terms",
+      "docs": [
+        "What a pass carries: who the holder is (never PII), where, what tier, which flags, how much it",
+        "may buy per cross, and when the pass lapses. Created with the pass by the `*_terms` family."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "identity",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "country",
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          },
+          {
+            "name": "source",
+            "type": "u8"
+          },
+          {
+            "name": "issued_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TermsData",
+      "docs": [
+        "The terms a pass carries. Also the instruction argument that supplies them."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "identity",
+            "docs": [
+              "Identity id (all zero = none): unique per person per attester, never PII."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "country",
+            "docs": [
+              "ISO 3166-1 numeric (0 = unknown)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "cap",
+            "docs": [
+              "Per-identity cap in quote atoms per cross (0 = use the gate default)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "expires_ts",
+            "docs": [
+              "The pass lapses at this unix time (0 = never)."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TermsRefreshed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "country",
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          },
+          {
+            "name": "expires_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TimeWindow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "start",
+            "type": "i64"
+          },
+          {
+            "name": "end",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WalletDenied",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          },
+          {
+            "name": "denied",
+            "type": "bool"
           }
         ]
       }

@@ -12,7 +12,7 @@ import { type Address, isAddress } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, NoPrintReason, ORDER_DISCRIMINATOR, OrderSide, getCrossDecoder, getOrderDecoder } from '@opening-cross/sdk';
 import { referenceClear, verifyCross } from '@opening-cross/verifier';
 import { type DexQuote, type Intent, bestExecution, loadBook, quoteCross, quoteJupiter } from '@opening-cross/router';
-import { anchorFor, getInputs, getPromise, latestForCross, records, samples } from '@opening-cross/promiser';
+import { anchorFor, getInputs, getPromise, latestForCross, receiptAttestationAnswer, records, samples } from '@opening-cross/promiser';
 import { PROMISE_SCHEMA, report as accuracyReport } from '@opening-cross/promises';
 import { classifyMint, loadBundledBook, observeVia } from '@opening-cross/authenticity';
 import { groupObservations } from '@opening-cross/premium';
@@ -26,6 +26,7 @@ import { registerCalendar } from './routes/calendar.js';
 import { registerCrossList } from './routes/crosslist.js';
 import { registerGate } from './routes/gate.js';
 import { registerHolderPrograms } from './routes/holder-programs.js';
+import { type PoolPricing, registerPools } from './routes/pools.js';
 import { registerHolderRoutes } from './routes/holder.js';
 import { registerIssuerBoard } from './routes/issuer-board.js';
 import { registerIssuerTx } from './routes/issuer-tx.js';
@@ -82,6 +83,10 @@ export type ApiDeps = {
   programsTtlMs?: number;
   /** Set false to leave out the W2A route groups (most tests build the server without them). */
   w2a?: boolean;
+  /** How long GET /v1/calendar reuses one calendar account read, in milliseconds (default ten seconds; tests that change the chain between requests set 0). */
+  calendarChainTtlMs?: number;
+  /** Seams of the treasury routes that read a transaction or the program's upgrade authority from the cluster; the defaults read RPC_URL. Tests inject them. */
+  treasury?: Pick<NonNullable<Parameters<typeof registerTreasury>[1]>, 'memoTx' | 'memoAttempts' | 'upgradeAuthority'>;
   /** Cache lifetime for mint safety verdicts in ms (default 30 000) and read attempts before a 429 is surfaced (default 4). */
   safety?: { ttlMs?: number; attempts?: number; sleep?: (ms: number) => Promise<void> };
 };
@@ -124,6 +129,8 @@ const STATE = ['Live', 'Cleared', 'NoPrint', 'Finalized'] as const;
 const NO_PRINT = (r: number): string => NoPrintReason[r] ?? `Unknown(${r})`;
 
 export async function buildServer(d: ApiDeps) {
+  /** Set when the pool routes are registered, which is after the router route that merges their prices. */
+  let pools: PoolPricing | null = null;
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, ...(d.trustProxy ? { trustProxy: true } : {}) });
   if (d.rateLimit) {
     const limiter = createLimiter({ exempt: ['/v1/health'], ...d.rateLimit });
@@ -597,8 +604,8 @@ export async function buildServer(d: ApiDeps) {
   //     * every live cross of the pair (open books: the clearing rule re-run on the live book with this order added, net of
   //       the cross's fees; sealed books: no indicative price, so excluded with that reason);
   //     * Jupiter, a live route for the same size (mainnet only: on any other network it is excluded with that reason).
-  //   Meteora pools are NOT priced by the router; they are listed under `excluded` with that statement (Jupiter's route names
-  //   any Meteora pool it uses). Nothing is signed or sent. Prices are quote atoms per one whole base token, so venues compare.
+  //   * the Meteora DAMM v2 pool and DLMM pair the adapters open for the pair, priced from the pool's own accounts (executable now, fee included).
+  //   A pool that cannot be read or does not trade the pair is listed under `excluded` with its reason. Nothing is signed or sent. Prices are quote atoms per one whole base token, so venues compare.
   //   Ranked: venues filling the whole amount first, then by better price for the side; partial fills after, by size.
   //   200 { schema, network, at, intent, base: { decimals }, priceUnit, venues: [{ rank, venue, quoteAtoms, baseAtoms, pricePerBase, fill, ... }],
   //         excluded: [{ venue, cross?, reason }], best, caveats }
@@ -627,7 +634,9 @@ export async function buildServer(d: ApiDeps) {
       cluster !== 'mainnet-beta' && !d.dexQuote
         ? { skipped: `Jupiter routes mainnet liquidity only; this API follows ${cluster}, so no DEX route exists for these mints.` }
         : await jupiter({ baseMint, quoteMint, intent }).catch((e: unknown): DexQuote => ({ venue: 'jupiter', available: false, reason: `Jupiter could not be reached: ${String(e)}` }));
-    const ranking = rankVenues({ side: sideName, amount, baseDecimals, crosses, dex });
+    const ranked = rankVenues({ side: sideName, amount, baseDecimals, crosses, dex });
+    // Meteora pools are priced from their own accounts (ADR-0921) and merged into the ranking. `pools=0` leaves them out: GET /v1/pools/route asks that way, because it merges them itself and names the pools it read.
+    const ranking = pools && q.pools !== '0' ? await pools.mergeInto(ranked as never, { base: baseMint, quote: quoteMint, side: sideName, amount, baseDecimals }) : ranked;
     return send(reply, {
       schema: 'opening-cross/router-quote/v1',
       network: cluster,
@@ -858,10 +867,16 @@ export async function buildServer(d: ApiDeps) {
     });
   }
   // Features added in routes/*.ts (each file documents its own routes).
-  registerCalendar(app, d);
+  pools = registerPools(app, { account: d.account, lifetime: d.lifetime, db: d.db, ...(d.network && { network: d.network }), ...(d.clock && { clock: d.clock }) });
+  // GET /v1/crosses/:address/receipt-attestation[?optional=1]: the signed, anchored receipt of a settled cross (row S2, ADR-0941). The answer is the promiser package's.
+  app.get('/v1/crosses/:address/receipt-attestation', async (req, reply) => {
+    const a = await receiptAttestationAnswer(d.db, { cluster: d.network ?? 'unknown', publishedSigner: d.promiseSigner ?? null }, (req.params as { address: string }).address, (req.query as { optional?: string }).optional === '1');
+    return send(reply, a.body, a.status);
+  });
+  registerCalendar(app, d, d.calendarChainTtlMs !== undefined ? { chainTtlMs: d.calendarChainTtlMs } : {});
   registerCrossList(app, d);
   registerGate(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
-  registerTreasury(app, d);
+  registerTreasury(app, { ...d, ...d.treasury });
   registerTreasuryTx(app, { db: d.db, account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });
   registerRulesRead(app, { db: d.db, account: d.account, ...(d.clock && { clock: d.clock }) });
   registerSettleTx(app, { account: d.account, lifetime: d.lifetime, ...(d.clock && { clock: d.clock }) });

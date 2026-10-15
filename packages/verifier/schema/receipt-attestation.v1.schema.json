@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opening-cross:schema:receipt-attestation:v1",
+  "title": "Opening Cross receipt attestation, version 1",
+  "description": "A signed statement that a key saw the receipt of a settled cross with this SHA-256 hash and found it consistent with the cross account (docs/standard/receipt-v1.md, ADR-0941). It has the shape of every signed document in @opening-cross/attest: `id` is the SHA-256 of the canonical body, and `signature` is an Ed25519 signature by `signer` over the schema string, a newline and the id. It attests the hash of the receipt, not that the clearing rule was applied correctly.",
+  "type": "object",
+  "required": ["body", "id", "signer", "signature"],
+  "additionalProperties": false,
+  "properties": {
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "cluster", "cross", "receiptSchema", "receiptSha256", "state", "statement"],
+      "properties": {
+        "schema": { "const": "opening-cross/receipt-attestation/v1" },
+        "cluster": { "type": "string", "minLength": 1, "description": "The cluster the cross is on, as the receipt's `network` names it." },
+        "cross": { "$ref": "#/$defs/address" },
+        "receiptSchema": { "enum": ["opening-cross/receipt/v1", "opening-cross/receipt/v2"] },
+        "receiptSha256": { "$ref": "#/$defs/sha256", "description": "SHA-256 of the canonical bytes served at /receipt/<cross>/json." },
+        "state": { "enum": ["Finalized", "NoPrint"], "description": "A receipt is attested only once its cross has settled for good." },
+        "statement": { "type": "string", "minLength": 1, "description": "The standard sentence, carried inside the document so it cannot be quoted without it." }
+      }
+    },
+    "id": { "$ref": "#/$defs/sha256", "description": "SHA-256 of the canonical JSON of `body` (RFC 8785 subset: strings and integers)." },
+    "signer": { "$ref": "#/$defs/address", "description": "The key that signed. A reader checks it against the key the operator publishes at /v1/promises/signer." },
+    "signature": { "type": "string", "pattern": "^[0-9a-f]{128}$", "description": "Ed25519 signature, lowercase hex, over `opening-cross/receipt-attestation/v1` + LF + `id`." }
+  },
+  "$defs": {
+    "address": { "type": "string", "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

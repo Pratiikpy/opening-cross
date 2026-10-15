@@ -1,0 +1,14 @@
+{
+  "body": {
+    "cross": "2gS3tViAZu8se7AwBBBdSy6ty6517m7cCZg5ncbT1ReZ",
+    "state": "Finalized",
+    "schema": "opening-cross/receipt-attestation/v1",
+    "cluster": "devnet",
+    "statement": "The signer fetched the receipt with this hash for this cross, found its bytes canonical and its recorded result equal to the cross account on chain, and found its recomputation flag true. It attests the hash of the receipt, not that the clearing rule was applied correctly: that is for anyone to recompute.",
+    "receiptSchema": "opening-cross/receipt/v1",
+    "receiptSha256": "1dedb31d71b2a2c7460367445422ceb9205017ce6de24e863b4efe39333f2108"
+  },
+  "id": "0509fa3c5dab9647a41369b80c672d8c16d1d577526a65a87540844a45b676f6",
+  "signer": "2KyN6qVvWWzr1jmKrks158B9P5bFni9zqiExtBSQPvBY",
+  "signature": "a0796b73ceda2db411c565322d2b7abe9e6101fb24ccb423c26860e37c4df8e17922e05677f72364aa5b15dbfc3cd6f266b6035febaf15df84b96c131c083205"
+}

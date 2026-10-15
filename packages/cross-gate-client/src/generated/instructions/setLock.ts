@@ -34,7 +34,8 @@ export function getSetLockInstructionDataCodec(): FixedSizeCodec<SetLockInstruct
 }
 
 export type SetLockInput<TAccountAuthority extends InstructionSignerInput = InstructionSignerInput, TAccountConfig extends InstructionAccountInput = InstructionAccountInput, TAccountLock extends InstructionAccountInput = InstructionAccountInput, TAccountSystemProgram extends InstructionAccountInput = InstructionAccountInput> =  {
-  authority: TAccountAuthority;
+  /** The gate authority or the rules' lock delegate; checked in the handler. */
+authority: TAccountAuthority;
 config: TAccountConfig;
 lock: TAccountLock;
 systemProgram?: TAccountSystemProgram;
@@ -69,6 +70,7 @@ return Object.freeze({ accounts: [getAccountMeta("authority", accounts.authority
 
 export type ParsedSetLockInstruction<TProgram extends string = typeof CROSS_GATE_PROGRAM_ADDRESS, TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[]> = { programAddress: Address<TProgram>;
 accounts: {
+/** The gate authority or the rules' lock delegate; checked in the handler. */
 authority: TAccountMetas[0];
 config: TAccountMetas[1];
 lock: TAccountMetas[2];

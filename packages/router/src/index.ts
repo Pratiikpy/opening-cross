@@ -11,7 +11,11 @@
 import type { Address } from '@solana/kit';
 import { AUX_END_BASE, AUX_EXT_BASE, CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, CrossState, Disclosure, type Cross, auxBit, auxShardIndexesFor, getCrossDecoder, getLevelsDecoder, lastBucket, readCrossExt } from '@opening-cross/cross-core-client';
 import { shardAddress } from '@opening-cross/sdk';
+import type { PoolVenueQuote } from './pools.js';
 import { type RefOrder, bookAddressOf, referenceClear, referenceFills } from '@opening-cross/verifier';
+
+export * from './pools.js';
+export * from './depth.js';
 
 export const REPORT_SCHEMA = 'opening-cross/best-execution/v1';
 
@@ -44,6 +48,13 @@ export type BestExecutionReport = {
   comparison: { crossPrice: string | null; dexPrice: string | null; crossBetterByBps: number | null; filledOnCross: string; filledOnDex: string } ;
   recommendation: 'cross' | 'dex' | 'split' | 'none';
   caveats: string[];
+};
+
+/** A report that also priced Meteora pools (`bestExecution` given a `pools` argument). `recommendation` can then also be `pool`. */
+export type BestExecutionReportWithPools = Omit<BestExecutionReport, 'recommendation' | 'comparison'> & {
+  recommendation: BestExecutionReport['recommendation'] | 'pool';
+  comparison: BestExecutionReport['comparison'] & { bestPoolPrice: string | null; bestPool: string | null; poolBetterThanBestOtherByBps: number | null };
+  pools: Record<string, unknown>[];
 };
 
 /** Per-tick resting quantity of a cross: the merged book plus every shard not yet merged (while the
@@ -183,6 +194,43 @@ export function bestExecution(intent: Intent, cross: CrossQuote, dex: DexQuote, 
     comparison: { crossPrice: crossPrice?.toString() ?? null, dexPrice: dexPrice?.toString() ?? null, crossBetterByBps: betterBps, filledOnCross: crossFill.toString(), filledOnDex: dex.available ? dex.base.toString() : '0' },
     recommendation,
     caveats,
+  };
+}
+
+/**
+ * Adds the Meteora pool leg to a best-execution report (ROADMAP Z1). `report` is what `bestExecution` returned for the same intent; `pools` are
+ * `quotePool` results for the pools of the pair. Prices are in the cross's units, as in the rest of the report, so the three venues compare
+ * directly. The recommendation becomes `pool` when a pool fills the whole amount and beats the best price the cross and the DEX offered (or there
+ * is none); otherwise it is the report's own. A report without pools is returned by `bestExecution` unchanged, so nothing that reads it needs to know.
+ */
+export function withPools(report: BestExecutionReport, intent: Pick<Intent, 'side' | 'quantity'>, pools: PoolVenueQuote[], priceScale: bigint): BestExecutionReportWithPools {
+  const buy = intent.side === 'buy';
+  const caveats = [...report.caveats];
+  const priced = pools.flatMap((p) => (p.available && p.base > 0n ? [{ p, price: buy ? ceilDiv(p.quote * priceScale, p.base) : (p.quote * priceScale) / p.base }] : []));
+  for (const p of pools) if (!p.available) caveats.push(`Pool ${p.pool} unavailable: ${p.reason}.`);
+  // Best pool: a full fill ranks ahead of a partial one, then the better price for the side.
+  priced.sort((a, b) => {
+    if (a.p.available && b.p.available && a.p.partial !== b.p.partial) return a.p.partial ? 1 : -1;
+    return a.price === b.price ? 0 : buy ? (a.price < b.price ? -1 : 1) : a.price > b.price ? -1 : 1;
+  });
+  const best = priced[0] ?? null;
+  const others = [report.comparison.crossPrice, report.comparison.dexPrice].filter((x): x is string => x !== null).map((x) => BigInt(x));
+  const other = others.length === 0 ? null : others.reduce((x, y) => (buy ? (y < x ? y : x) : y > x ? y : x));
+  let poolBetterBps: number | null = null;
+  let recommendation: BestExecutionReportWithPools['recommendation'] = report.recommendation;
+  if (best && best.p.available) {
+    if (other !== null) poolBetterBps = Number(((buy ? other - best.price : best.price - other) * 10_000n) / other);
+    const full = !best.p.partial;
+    if (full && (other === null || (poolBetterBps !== null && poolBetterBps > 0))) recommendation = 'pool';
+    if (best.p.partial) caveats.push(`Partial: the best pool would fill ${best.p.base} of ${intent.quantity} base atoms.`);
+    caveats.push('A pool quote is executable now, priced from the pool’s accounts at the time of the request; trades in the pool move it, so send it with a minimum output.');
+  }
+  return {
+    ...report,
+    caveats,
+    recommendation,
+    comparison: { ...report.comparison, bestPoolPrice: best ? best.price.toString() : null, bestPool: best ? best.p.pool : null, poolBetterThanBestOtherByBps: poolBetterBps },
+    pools: pools.map((p) => json(p)),
   };
 }
 

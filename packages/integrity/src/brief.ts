@@ -174,13 +174,14 @@ export function verifyClaims(claims: readonly Claim[], f: BriefFacts): ClaimResu
 }
 
 const PATTERNS: { re: RegExp; metric: string; op: Op }[] = [
-  { re: /cleared at (?:a price of )?(\d+)\b/i, metric: 'cross.clearing.price', op: '=' },
-  { re: /\b(\d+) base atoms (?:were |was )?matched/i, metric: 'cross.clearing.matched', op: '=' },
-  { re: /\bmatched (\d+) base atoms/i, metric: 'cross.clearing.matched', op: '=' },
-  { re: /\b(\d+) orders\b/i, metric: 'cross.ordersTotal', op: '=' },
-  { re: /protocol fee of (\d+) ?bps/i, metric: 'cross.protocolFeeBps', op: '=' },
-  { re: /\bat most (\d+) ?bps of volume (?:is|was|are) (?:from )?(?:flagged|conflicted)/i, metric: 'conflicts.flaggedVolumeBps', op: '<=' },
-  { re: /\bat least (\d+) ?bps of volume (?:is|was) organic/i, metric: 'organic.lowerBps', op: '>=' },
+  { re: /cleared at (?:a price of )?(\d[\d,]*)\b/i, metric: 'cross.clearing.price', op: '=' },
+  { re: /\b(\d[\d,]*) base atoms (?:were |was )?matched/i, metric: 'cross.clearing.matched', op: '=' },
+  { re: /\bmatched (\d[\d,]*) base atoms/i, metric: 'cross.clearing.matched', op: '=' },
+  { re: /\b(\d[\d,]*) orders carry a conflict flag\b/i, metric: 'conflicts.flaggedOrders', op: '=' },
+  { re: /\b(\d[\d,]*) orders\b(?! carry a conflict flag)/i, metric: 'cross.ordersTotal', op: '=' },
+  { re: /protocol fee of (\d[\d,]*) ?bps/i, metric: 'cross.protocolFeeBps', op: '=' },
+  { re: /\bat most (\d[\d,]*) ?bps of volume (?:is|was|are) (?:from )?(?:flagged|conflicted)/i, metric: 'conflicts.flaggedVolumeBps', op: '<=' },
+  { re: /\bat least (\d[\d,]*) ?bps of volume (?:is|was) organic/i, metric: 'organic.lowerBps', op: '>=' },
 ];
 
 /** Reads claims out of sentences. Sentences this module cannot read are returned in `unparsed`, never dropped. */
@@ -193,7 +194,7 @@ export function parseClaims(text: string): { claims: Claim[]; unparsed: string[]
     for (const p of PATTERNS) {
       const m = p.re.exec(s);
       if (m) {
-        claims.push({ id: `s${si + 1}.${claims.length + 1}`, metric: p.metric, op: p.op, value: m[1]!, text: s });
+        claims.push({ id: `s${si + 1}.${claims.length + 1}`, metric: p.metric, op: p.op, value: m[1]!.replace(/,/g, ''), text: s });
         any = true;
       }
     }

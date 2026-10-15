@@ -10,7 +10,7 @@
 //   GET /v1/series/:address                 a recurring series (chain) and the crosses it spawned (index)
 //   GET /v1/series?authority=               series of an authority (index)
 //   GET /v1/crosses/:address/proof/draws    the fairness proof with the draws the index recorded, so that an ending drawn before a later draw replaced the stored seed can still be checked
-//   GET /v1/crosses/:address/settlement     how a cross was settled into a venue: the venue it opened, the partner payouts, the greenshoe
+//   GET /v1/crosses/:address/settlement     how a cross was settled: the venue it opened, the partner payouts, the greenshoe, the futarchy DAOs and presale tranches it opened
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type pg from 'pg';
 import { type Address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
@@ -37,6 +37,7 @@ import { CROSS_SETTLE_PROGRAM_ADDRESS, GREENSHOE_DISCRIMINATOR, getGreenshoeDeco
 import { type DrawRecord, verifyCross } from '@opening-cross/verifier';
 import { RequestError } from '../tx.js';
 import { addr, json } from './_inputs.js';
+import { settlementMarkets } from '@opening-cross/indexer';
 import { releasableOf } from './rules-tx.js';
 
 type ChainAccount = { data: Uint8Array; owner: Address };
@@ -241,11 +242,12 @@ export function registerRulesRead(app: FastifyInstance, d: RulesReadDeps): void 
 
   app.get('/v1/crosses/:address/settlement', async (req, reply) => {
     const a = addr((req.params as { address: string }).address, 'address');
-    const [venue, partner, gs, events] = await Promise.all([
+    const [venue, partner, gs, events, markets] = await Promise.all([
       d.db.query('SELECT venue, pool, clearing_price::text AS clearing_price, detail, slot::text AS slot FROM settle_venues WHERE cross_address = $1', [a]),
       d.db.query('SELECT fee_base::text AS fee_base, fee_quote::text AS fee_quote, fee_claims, surplus_withdrawn::text AS surplus_withdrawn, migration_fee::text AS migration_fee, pool_creation_lamports::text AS pool_creation_lamports, pol_token_a::text AS pol_token_a, pol_token_b::text AS pol_token_b, pol_claims FROM settle_partner WHERE cross_address = $1', [a]),
       d.db.query('SELECT greenshoe, budget::text AS budget, start_ts::text AS start_ts, expires_ts::text AS expires_ts, bids, settled_levels, finished, burned::text AS burned, returned::text AS returned FROM settle_greenshoes WHERE cross_address = $1', [a]),
       d.db.query('SELECT name, slot::text AS slot, extract(epoch FROM block_time)::bigint AS time, signature, payload FROM settle_events WHERE cross_address = $1 ORDER BY slot, seq LIMIT 200', [a]),
+      settlementMarkets(d.db, a),
     ]);
     let greenshoe: Record<string, unknown> | null = null;
     if (gs.rows[0]) {
@@ -262,8 +264,11 @@ export function registerRulesRead(app: FastifyInstance, d: RulesReadDeps): void 
       venue: venue.rows[0] ?? null,
       partner: partner.rows[0] ?? null,
       greenshoe,
+      // The futarchy DAOs and fixed-price presale tranches a cross opened without a pool (ADR-0930).
+      futarchyDaos: markets.futarchyDaos,
+      presales: markets.presales,
       events: events.rows,
-      note: !venue.rows[0] && !events.rows[0] ? 'No settlement adapter has opened a venue for this cross (or the indexer has not seen it yet).' : undefined,
+      note: !venue.rows[0] && !events.rows[0] && markets.futarchyDaos.length === 0 && markets.presales.length === 0 ? 'No settlement adapter has opened a venue for this cross (or the indexer has not seen it yet).' : undefined,
     });
   });
 }

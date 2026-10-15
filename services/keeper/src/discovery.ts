@@ -13,12 +13,18 @@ import type { IndexerRpc } from '@opening-cross/indexer';
 /** `creators` limits discovery to crosses made by those creators, so a scoped keeper never reads anyone else's. */
 export type DiscoveryScope = { creators?: readonly Address[] };
 
+/**
+ * A cross is in a creator scope when its creator is named or is a series of a named authority: `spawn_next` makes the series' own address the creator of the crosses it spawns
+ * (ADR-0456), so the scope would otherwise find the series and lose every cross it spawns. `$1` is the list of named creators.
+ */
+const inScope = (column: string) => `(${column} = ANY($1) OR ${column} IN (SELECT address FROM series WHERE authority = ANY($1)))`;
+
 export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
   return {
     crosses: async () =>
       (
         scope.creators
-          ? await db.query(`SELECT address FROM crosses WHERE state <> 'Finalized' AND creator = ANY($1) ORDER BY created_slot`, [scope.creators])
+          ? await db.query(`SELECT address FROM crosses WHERE state <> 'Finalized' AND ${inScope('creator')} ORDER BY created_slot`, [scope.creators])
           : await db.query(`SELECT address FROM crosses WHERE state <> 'Finalized' ORDER BY created_slot`)
       ).rows.map((r) => r.address as Address),
     orders: async (cross: Address) =>
@@ -26,7 +32,7 @@ export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
     // Locked fills with something left to release. A lock indexed without its nonce cannot be addressed and is left to the owner.
     lockups: async (): Promise<Address[]> => {
       const { rows } = scope.creators
-        ? await db.query(`SELECT l.cross_address, l.owner, l.nonce::text AS nonce FROM cross_locks l JOIN crosses c ON c.address = l.cross_address WHERE l.released < l.amount AND l.nonce IS NOT NULL AND c.creator = ANY($1) ORDER BY l.created_slot`, [scope.creators])
+        ? await db.query(`SELECT l.cross_address, l.owner, l.nonce::text AS nonce FROM cross_locks l JOIN crosses c ON c.address = l.cross_address WHERE l.released < l.amount AND l.nonce IS NOT NULL AND ${inScope('c.creator')} ORDER BY l.created_slot`, [scope.creators])
         : await db.query(`SELECT cross_address, owner, nonce::text AS nonce FROM cross_locks WHERE released < amount AND nonce IS NOT NULL ORDER BY created_slot`);
       return Promise.all(rows.map((r) => lockupAddress(r.cross_address as Address, r.owner as Address, BigInt(r.nonce as string))));
     },
@@ -38,7 +44,7 @@ export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
     // bounties and backing policies are protocol-wide, so a scoped keeper does not narrow them.
     charters: async (): Promise<Address[]> =>
       (scope.creators
-        ? await db.query(`SELECT c.charter FROM graduation_charters c JOIN crosses x ON x.address = c.cross_address WHERE x.creator = ANY($1) ORDER BY c.created_slot`, [scope.creators])
+        ? await db.query(`SELECT c.charter FROM graduation_charters c JOIN crosses x ON x.address = c.cross_address WHERE ${inScope('x.creator')} ORDER BY c.created_slot`, [scope.creators])
         : await db.query(`SELECT charter FROM graduation_charters ORDER BY created_slot`)
       ).rows.map((r) => r.charter as Address),
     listings: async (): Promise<Address[]> =>
@@ -47,6 +53,12 @@ export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
         : await db.query(`SELECT listing FROM listing_listings WHERE status = 'open' ORDER BY created_slot`)
       ).rows.map((r) => r.listing as Address),
     bounties: async (): Promise<Address[]> => (await db.query(`SELECT address FROM bounties WHERE expires_at > extract(epoch FROM now()) ORDER BY created_slot`)).rows.map((r) => r.address as Address),
+    // Crosses that have cleared, finalized ones included, in the keeper's scope: a continuation pool earns partner fees long after its cross is finalized (duty partner-fees).
+    partnerCrosses: async (): Promise<Address[]> =>
+      (scope.creators
+        ? await db.query(`SELECT address FROM crosses WHERE state IN ('Cleared', 'Finalized') AND ${inScope('creator')} ORDER BY created_slot DESC LIMIT 2000`, [scope.creators])
+        : await db.query(`SELECT address FROM crosses WHERE state IN ('Cleared', 'Finalized') ORDER BY created_slot DESC LIMIT 2000`)
+      ).rows.map((r) => r.address as Address),
     // Every cross, finalized ones included: an invariant such as "finalized with an order still open" can only show on one.
     bountyCrosses: async (): Promise<Address[]> => (await db.query(`SELECT address FROM crosses ORDER BY created_slot DESC LIMIT 2000`)).rows.map((r) => r.address as Address),
     policies: async (): Promise<Address[]> => (await db.query(`SELECT policy FROM backing_policies ORDER BY created_slot`)).rows.map((r) => r.policy as Address),
@@ -56,25 +68,33 @@ export function fromIndexer(db: pg.Pool, scope: DiscoveryScope = {}) {
 const b58 = (bytes: Uint8Array) => getBase58Decoder().decode(bytes) as Base58EncodedBytes;
 
 export function fromProgramAccounts(rpc: IndexerRpc, program: Address = CROSS_CORE_PROGRAM_ADDRESS, scope: DiscoveryScope = {}) {
+  // The creator is the first field after the 8-byte discriminator, so a scope is a server-side filter. The scan does not look at state: finalized crosses are in it.
+  const scopedCrosses = async () => {
+    // The named creators, and the series of the named authorities (their spawned crosses are created by the series' address).
+    const creators = scope.creators ? [...scope.creators, ...(await seriesOf())] : undefined;
+    const scan = async (creator?: Address) =>
+      (
+        await rpc
+          .getProgramAccounts(program, {
+            commitment: 'confirmed',
+            encoding: 'base64',
+            dataSlice: { offset: 0, length: 0 },
+            filters: [
+              { memcmp: { offset: 0n, bytes: b58(CROSS_DISCRIMINATOR as Uint8Array), encoding: 'base58' } },
+              ...(creator ? [{ memcmp: { offset: 8n, bytes: creator as unknown as Base58EncodedBytes, encoding: 'base58' as const } }] : []),
+            ],
+          })
+          .send()
+      ).map((a) => a.pubkey);
+    return creators ? (await Promise.all(creators.map((c) => scan(c)))).flat() : scan();
+  };
+  const seriesOf = async (): Promise<Address[]> => {
+    const find = (authority: Address) => scan(rpc, program, SERIES_DISCRIMINATOR as Uint8Array, [{ memcmp: { offset: 8n, bytes: authority as unknown as Base58EncodedBytes, encoding: 'base58' as const } }]);
+    return (await Promise.all((scope.creators ?? []).map((c) => find(c)))).flat();
+  };
   return {
-    // The creator is the first field after the 8-byte discriminator, so a scope is a server-side filter.
-    crosses: async () => {
-      const scan = async (creator?: Address) =>
-        (
-          await rpc
-            .getProgramAccounts(program, {
-              commitment: 'confirmed',
-              encoding: 'base64',
-              dataSlice: { offset: 0, length: 0 },
-              filters: [
-                { memcmp: { offset: 0n, bytes: b58(CROSS_DISCRIMINATOR as Uint8Array), encoding: 'base58' } },
-                ...(creator ? [{ memcmp: { offset: 8n, bytes: creator as unknown as Base58EncodedBytes, encoding: 'base58' as const } }] : []),
-              ],
-            })
-            .send()
-        ).map((a) => a.pubkey);
-      return scope.creators ? (await Promise.all(scope.creators.map((c) => scan(c)))).flat() : scan();
-    },
+    crosses: scopedCrosses,
+    partnerCrosses: scopedCrosses,
     orders: async (cross: Address) =>
       (
         await rpc

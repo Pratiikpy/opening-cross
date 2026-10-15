@@ -10,6 +10,8 @@ import type { QaThread } from '@/lib/issuer-board';
 import type { BookResponse, CrossDetail } from '@/lib/types';
 import { formatAtoms, formatPrice, shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
+import { IssuerLiquidityView } from '@/components/pools/issuer-liquidity';
+import { liquidityHref } from '@/lib/issuer-nav';
 import { ConnectPrompt } from './connect-prompt';
 
 const when = (secs: string) => `${new Date(Number(secs) * 1000).toISOString().replace('T', ' ').slice(0, 16)} UTC`;
@@ -303,10 +305,21 @@ function SelectedCross({ address, nowSecs }: { address: string; nowSecs: number 
       </div>
 
       <div>
-        <h3 className="font-medium">Liquidity after the cross</h3>
-        <p className="mt-2 text-sm text-muted" data-testid="liquidity-note">
-          This page does not read any pool. Opening a pool from the cross&apos;s proceeds (Meteora, Raydium) is a separate step, and the API has no read for the state of those pools, so depth and price impact are not shown here.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-medium">Liquidity after the cross</h3>
+          <Link className="min-h-11 py-2 text-sm underline underline-offset-4" href={liquidityHref(address)} data-testid="liquidity-link">
+            Open the liquidity page
+          </Link>
+        </div>
+        {settled ? (
+          <div className="mt-3" data-testid="liquidity-health">
+            <IssuerLiquidityView cross={address} />
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted" data-testid="liquidity-note">
+            No pool exists yet: the market opens at the clearing price, so this section reads the pools from chain once the cross has cleared.
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
         <Link className="underline underline-offset-4" href="/issuer/disclosures">Questions from holders</Link>

@@ -13,6 +13,7 @@ import { type AccountFetcher, reconcileSettled } from './reconcile.js';
 import { PROGRAM_NAMES, type ProgramName, pollProgramsOnce } from './programs.js';
 import { pollSettleOnce } from './settle.js';
 import { pollTreasuryOnce } from './treasury.js';
+import { backfillTreasuryMovements } from './treasury-movements.js';
 
 const dbUrl = process.env.DATABASE_URL;
 const rpcUrl = process.env.RPC_URL;
@@ -55,6 +56,10 @@ const fetcher: AccountFetcher = Object.assign(
 );
 
 await migrate(db);
+{
+  const movements = await backfillTreasuryMovements(db);
+  if (movements) console.log(JSON.stringify({ at: new Date().toISOString(), treasuryMovementsBackfilled: movements }));
+}
 for (let tick = 0; ; tick++) {
   try {
     const head = await rpc.getSlot({ commitment: 'finalized' }).send();

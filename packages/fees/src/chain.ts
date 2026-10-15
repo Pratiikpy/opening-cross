@@ -1,6 +1,7 @@
-// Proving a ledger line against the chain. `finalize` moves the cross's quote vault into up to three places:
-// the protocol fee recipient, the integrator and the proceeds recipient. This reads the transaction's own token
-// balances and checks that each owner gained exactly what the ledger says, with the vault losing exactly the sum.
+// Proving a ledger line against the chain. `finalize` moves the cross's quote vault into up to four places:
+// the protocol fee recipient, the integrator, the proceeds recipient and, when the cross names one, the referrer
+// (ADR-0460: a share of the protocol fee, paid out of it). This reads the transaction's own token balances and checks
+// that each owner gained exactly what the ledger says, with the vault losing exactly the sum.
 // Roles that share an owner (one wallet can be issuer, integrator and fee recipient) are checked in aggregate.
 
 /** The part of a `jsonParsed` token balance entry this check needs. */
@@ -37,9 +38,13 @@ export type FinalizeRoles = {
   readonly feeRecipient: string;
   readonly integrator: string;
   readonly proceedsTo: string;
+  /** The gross protocol fee, as the `CrossFinalized` event records it: the referral is part of it, not on top. */
   readonly protocolFee: bigint;
   readonly integratorFee: bigint;
   readonly proceedsQuote: bigint;
+  /** The cross's referrer and the part of the protocol fee `finalize` paid it. Both absent (or a zero amount) when the cross names none. */
+  readonly referrer?: string | undefined;
+  readonly referral?: bigint | undefined;
 };
 
 export type TransferCheck =
@@ -52,7 +57,11 @@ const text = (m: Map<string, bigint>): Record<string, string> => Object.fromEntr
 export function checkFinalizeTransfers(tx: TransactionBalances, r: FinalizeRoles): TransferCheck {
   const expected = new Map<string, bigint>();
   const credit = (owner: string, v: bigint) => expected.set(owner, (expected.get(owner) ?? 0n) + v);
-  credit(r.feeRecipient, r.protocolFee);
+  const referral = r.referral ?? 0n;
+  if (referral < 0n || referral > r.protocolFee) return { ok: false, reason: `the referral ${referral} is not part of the protocol fee ${r.protocolFee}`, expected: {}, observed: text(ownerDeltas(tx, r.quoteMint)) };
+  if (referral > 0n && !r.referrer) return { ok: false, reason: 'a referral was recorded but the cross names no referrer', expected: {}, observed: text(ownerDeltas(tx, r.quoteMint)) };
+  credit(r.feeRecipient, r.protocolFee - referral);
+  if (referral > 0n) credit(r.referrer as string, referral);
   credit(r.integrator, r.integratorFee);
   credit(r.proceedsTo, r.proceedsQuote);
   credit(r.cross, -(r.protocolFee + r.integratorFee + r.proceedsQuote));

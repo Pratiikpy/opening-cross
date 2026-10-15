@@ -1,0 +1,32 @@
+{
+  "name": "@opening-cross/docs-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The documentation service: the repository's documents served to people as a searchable site and to AI agents over MCP (Streamable HTTP), plus a JSON API and llms.txt, with the diagnosis of a failed Solana transaction and its version-matched program documentation as a tool. Read-only, no key, no database.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "@opening-cross/diagnose": "workspace:*",
+    "@opening-cross/mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@playwright/test": "1.58.2",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

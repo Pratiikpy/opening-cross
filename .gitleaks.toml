@@ -1,0 +1,17 @@
+title = "Opening Bell gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# Solana addresses are 32 to 44 base58 characters and read as high-entropy "api keys" to the generic rule. These files hold
+# public addresses (mints, vaults, program ids, signer public keys) as test fixtures and recorded devnet data. No private key
+# material lives in them: keypair files sit in .keys, which is git-ignored.
+[allowlist]
+description = "Public Solana addresses in test fixtures and recorded devnet data"
+paths = [
+  '''apps/web/src/app/gates/_lib/form\.test\.ts''',
+  '''apps/web/test/.*\.test\.ts''',
+  '''packages/liquidity/test/.*\.test\.ts''',
+  '''packages/risk/data/tokenized-weekends-.*\.json''',
+  '''services/api/test/.*\.test\.ts''',
+]

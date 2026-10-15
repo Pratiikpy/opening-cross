@@ -62,15 +62,52 @@ export interface TraceOptions {
   /** How many of the oldest transactions to inspect for an inbound transfer. Default 4. */
   inspect?: number;
   cache?: FundingCache;
+  /**
+   * Ask for the oldest transactions directly with Helius's `getTransactionsForAddress` (`sortOrder: "asc"`), one call instead of paging through a long history. Falls back to paging
+   * when the endpoint does not offer the method. The request shape is from Helius's documentation; it has NOT been run against a live key (HUMAN_TASKS H26).
+   */
+  ascending?: boolean;
+}
+
+interface AscendingRow {
+  blockTime: number | null;
+  meta: ParsedTx['meta'];
+  transaction: { signatures?: string[]; message: ParsedTx['transaction']['message'] };
+}
+
+/** The first funder from an ascending read, or `undefined` when the endpoint cannot do it (so the caller pages instead). */
+async function firstFunderAscending(rpc: RpcLike, wallet: string, inspect: number): Promise<Funding | undefined> {
+  let res: { data?: AscendingRow[] } | null;
+  try {
+    res = await rpc.call<{ data?: AscendingRow[] } | null>('getTransactionsForAddress', [wallet, { transactionDetails: 'full', encoding: 'jsonParsed', sortOrder: 'asc', limit: inspect, maxSupportedTransactionVersion: 1, filters: { status: 'succeeded' } }]);
+  } catch {
+    return undefined;
+  }
+  if (!res || !Array.isArray(res.data)) return undefined;
+  if (res.data.length === 0) return { wallet, funder: null, lamports: null, signature: null, blockTime: null, unknown: 'no-history' };
+  for (const row of res.data) {
+    const got = inboundSol({ blockTime: row.blockTime, meta: row.meta, transaction: { message: row.transaction.message } }, wallet);
+    const signature = row.transaction.signatures?.[0];
+    if (got && got.from !== wallet && signature) return { wallet, funder: got.from, lamports: got.lamports, signature, blockTime: row.blockTime };
+  }
+  return { wallet, funder: null, lamports: null, signature: null, blockTime: null, unknown: 'no-inbound-transfer' };
 }
 
 /** Finds the first funder of a wallet. Never guesses: a wallet whose history is too long or holds no inbound transfer is reported as unknown. */
 export async function traceFunding(rpc: RpcLike, wallet: string, opts: TraceOptions = {}): Promise<Funding> {
-  const cached = await opts.cache?.get(wallet);
-  if (cached) return cached;
-  const pageSize = opts.pageSize ?? 1000;
   const maxPages = opts.maxPages ?? 3;
+  const cached = await opts.cache?.get(wallet);
+  // A wallet whose history was too long for a shallow read is not settled: a deeper read may reach its start.
+  if (cached && !(cached.unknown === 'history-too-long' && maxPages > (cached.pagesTried ?? 3))) return cached;
+  const pageSize = opts.pageSize ?? 1000;
   const inspect = opts.inspect ?? 4;
+  if (opts.ascending) {
+    const fast = await firstFunderAscending(rpc, wallet, inspect);
+    if (fast) {
+      await opts.cache?.set(fast);
+      return fast;
+    }
+  }
   let before: string | undefined;
   let oldest: { signature: string; err: unknown }[] = [];
   let complete = false;
@@ -89,7 +126,7 @@ export async function traceFunding(rpc: RpcLike, wallet: string, opts: TraceOpti
     return f;
   };
   if (oldest.length === 0) return done({ wallet, funder: null, lamports: null, signature: null, blockTime: null, unknown: 'no-history' });
-  if (!complete) return done({ wallet, funder: null, lamports: null, signature: null, blockTime: null, unknown: 'history-too-long' });
+  if (!complete) return done({ wallet, funder: null, lamports: null, signature: null, blockTime: null, unknown: 'history-too-long', pagesTried: maxPages });
   for (const s of oldest.slice(-inspect).reverse()) {
     if (s.err) continue;
     const tx = await rpc.call<ParsedTx | null>('getTransaction', [s.signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 1, commitment: 'confirmed' }]);
@@ -109,6 +146,8 @@ export interface ClusterOptions {
   serviceFanout?: number;
   /** Basis points of supply each wallet holds, to total per cluster. */
   holdings?: ReadonlyMap<string, number>;
+  /** Links from other evidence than a shared funder, for example two orders placed in one Jito bundle (`coordinationLinks`). They join wallets exactly as a shared funder does, and a wallet that appears only here still takes part. */
+  extraLinks?: readonly { a: string; b: string; why: string }[];
 }
 
 export interface ClusterResult {
@@ -125,7 +164,7 @@ export interface ClusterResult {
 export function clusterByFunding(fundings: readonly Funding[], opts: ClusterOptions = {}): ClusterResult {
   const service = opts.serviceFunders ?? new Set<string>();
   const cutoff = opts.serviceFanout ?? 25;
-  const wallets = [...new Set(fundings.map((f) => f.wallet))];
+  const wallets = [...new Set([...fundings.map((f) => f.wallet), ...(opts.extraLinks ?? []).flatMap((l) => [l.a, l.b])])];
   const parent = new Map(wallets.map((w) => [w, w]));
   const find = (x: string): string => {
     let r = x;
@@ -165,6 +204,11 @@ export function clusterByFunding(fundings: readonly Funding[], opts: ClusterOpti
       links.push({ a: group[0]!.wallet, b: group[i]!.wallet, why: `both received their first SOL from ${funder}` });
     }
   }
+  for (const l of opts.extraLinks ?? []) {
+    if (l.a === l.b) continue;
+    union(l.a, l.b);
+    links.push({ a: l.a, b: l.b, why: l.why });
+  }
   const groups = new Map<string, string[]>();
   for (const w of wallets) (groups.get(find(w)) ?? groups.set(find(w), []).get(find(w))!).push(w);
   const clusters: Cluster[] = [];
@@ -181,4 +225,44 @@ export function clusterByFunding(fundings: readonly Funding[], opts: ClusterOpti
   }
   clusters.sort((a, b) => b.members.length - a.members.length);
   return { clusters, alone, unknownFunder, ignoredServices: [...ignored].map(([funder, v]) => ({ funder, ...v })) };
+}
+
+export interface FundingBurst {
+  lamports: bigint;
+  wallets: string[];
+  funders: string[];
+  /** Seconds between the first and the last funding in the group. */
+  spanSecs: number;
+}
+
+/**
+ * Wallets that received exactly the same amount of SOL from different funders within a short window. The first funder differs, so `clusterByFunding` sees nothing; but five fresh
+ * wallets that all hold the same new token, each funded with exactly 1 SOL inside a minute, is how one operator spreads a position through intermediaries (seen on a real mainnet token,
+ * 2026-10-14: six of seven traced holders). It is a SIGNAL, reported beside the clusters and never merged into them: round amounts are common, and a launch draws many buyers at once.
+ */
+export function fundingBursts(fundings: readonly Funding[], opts: { windowSecs?: number; minWallets?: number } = {}): FundingBurst[] {
+  const window = opts.windowSecs ?? 300;
+  const min = opts.minWallets ?? 4;
+  const byAmount = new Map<string, Funding[]>();
+  for (const f of fundings) {
+    if (f.funder === null || f.lamports === null || f.blockTime === null) continue;
+    const k = f.lamports.toString();
+    (byAmount.get(k) ?? byAmount.set(k, []).get(k)!).push(f);
+  }
+  const out: FundingBurst[] = [];
+  for (const [amount, group] of byAmount) {
+    const sorted = [...group].sort((a, b) => a.blockTime! - b.blockTime!);
+    let i = 0;
+    while (i < sorted.length) {
+      let j = i;
+      while (j + 1 < sorted.length && sorted[j + 1]!.blockTime! - sorted[i]!.blockTime! <= window) j++;
+      const run = sorted.slice(i, j + 1);
+      const funders = [...new Set(run.map((f) => f.funder!))];
+      if (run.length >= min && funders.length >= 2) {
+        out.push({ lamports: BigInt(amount), wallets: run.map((f) => f.wallet), funders, spanSecs: run[run.length - 1]!.blockTime! - run[0]!.blockTime! });
+        i = j + 1;
+      } else i += 1;
+    }
+  }
+  return out.sort((a, b) => b.wallets.length - a.wallets.length);
 }

@@ -116,3 +116,5 @@ export async function loadClearing(wasm: BufferSource): Promise<Clearing> {
     sellerReceives: (f, p, s) => amount(x.seller_receives(u64(f, 'filled'), u64(p, 'price'), u64(s, 'the price scale'))),
   };
 }
+
+export * from './v2.js';

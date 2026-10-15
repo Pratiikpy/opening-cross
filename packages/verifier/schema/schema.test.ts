@@ -122,3 +122,54 @@ describe('fairness-proof.v1 schema against the live API', () => {
     expect(checked).toBe(wanted.size);
   }, 400_000);
 });
+
+// Receipt attestations (row S2, ADR-0941): a document signed by a real key and the view served for it with a real Memo anchor on devnet (captured from a run of
+// services/api/test/receipt-harness.ts; docs/evidence/W5-1E.md), and documents the schema must refuse.
+describe('receipt-attestation schemas', () => {
+  const ajv2 = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv2);
+  const doc = load('receipt-attestation.v1.schema.json');
+  const validateDoc = ajv2.compile(doc);
+  const validateView = ajv2.compile(load('receipt-attestation-view.v1.schema.json'));
+  const signed = () => structuredClone(load('fixtures/receipt-attestation-signed.json')) as Record<string, any>;
+  const anchored = () => structuredClone(load('fixtures/receipt-attestation-view-anchored.json')) as Record<string, any>;
+  const none = () => structuredClone(load('fixtures/receipt-attestation-view-none.json')) as Record<string, any>;
+
+  it('accepts the captured signed document and both captured views', () => {
+    expect(validateDoc(signed()), JSON.stringify(validateDoc.errors)).toBe(true);
+    expect(validateView(anchored()), JSON.stringify(validateView.errors)).toBe(true);
+    expect(validateView(none()), JSON.stringify(validateView.errors)).toBe(true);
+    expect(anchored().anchor.signature.length).toBeGreaterThan(80);
+    expect(anchored().signerIsPublished).toBe(true);
+  });
+
+  const brokenDoc: [string, (a: Record<string, any>) => void][] = [
+    ['a wrong schema id', (a) => void (a.body.schema = 'opening-cross/receipt-attestation/v2')],
+    ['a cross that is not an address', (a) => void (a.body.cross = 'x')],
+    ['an uppercase hash', (a) => void (a.body.receiptSha256 = a.body.receiptSha256.toUpperCase())],
+    ['a state that is not final', (a) => void (a.body.state = 'Cleared')],
+    ['an unknown receipt schema', (a) => void (a.body.receiptSchema = 'opening-cross/receipt/v3')],
+    ['a short signature', (a) => void (a.signature = 'abcd')],
+    ['a missing statement', (a) => void delete a.body.statement],
+    ['an extra field in the body', (a) => void (a.body.extra = 1)],
+    ['a missing id', (a) => void delete a.id],
+  ];
+  it.each(brokenDoc)('refuses a document with %s', (_n, mutate) => {
+    const a = signed();
+    mutate(a);
+    expect(validateDoc(a)).toBe(false);
+  });
+
+  const brokenView: [string, (v: Record<string, any>) => void][] = [
+    ['a memo that is not a receipt memo', (v) => void (v.anchor.memo = 'opening-cross/promises/v1 root=' + 'a'.repeat(64) + ' n=1')],
+    ['a proof step on neither side', (v) => void (v.anchor.proof[0].side = 'M')],
+    ['no signer verdict', (v) => void delete v.signerIsPublished],
+    ['zero attestations', (v) => void (v.attestations = 0)],
+    ['an attestation that is not a document', (v) => void (v.attestation = { body: {} })],
+  ];
+  it.each(brokenView)('refuses a view with %s', (_n, mutate) => {
+    const v = anchored();
+    mutate(v);
+    expect(validateView(v)).toBe(false);
+  });
+});

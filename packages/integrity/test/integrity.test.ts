@@ -197,7 +197,7 @@ describe('organic volume and wash injection', () => {
     const r = run(orders, fundings);
     expect(r).toMatchObject({ lowerBps: 10_000, upperBps: 10_000, total: 3000n, experimental: true });
     expect(r.breadth.independentGroups).toBe(30);
-    expect(r.barsUnmet.join(' ')).toMatch(/No Jito bundle data/);
+    expect(r.barsUnmet.join(' ')).toMatch(/No Jito bundle data was gathered/);
   });
 
   it('injected sybils that bid on both sides from one funder pull both bounds down', () => {

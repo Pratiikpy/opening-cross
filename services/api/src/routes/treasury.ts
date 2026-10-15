@@ -4,6 +4,8 @@
 //   GET  /v1/treasuries/:address                one treasury: terms, balances and attestation read from chain, recent events, rights cards, disclosure
 //   GET  /v1/treasuries/:address/updates        the owner's signed updates, each with its anchor and the check against the program's Spent events
 //   POST /v1/treasuries/:address/updates        submit a signed update and the Memo transaction that anchors it
+//   GET  /v1/treasuries/:address/movements      every event that moved value across the treasury's boundary (ADR-0930), newest first, filtered and paged
+//   GET  /v1/treasuries/:address/movements/totals   what the treasury moved, summed by kind, direction and asset
 //
 // Chain beats the database: a treasury's state, balances and attestation are read from chain in the request. The indexer's tables
 // supply history (events, creation time) and the stored updates. A treasury the indexer has not seen yet is still served from chain
@@ -14,7 +16,7 @@ import { type Address, getAddressDecoder, getAddressEncoder, getProgramDerivedAd
 import { getMintDecoder, getTokenDecoder } from '@solana-program/token-2022';
 import { TREASURY_DISCRIMINATOR, TREASURY_PROGRAM_ADDRESS, TreasuryState, decodeTreasuryExt, findVaultPda, getTreasuryDecoder, type Treasury, type TreasuryExt } from '@opening-cross/treasury-client';
 import { type ExtFacts, type TreasuryFacts, rightsCards } from '@opening-cross/rights-card';
-import { createIndexerRpc } from '@opening-cross/indexer';
+import { MOVEMENT_KINDS, type MovementFilter, type MovementKind, createIndexerRpc, listTreasuryMovements, treasuryMovementTotals } from '@opening-cross/indexer';
 import { RequestError } from '../tx.js';
 import { type MemoTx, type SignedUpdate, type UpdateBody, checkAnchor, CLOCK_SKEW_SECONDS, disclosureState, memoTextOf, parseMemo, verifyUpdate } from './treasury-updates.js';
 
@@ -409,6 +411,65 @@ export function registerTreasury(app: FastifyInstance, d: TreasuryDeps): void {
     const address = addr((req.params as { address: string }).address);
     const { rows } = await d.db.query('SELECT * FROM treasury_updates WHERE treasury = $1 ORDER BY sequence DESC LIMIT 200', [address]);
     return send(reply, { treasury: address, network, updates: await Promise.all((rows as UpdateRow[]).map((r) => updateView(d.db, r))) });
+  });
+
+  // GET /v1/treasuries/:address/movements?kind=&direction=out|in&asset=quote|coin&teamOutflow=true&counterparty=&minAmount=&sinceSlot=&before=&limit=
+  //   `kind` takes one or several kinds, comma separated. `before` is the `next` of the previous page. Amounts are decimal strings of atoms of the movement's own asset.
+  //   200 { treasury, network, movements: [...], next }   400 a malformed filter   503 the index has no movement table (migration 020 not applied)
+  const movementFilter = (q: Record<string, string | undefined>): MovementFilter => {
+    const f: MovementFilter = {};
+    if (q.kind !== undefined) {
+      const kinds = q.kind.split(',').map((k) => k.trim()).filter(Boolean);
+      for (const k of kinds) if (!(MOVEMENT_KINDS as readonly string[]).includes(k)) throw new RequestError(400, `unknown movement kind ${JSON.stringify(k)}; the kinds are ${MOVEMENT_KINDS.join(', ')}`);
+      if (kinds.length > 0) f.kinds = kinds as MovementKind[];
+    }
+    if (q.direction !== undefined) {
+      if (q.direction !== 'out' && q.direction !== 'in') throw new RequestError(400, 'direction must be "out" or "in"');
+      f.direction = q.direction;
+    }
+    if (q.asset !== undefined) {
+      if (q.asset !== 'quote' && q.asset !== 'coin') throw new RequestError(400, 'asset must be "quote" or "coin"');
+      f.asset = q.asset;
+    }
+    if (q.teamOutflow !== undefined) {
+      if (q.teamOutflow !== 'true' && q.teamOutflow !== 'false') throw new RequestError(400, 'teamOutflow must be "true" or "false"');
+      if (q.teamOutflow === 'true') f.teamOutflowOnly = true;
+    }
+    if (q.counterparty !== undefined) f.counterparty = addr(q.counterparty);
+    if (q.minAmount !== undefined) f.minAmount = q.minAmount;
+    if (q.sinceSlot !== undefined) f.sinceSlot = q.sinceSlot;
+    return f;
+  };
+  const movementsFailure = (e: unknown, reply: FastifyReply) => {
+    if (e instanceof RangeError) throw new RequestError(400, e.message);
+    if ((e as { code?: string }).code === '42P01') return send(reply, { error: 'the index has no treasury movement table yet (the indexer has not applied migration 020)' }, 503);
+    throw e;
+  };
+
+  app.get('/v1/treasuries/:address/movements', async (req, reply) => {
+    const address = addr((req.params as { address: string }).address);
+    const q = req.query as Record<string, string | undefined>;
+    try {
+      const page = await listTreasuryMovements(d.db, {
+        ...movementFilter(q),
+        treasury: address,
+        ...(q.before !== undefined && { before: q.before }),
+        ...(q.limit !== undefined && { limit: /^\d{1,6}$/.test(q.limit) ? Number(q.limit) : Number.NaN }),
+      });
+      return send(reply, { treasury: address, network, ...page });
+    } catch (e) {
+      return movementsFailure(e, reply);
+    }
+  });
+
+  app.get('/v1/treasuries/:address/movements/totals', async (req, reply) => {
+    const address = addr((req.params as { address: string }).address);
+    const q = req.query as Record<string, string | undefined>;
+    try {
+      return send(reply, { treasury: address, network, ...(q.sinceSlot !== undefined && { sinceSlot: q.sinceSlot }), totals: await treasuryMovementTotals(d.db, address, q.sinceSlot) });
+    } catch (e) {
+      return movementsFailure(e, reply);
+    }
   });
 
   app.post('/v1/treasuries/:address/updates', async (req, reply) => {

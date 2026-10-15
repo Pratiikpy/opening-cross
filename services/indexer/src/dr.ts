@@ -71,7 +71,11 @@ export const TABLE_CLASS: Readonly<Record<string, TableClass>> = {
   graduation_rounds: { kind: 'chain', note: 'graduation rounds and their tallies, from RoundStarted, VoteCast, VolumePosted and RoundFinalized' },
   graduation_votes: { kind: 'chain', note: 'tokens locked behind a venue, from VoteCast and VoteWithdrawn' },
   graduation_outcomes: { kind: 'chain', note: 'the published outcome of a passed vote, from OutcomePublished' },
+  // Migration 020: the two market openings of cross_settle are projected from events; the movement read model is computed from the treasury tables.
+  settle_futarchy_daos: { kind: 'chain', note: 'MetaDAO futarchy DAOs a cross opened, from FutarchyDaoSeeded' },
+  settle_presales: { kind: 'chain', note: 'fixed-price presale tranches a cross opened, from FixedPricePresaleOpened' },
   // Computed from other tables.
+  treasury_movements: { kind: 'derived', note: 'value moving across a treasury boundary, one row per event: recomputed from treasury_events, treasury_proposals and treasury_grants by backfillTreasuryMovements' },
   promise_grades: { kind: 'derived', note: 'each promise scored against the realised clearing price: recomputed from promises and crosses' },
   preset_uses: { kind: 'derived', note: 'which crosses used which preset, read from the memo in each creation transaction: read again from the chain' },
   // Safe to drop: read again on demand.
@@ -109,6 +113,11 @@ export const TABLE_CLASS: Readonly<Record<string, TableClass>> = {
   alert_deliveries: { kind: 'backup', note: 'log of alerts sent' },
   alert_telegram_codes: { kind: 'backup', note: 'pending Telegram link codes' },
   alert_telegram_cursor: { kind: 'backup', note: 'where the Telegram updates were read to' },
+  alert_insider_balances: { kind: 'backup', note: 'insider and team watching (ADR-0940): the balance last accepted as the baseline per wallet; classed as backup, not cache, because a fall that happened while the baseline was missing would never be reported' },
+  alert_movements: { kind: 'backup', note: 'insider and team watching (ADR-0940): the falls that were seen, with the time they were detected, which the chain cannot reproduce' },
+  receipt_attestations: { kind: 'backup', note: 'signed fairness receipts the promiser issued (ADR-0941): the signature and time are not reproducible from the chain' },
+  receipt_anchors: { kind: 'backup', note: 'the Merkle roots of receipt batches written on chain, with the transaction that carried them' },
+  receipt_anchor_members: { kind: 'backup', note: 'which receipt sits in which anchored batch' },
   support_requests: { kind: 'backup', note: 'requests holders sent to support (personal data)' },
 };
 

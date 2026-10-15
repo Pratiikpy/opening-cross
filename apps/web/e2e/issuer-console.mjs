@@ -88,7 +88,7 @@ try {
   log(await visible(page.getByTestId(`pick-${CROSS}`), 30_000), 'overview: the issuer’s own cross is listed');
   log(await visible(page.getByTestId('raise-status')), 'overview: raise status of the selected cross');
   log(/has not opened yet|taking orders/.test((await page.getByTestId('tasks').textContent()) ?? ''), 'overview: the issuer’s cross is a task, said in plain words, by the clock');
-  log(/did not read|does not read any pool/i.test((await page.getByTestId('liquidity-note').textContent()) ?? ''), 'overview: liquidity states honestly that no pool is read');
+  log(/No pool exists yet/i.test((await page.getByTestId('liquidity-note').textContent()) ?? ''), 'overview: a cross that has not cleared says no pool exists yet, and links to its liquidity page');
   log(await visible(page.getByTestId('no-holders')), 'overview: a cross with no bids shows an empty register, not a made-up one');
   await page.screenshot({ path: `${OUT}/console-01-overview.png`, fullPage: false });
 

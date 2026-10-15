@@ -16,6 +16,7 @@ export const MORE_NAV = [
   { href: '/live', label: 'Live' },
   { href: '/replay', label: 'Replay' },
   { href: '/gates', label: 'Gates' },
+  { href: '/pools', label: 'Pools' },
   { href: '/treasury', label: 'Treasuries' },
   { href: '/export', label: 'Export' },
   { href: '/issuer', label: 'For issuers' },

@@ -149,6 +149,24 @@ describeDb('operations console', () => {
     expect(log.at(-1).detail.missingEvidenceAcknowledged).toEqual(['holders']);
   });
 
+  it('lets the second reviewer read the evidence the first one gathered, and shows which sources failed in the queue', async () => {
+    failSource = true;
+    const open = await call('POST', '/v1/ops/listings', 'alice', { mint: MINT, note: 'Holder source was down when this was opened' });
+    failSource = false;
+    const id = open.body.id;
+    const one = await call('GET', `/v1/ops/listings/${id}`, 'bob');
+    expect(one.status).toBe(200);
+    expect(one.body).toMatchObject({ id, mint: MINT, requested_by: 'alice', status: 'pending', decided_by: null });
+    expect(one.body.evidence.safety).toEqual({ ok: true, data: { verdict: 'disclosures' } });
+    expect(one.body.evidence.holders).toEqual({ ok: false, error: 'HTTP 503' });
+    const queue = (await call('GET', '/v1/ops/listings?status=pending', 'viewer')).body.listings as { id: string; evidence_failed: string[] }[];
+    expect(queue.find((l) => l.id === id)!.evidence_failed).toEqual(['holders']);
+    const clean = await call('POST', '/v1/ops/listings', 'alice', { mint: MINT, note: 'All sources answered' });
+    expect((await call('GET', '/v1/ops/listings?status=pending', 'viewer')).body.listings.find((l: { id: string }) => l.id === clean.body.id).evidence_failed).toEqual([]);
+    expect((await call('GET', '/v1/ops/listings/does-not-exist', 'viewer')).status).toBe(404);
+    expect((await call('GET', `/v1/ops/listings/${id}`, null)).status).toBe(401);
+  });
+
   it('refuses a listing with nothing to list, and a bad address', async () => {
     expect((await call('POST', '/v1/ops/listings', 'alice', { note: 'nothing here' })).status).toBe(400);
     expect((await call('POST', '/v1/ops/listings', 'alice', { mint: 'not-an-address-but-long-enough-for-length-x', note: 'bad' })).status).toBe(400);
@@ -234,6 +252,20 @@ describeDb('operations console', () => {
     const removed = await verifyChain(db);
     expect(removed.ok).toBe(false);
     expect(removed.brokenAt!.why).toMatch(/removed or inserted/);
+  });
+
+  it('reads the end of the log newest first, in pages that join up', async () => {
+    const all = (await call('GET', '/v1/ops/log?limit=500', 'viewer')).body.entries as { seq: number; hash: string }[];
+    expect(all.length).toBeGreaterThan(10);
+    const newest = (await call('GET', '/v1/ops/log?order=desc&limit=5', 'viewer')).body.entries as { seq: number; hash: string }[];
+    expect(newest.map((e) => e.seq)).toEqual(all.slice(-5).reverse().map((e) => e.seq));
+    const older = (await call('GET', `/v1/ops/log?before=${newest.at(-1)!.seq}&limit=5`, 'viewer')).body.entries as { seq: number }[];
+    expect(older.map((e) => e.seq)).toEqual(all.slice(-10, -5).reverse().map((e) => e.seq));
+    expect((await call('GET', `/v1/ops/log?before=${all[0]!.seq}`, 'viewer')).body.entries).toEqual([]);
+    expect((await call('GET', '/v1/ops/log?order=sideways', 'viewer')).status).toBe(400);
+    expect((await call('GET', '/v1/ops/log?order=desc&after=3', 'viewer')).status).toBe(400);
+    expect((await call('GET', '/v1/ops/log?order=asc&before=9', 'viewer')).status).toBe(400);
+    expect((await call('GET', '/v1/ops/log?before=0', 'viewer')).status).toBe(400);
   });
 
   it('serialises concurrent actions into one valid chain', async () => {

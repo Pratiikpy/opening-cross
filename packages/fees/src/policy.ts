@@ -20,12 +20,15 @@ export function allocateProtocolFee(kind: string, protocolFee: bigint, referrals
   return { gross: protocolFee, referrals, rebatePool, operating };
 }
 
-/** Per quote mint, the allocation over all matched entries. */
+/**
+ * Per quote mint, the allocation over all matched entries. A cross's referrals are the router's payouts for it (`referralsByCross`, none for a cross that
+ * names a referrer on chain) plus the referral its own finalize paid (`LedgerEntry.referral`, which is already out of the protocol fee).
+ */
 export function allocateAll(entries: readonly LedgerEntry[], referralsByCross: ReadonlyMap<string, bigint> = new Map()): Record<string, Allocation> {
   const out: Record<string, { gross: bigint; referrals: bigint; rebatePool: bigint; operating: bigint }> = {};
   for (const e of entries) {
     if (e.verdict !== 'MATCH') continue;
-    const a = allocateProtocolFee(e.facts.kind, e.recorded.protocolFee, referralsByCross.get(e.facts.cross) ?? 0n);
+    const a = allocateProtocolFee(e.facts.kind, e.recorded.protocolFee, (referralsByCross.get(e.facts.cross) ?? 0n) + e.referral);
     const t = (out[e.facts.quoteMint] ??= { gross: 0n, referrals: 0n, rebatePool: 0n, operating: 0n });
     t.gross += a.gross;
     t.referrals += a.referrals;

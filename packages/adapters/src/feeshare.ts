@@ -10,6 +10,8 @@ export const DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS = address('dfsdo2UqvwfN8DuUVrMR
 const PROGRAM = new PublicKey(DYNAMIC_FEE_SHARING_PROGRAM_ADDRESS);
 const SYSTEM_PROGRAM = address('11111111111111111111111111111111');
 export const MAX_FEE_SHARE_RECIPIENTS = 5;
+/** The program refuses a vault with fewer than two recipients (it answers `ExceededUser`; checked against the real binary). */
+export const MIN_FEE_SHARE_RECIPIENTS = 2;
 
 const disc = (name: string) => createHash('sha256').update(`global:${name}`).digest().subarray(0, 8);
 const pda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, PROGRAM)[0];
@@ -40,7 +42,7 @@ export type CreateFeeShareVaultInput = {
 
 export function buildCreateFeeShareVault(input: CreateFeeShareVaultInput): { instruction: Instruction; addresses: ReturnType<typeof feeShareAddresses> } {
   const r = input.recipients;
-  if (r.length < 1 || r.length > MAX_FEE_SHARE_RECIPIENTS) throw new Error(`a fee-sharing vault has 1 to ${MAX_FEE_SHARE_RECIPIENTS} recipients`);
+  if (r.length < MIN_FEE_SHARE_RECIPIENTS || r.length > MAX_FEE_SHARE_RECIPIENTS) throw new Error(`a fee-sharing vault has ${MIN_FEE_SHARE_RECIPIENTS} to ${MAX_FEE_SHARE_RECIPIENTS} recipients`);
   if (new Set(r.map((x) => x.address)).size !== r.length) throw new Error('a recipient is listed twice');
   for (const x of r) if (!Number.isInteger(x.share) || x.share <= 0 || x.share > 0xffff_ffff) throw new Error('every share must be a positive integer');
   const a = feeShareAddresses(input.base.address, input.mint);
@@ -200,4 +202,60 @@ export function buildFundFeeShareFromDammFees(input: {
     ],
     data: new Uint8Array(data),
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Reading a vault, and what a recipient can claim (ADR-0912, row D7).
+//
+// The program keeps one accumulator, `fee_per_share`, a Q64 fixed-point number: every funding adds `(amount << 64) / total_share` to it. A recipient's
+// claim is `share * (fee_per_share - checkpoint) >> 64`, and the claim sets the recipient's checkpoint to the accumulator. So what a recipient can claim
+// is computable from the vault account alone, with no transaction. The layout (offsets after the 8-byte discriminator) is the program's `FeeVault`
+// (`meteora-resources/docs/developer-guides__dynamic-fee-sharing__program__accounts.md`, zero-copy; in a user record the address is at 0, the share at 32, the claimed amount at 40 and the 16-byte-aligned checkpoint at 64, read off a vault the real binary wrote) and is checked
+// against the real binary in `tests/core/test/meteora-feeshare-claimable.test.ts`: the computed amount equals the amount a real claim pays.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The program's fixed-point scale for `fee_per_share` (`PRECISION_SCALE`). */
+export const FEE_SHARE_PRECISION_BITS = 64n;
+const FEE_VAULT_DISCRIMINATOR = [192, 178, 69, 232, 58, 149, 157, 132];
+const FEE_VAULT_SIZE = 8 + 640;
+const FEE_VAULT_USERS_AT = 8 + 240;
+const FEE_VAULT_USER_SIZE = 80;
+
+export type FeeShareUser = { index: number; address: Address; share: number; feeClaimed: bigint; checkpoint: bigint };
+export type FeeShareVaultAccount = { owner: Address; tokenMint: Address; tokenVault: Address; totalShare: number; totalFundedFee: bigint; feePerShare: bigint; base: Address; users: FeeShareUser[] };
+
+/** Decodes a Dynamic Fee Sharing `FeeVault` account; null when the bytes are not one. Unused user slots (default address, zero share) are left out. */
+export function decodeFeeShareVault(data: Uint8Array): FeeShareVaultAccount | null {
+  if (data.length < FEE_VAULT_SIZE || !FEE_VAULT_DISCRIMINATOR.every((b, i) => data[i] === b)) return null;
+  const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const key = (at: number): Address => address(new PublicKey(data.subarray(at, at + 32)).toBase58());
+  const u128 = (at: number) => v.getBigUint64(at, true) | (v.getBigUint64(at + 8, true) << 64n);
+  const zero = '11111111111111111111111111111111';
+  const users: FeeShareUser[] = [];
+  for (let i = 0; i < MAX_FEE_SHARE_RECIPIENTS; i++) {
+    const at = FEE_VAULT_USERS_AT + i * FEE_VAULT_USER_SIZE;
+    const who = key(at);
+    const share = v.getUint32(at + 32, true);
+    if (who === zero && share === 0) continue;
+    users.push({ index: i, address: who, share, feeClaimed: v.getBigUint64(at + 40, true), checkpoint: u128(at + 64) });
+  }
+  return { owner: key(8), tokenMint: key(8 + 32), tokenVault: key(8 + 64), totalShare: v.getUint32(8 + 112, true), totalFundedFee: v.getBigUint64(8 + 120, true), feePerShare: u128(8 + 128), base: key(8 + 144), users };
+}
+
+/** What the accumulator rises by when `amount` is funded into a vault of `totalShare` shares (floor division, as the program does). */
+export function feeShareAccumulatorStep(amount: bigint, totalShare: number): bigint {
+  if (totalShare <= 0) throw new Error('a vault has at least one share');
+  return (amount << FEE_SHARE_PRECISION_BITS) / BigInt(totalShare);
+}
+
+/** What the recipient at `index` would be paid by a claim right now: `share * (fee_per_share - checkpoint) >> 64`. Zero for an index with no recipient. */
+export function feeShareClaimable(vault: FeeShareVaultAccount, index: number): bigint {
+  const u = vault.users.find((x) => x.index === index);
+  if (!u || vault.feePerShare <= u.checkpoint) return 0n;
+  return (BigInt(u.share) * (vault.feePerShare - u.checkpoint)) >> FEE_SHARE_PRECISION_BITS;
+}
+
+/** What the recipient at `index` could claim once `extra` more is funded into the vault (a projection; nothing is sent). */
+export function feeShareClaimableAfterFunding(vault: FeeShareVaultAccount, index: number, extra: bigint): bigint {
+  return feeShareClaimable({ ...vault, feePerShare: vault.feePerShare + feeShareAccumulatorStep(extra, vault.totalShare) }, index);
 }

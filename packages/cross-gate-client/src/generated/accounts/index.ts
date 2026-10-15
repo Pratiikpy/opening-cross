@@ -6,6 +6,8 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './denied.js';
 export * from './gateConfig.js';
 export * from './lock.js';
 export * from './pass.js';
+export * from './terms.js';

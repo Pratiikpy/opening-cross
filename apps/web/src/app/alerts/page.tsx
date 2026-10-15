@@ -3,14 +3,14 @@ import { AlertsPage } from '@/components/alerts/alerts-page';
 
 export const metadata: Metadata = {
   title: 'Alerts',
-  description: 'Be told when an order of yours can be claimed and before a cross or market you follow opens or closes: browser notification, email or Telegram, each one optional and removable.',
+  description: 'Be told when an order of yours can be claimed, before a cross or market you follow opens or closes, and when an insider of a token or a treasury you follow moves value out: browser notification, email or Telegram, each one optional and removable.',
 };
 
 export default function Alerts() {
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-12 sm:px-6">
       <h1 className="text-[34px] font-semibold tracking-tight">Alerts</h1>
-      <p className="mt-2 max-w-xl text-muted">What needs you now, what you follow, and how Opening Bell reaches you when a page is not open.</p>
+      <p className="mt-2 max-w-xl text-muted">What needs you now, what you follow, who is moving what, and how Opening Bell reaches you when a page is not open.</p>
       <AlertsPage />
     </div>
   );

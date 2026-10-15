@@ -47,7 +47,7 @@ This is the long form of /llms.txt. Every route below exists in services/api/src
 - GET /v1/accuracy: every signed band counted exactly once as HIT, MISS, SCORED, VOID or UNRESOLVED, with calibration per time bucket. Misses and crosses that never printed are in the counts.
 - GET /v1/tokens/:mint/authenticity: is this the issuer's real token. Mainnet mints only; otherwise `comparable: false`.
 - GET /v1/tokens/:mint/safety: what the issuer of a token can do to escrowed balances, read from the mint account: pause state, pause, permanent-delegate, freeze, mint and close authorities, transfer hook, transfer fee, default account state, non-transferable, display multiplier and a scheduled change, interest, confidential transfers, unknown extensions. Each risk has a code, a level (blocker, halt or disclosure), a plain sentence and the holder. `verdict` is blocked (a cross cannot be created), halted (no cross can print while it holds), disclosures or clear. Cached 30 seconds. 404 for a missing mint, 422 for an account that is not a token mint. The same verdict is the `safety` field of `GET /v1/crosses/:address` for the base mint.
-- GET /v1/router/quote?base=&quote=&side=&amount=: where one order would get the best price right now. `amount` is in base atoms. Compares every live cross of the pair (open books re-cleared with the order added, net of fees; sealed books have no indicative price) with a live Jupiter route (mainnet only). Prices are quote atoms per one whole base token. Venues filling the whole amount rank first, then the better price for the side. Every excluded venue carries its reason; Meteora pools are not priced by the router. Quotes only: nothing is signed or sent.
+- GET /v1/router/quote?base=&quote=&side=&amount=: where one order would get the best price right now. `amount` is in base atoms. Compares every live cross of the pair (open books re-cleared with the order added, net of fees; sealed books have no indicative price), the Meteora DAMM v2 pool and DLMM pair the adapters open for the pair (priced from the pool's own accounts, fee included, executable now; `pools=0` leaves them out) and a live Jupiter route (mainnet only). Prices are quote atoms per one whole base token. Venues filling the whole amount rank first, then the better price for the side. Every excluded venue carries its reason; A pool that cannot be read or does not trade the pair is excluded with its reason. Quotes only: nothing is signed or sent.
 - GET /v1/replay/:address: launch replay. Every on-chain event of one cross in order (created, orders placed with their limit terms when the book is open, reveals, cancels, cleared, claims, finalized) with slot, block time and transaction signature, plus a summary. `complete` is true once the cross is finalized.
 - GET /v1/replay?days=&limit=: crosses whose call opened in the last `days` days (1 to 365, default 30), newest first, each with outcome, order and wallet counts and the times of its first order, clearing and finalization.
 - GET /v1/premium/summary?days=: premium of Solana stock tokens against a reference, by order size and market session, with exclusions counted. `days` is an integer from 1 to 90 (default 7). It measures mainnet liquidity whichever cluster the API follows.
@@ -149,16 +149,51 @@ Unsigned transactions:
 - POST /v1/tx/alpha-vault-fill: anyone fills the vault from the pool.
 - POST /v1/tx/alpha-vault-claim: claim what the vault bought.
 - POST /v1/tx/alpha-vault-withdraw-remaining: take back what an oversubscribed pro-rata vault did not use.
+- POST /v1/tx/alpha-vault-withdraw: take back a deposit from an Alpha Vault while its deposit window is open.
+- POST /v1/tx/alpha-vault-close-escrow: close a vault deposit escrow once it is empty and get its rent back.
 - GET /v1/crosses/:address/alpha-vault: the Alpha Vault of a cross's pool and an owner's escrow.
 - POST /v1/tx/metlock-create: lock tokens for a recipient on a vesting schedule in Met Lock.
 - POST /v1/tx/metlock-claim: the recipient claims what has vested.
 - GET /v1/metlock/escrows/:escrow: a Met Lock escrow: total, vested, claimable.
-- POST /v1/tx/fee-share-create: create a Dynamic Fee Sharing vault for up to five recipients.
+- POST /v1/tx/fee-share-create: create a Dynamic Fee Sharing vault for two to five recipients.
 - POST /v1/tx/fee-share-fund: fund a fee-sharing vault.
 - POST /v1/tx/fee-share-claim: a recipient claims their share.
 - POST /v1/tx/fee-share-transfer-position: hand a DAMM v2 position to the vault; one way.
 - POST /v1/tx/fee-share-fund-from-damm: pull the position's fees into the vault.
 - GET /v1/fee-share/:base/:mint: a fee-sharing vault and its shares.
+- GET /v1/pools: the Meteora DAMM v2 pool and DLMM pair the adapters open for a base and quote mint: price, reserves, fee, depth both ways and where each figure was read.
+- GET /v1/pools/:address: one pool's health: price, reserves, fee, depth and price impact both ways, the bin ladder of a DLMM pair, persistence since the API first read it.
+- GET /v1/pools/route: the router's ranking for an order with the pools merged in and the pools it read named (the same pools are in GET /v1/router/quote).
+- GET /v1/pools/by-cross/:address: the issuer's view of a cross's liquidity: the pools of its token pair and their health.
+- GET /v1/pools/summary: the liquidity section of the dashboard: the pools of recent crosses in one answer.
+- GET /v1/depth/cross/:address: how much a cross takes before its price moves, beside what its pools take, for a ladder of sizes.
+- POST /v1/pools/swap-tx: an unsigned swap on a DAMM v2 pool or DLMM pair for a wallet, with the quote it was built from, a minimum output the program enforces, and the accounts it opens.
+- GET /v1/treasuries: indexed treasuries with their live chain state.
+- GET /v1/treasuries/:address: one treasury: terms, balances and attestation read from chain, recent events, rights cards, disclosure.
+- GET /v1/treasuries/:address/updates: the owner's signed updates, each with its anchor and the check against the program's Spent events.
+- POST /v1/treasuries/:address/updates: submit a signed update and the Memo transaction that anchors it.
+- GET /v1/treasuries/:address/movements?kind=&direction=&asset=&teamOutflow=&counterparty=&minAmount=&sinceSlot=&before=&limit=: every event that moved value across the treasury's boundary, newest first, paged; 400 for a malformed filter.
+- GET /v1/treasuries/:address/movements/totals?sinceSlot=: what the treasury moved, summed by kind, direction and asset (quote and coin are never added together).
+- GET /v1/crosses/:address/receipt-attestation?optional=1: the signed, anchored attestation of a settled cross's receipt, with its Merkle proof to the anchor on chain; 404 until one exists, or a plain 200 with attestation: null when optional=1.
+- GET /v1/crosses/:address/damm-rewards: the reward slots of the cross's DAMM v2 pool: funder, mint, duration, what is funded and what a position can claim.
+- POST /v1/tx/damm-reward-init: open a reward slot on the pool (the pool creator signs).
+- POST /v1/tx/damm-reward-fund: fund a reward slot; the reward streams to positions in proportion to liquidity.
+- POST /v1/tx/damm-reward-claim: a position owner claims its reward.
+- POST /v1/tx/damm-reward-update-funder: hand a reward slot to another funder.
+- POST /v1/tx/damm-reward-update-duration: change a reward slot's duration once its stream has ended.
+- POST /v1/tx/damm-reward-withdraw-ineligible: the funder takes back the reward that streamed while the pool had no liquidity, once the stream has ended.
+- POST /v1/tx/damm-lp-join: join the cross's DAMM v2 pool as a liquidity provider: a new position owned by the wallet, holding a share of the pool's liquidity at its current ratio.
+- GET /v1/crosses/:address/ladder?position=: the conviction ladder on the cross's DLMM pair: its bins, what has filled and what is left.
+- POST /v1/tx/ladder-limit-place: lay the ladder as DLMM limit orders.
+- POST /v1/tx/ladder-limit-cancel: cancel limit-order bins and take back what they hold.
+- POST /v1/tx/ladder-limit-close: close a limit-order account and get its rent back.
+- POST /v1/tx/ladder-rebalance-withdraw: step 1 of a rebalance: withdraw the whole ladder position, claim its fees and close it.
+- POST /v1/tx/ladder-rebalance-relay: step 2 of a rebalance: lay the base again above the new price.
+- POST /v1/tx/ladder-position-place: the first placement of a position ladder, optionally locked until a time (only while the pair is still closed).
+- POST /v1/tx/presale-deposit: a buyer deposits quote tokens into the fixed-price tranche a cross opened.
+- POST /v1/tx/presale-claim: a buyer claims the tokens a completed tranche bought (the quote refund of a failed sale is not built yet).
+- POST /v1/tx/presale-creator-withdraw: the creator withdraws the raise of a completed tranche, or the base supply of a failed one.
+- POST /v1/curve/calibrate: turn a book of bids (or a cross's) into the segment weights of a launch curve whose stored liquidity ratios equal the demand.
 - GET /v1/arbiter: who rules on insider challenges, if anyone has been named.
 - GET /v1/crosses/:address/challenge-state: the open challenges of a cross, the bond, the window and who can rule.
 - POST /v1/treasuries/:address/tx/init-ext: extend a treasury once (votes, NAV window, distributions, revenue rounds, disclosure, assignment gate, wind-down); also the flagship preset.

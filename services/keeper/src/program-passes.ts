@@ -24,6 +24,7 @@ import {
 import type { Action } from './plan.js';
 import { type BountyFacts, type ListingFacts, planBacking, planBounty, planGraduation, planListing } from './program-duties.js';
 import type { Duty, KeeperDeps, PassResult } from './keeper.js';
+import { partnerFeesPass } from './partner-fees.js';
 
 /** The sender the passes use: runs the instructions of one action (a dry run only records it). */
 export type Perform = (d: KeeperDeps, result: PassResult, action: Action, build: () => Promise<Instruction[][]>) => Promise<boolean>;
@@ -46,6 +47,7 @@ export async function programPasses(d: KeeperDeps, now: bigint, result: PassResu
   if (duties.has('graduation') && d.charters) await graduationPass(d, now, result, perform);
   if (duties.has('listings') && d.listings) await listingsPass(d, now, result, perform);
   if (duties.has('bounties') && d.bounties) await bountiesPass(d, now, result, perform);
+  if (duties.has('partner-fees')) await partnerFeesPass(d, now, result, perform);
 }
 
 async function inScope(d: KeeperDeps, cross: Address): Promise<boolean> {

@@ -11,7 +11,7 @@ Environment: LiteSVM with the real `dynamic_fee_sharing.so` (`tests/fixtures`, M
 | Each recipient claims: 600,000,000, 300,000,000 and 100,000,000 received | equal |
 | A second funding of 500,000,000 and a second claim by the first recipient: 300,000,000 more | 900,000,000 in total |
 | A wallet that is not a recipient cannot claim; a recipient cannot claim another's index; neither balance moves | refused |
-| Builder refuses zero recipients, six recipients and a repeated recipient | throws |
+| Builder refuses zero recipients, six recipients and a repeated recipient | throws (a single recipient is refused as well since wave 5.1: the real program answers `ExceededUser`, ADR-0912) |
 
 ### DAMM v2 fees routed into the vault
 

@@ -36,6 +36,8 @@ export interface Funding {
   blockTime: number | null;
   /** Why `funder` is null: the history was longer than the pages read, or the first transactions held no SOL transfer in. */
   unknown?: 'history-too-long' | 'no-inbound-transfer' | 'no-history';
+  /** For `history-too-long`: how many pages of signatures were read before giving up, so a later run with a deeper limit knows the answer is not final. */
+  pagesTried?: number;
 }
 
 export interface Cluster {

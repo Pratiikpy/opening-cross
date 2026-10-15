@@ -1,0 +1,24 @@
+{
+  "name": "@opening-cross/cleanverse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the Cleanverse cooperate API (A-Pass, validator compliance reads, faucet): AES envelope, response-code handling, strict response validation, retries on 5xx and timeouts only.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run test",
+    "sandbox:smoke": "tsx src/smoke.ts"
+  },
+  "dependencies": {
+    "@opening-cross/cross-gate-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

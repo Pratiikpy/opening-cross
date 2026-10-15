@@ -10,13 +10,17 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "tsx src/main.ts",
+    "start:gate": "tsx src/main-gate.ts",
     "devnet-pass": "tsx scripts/devnet-pass.ts",
+    "referral-proof": "tsx scripts/referral-proof.ts",
     "test": "vitest run test"
   },
   "dependencies": {
+    "@opening-cross/adapters": "workspace:*",
     "@opening-cross/cross-backing-client": "workspace:*",
     "@opening-cross/cross-bounty-client": "workspace:*",
     "@opening-cross/cross-core-client": "workspace:*",
+    "@opening-cross/cross-gate-client": "workspace:*",
     "@opening-cross/cross-graduate-client": "workspace:*",
     "@opening-cross/cross-listing-client": "workspace:*",
     "@opening-cross/cross-mandate-client": "workspace:*",
@@ -27,7 +31,9 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@coral-xyz/anchor": "0.31.1",
     "@opening-cross/cross-calendar-client": "workspace:*",
+    "@opening-cross/cross-settle-client": "workspace:*",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",

@@ -12,3 +12,46 @@
 		-Server
 	}
 }
+
+# The documentation service (services/docs-mcp, compose profile "docs"): the repository's documents as a site, over MCP at /mcp, and as JSON. It is public and read-only.
+# Set DOCS_SITE_HOST to the hostname it should answer on. Left unset it is docs.localhost, which Caddy serves with its own internal certificate and which no outside client
+# can reach, so the block does nothing until a hostname is chosen on purpose.
+{$DOCS_SITE_HOST:docs.localhost} {
+	encode zstd gzip
+	reverse_proxy docs:8793
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}
+
+# The operations console API (services/ops, compose profile "ops"), for a web app that cannot reach it on a private address. It answers only from OPS_ALLOWED_IPS, only
+# for /v1/ops/..., and never for the monitor's webhook (/v1/ops/hooks/...), which the monitor reaches on the compose network. Every request still needs a bearer token.
+# Left unset, OPS_SITE_HOST is ops.localhost (unreachable from outside) and OPS_ALLOWED_IPS is the loopback address, so nothing is exposed until both are chosen.
+# The browser never calls this: the web app's own /ops/api route does, with OPS_CONSOLE_URL set to https://<OPS_SITE_HOST>. Caddy matches the address it sees, so behind a
+# load balancer that hides the client, allow the balancer's range and put the restriction there as well.
+{$OPS_SITE_HOST:ops.localhost} {
+	@allowed remote_ip {$OPS_ALLOWED_IPS:127.0.0.1}
+	@console path /v1/ops/*
+	@hooks path /v1/ops/hooks/*
+	handle @allowed {
+		handle @hooks {
+			respond 404
+		}
+		handle @console {
+			reverse_proxy ops:8792
+		}
+		handle {
+			respond 404
+		}
+	}
+	handle {
+		respond 403
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}

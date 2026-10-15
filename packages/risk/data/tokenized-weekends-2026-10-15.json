@@ -1,0 +1,646 @@
+{
+ "schema": "opening-cross/risk/tokenized-weekends/v1",
+ "generatedAt": "2026-10-15",
+ "sources": {
+  "token": "GeckoTerminal public API, deepest USDC pool per mint, hourly, last 175 days",
+  "underlying": "Yahoo Finance public chart endpoint, regular-session hourly bars",
+  "mints": "Jupiter token list v2 (Backed xStocks metadata icon, mint prefix Xs, liquidity of at least 100000 USD)"
+ },
+ "policy": {
+  "alpha": {
+   "overnight": 0.005,
+   "weekend": 0.01,
+   "long": 0.02
+  },
+  "confidence": 0.95,
+  "liquidationBonusBps": 500,
+  "bufferBps": 100,
+  "capBps": 8000,
+  "minLossBps": 1000,
+  "stressFactor": 1.5,
+  "uncertifiedCapBps": 4000
+ },
+ "perToken": [
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "SPYx",
+   "mint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 80680,
+   "jupiterLiquidityUsd": 4198244,
+   "pool": "6truu3rZuiB9rKQg4VYC3Dt3QwV7DgwGqXrYUcrvnDDE",
+   "poolLiquidityUsd": 2129006,
+   "poolCreated": "2026-02-11T11:14:22Z",
+   "tokenHours": 3846,
+   "closures": 25,
+   "meanCoverage": 0.8819360414866033,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 47.09111605456506,
+    "closeBasisP95Bps": 109.42310196542904,
+    "gapMedianAbsBps": 26.644672073080635,
+    "tokenImpliedErrorMedianBps": 20.2540065083884,
+    "tokenImpliedErrorP95Bps": 71.65944681931919,
+    "naiveErrorMedianBps": 26.715855594226348,
+    "naiveErrorP95Bps": 101.08288350611814,
+    "tokenBeatsNaive": 0.64,
+    "directionAgreement": {
+     "n": 9,
+     "share": 1
+    },
+    "slope": 0.8223342195441309,
+    "rSquared": 0.542605513257637
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -1207.3326154587328,
+    "worstGapBps": -67.78498161988611
+   }
+  },
+  {
+   "weekendLowBreachCases": [
+    {
+     "date": "2026-07-20",
+     "ltvBps": 8000,
+     "lineBps": -1579,
+     "tokenLowBps": -2850,
+     "tokenPreOpenBps": 73,
+     "gapBps": 100,
+     "coverage": 0.91
+    }
+   ],
+   "weekendLowReplay": [
+    {
+     "date": "2026-07-20",
+     "bandRule": "wait",
+     "bandReasons": [
+      "sources disagree by 3985 bps (limit 400)",
+      "band half-width 8120 bps is too wide to mean anything"
+     ],
+     "spotRule": "liquidate",
+     "spotLtvBps": 11188
+    }
+   ],
+   "ticker": "QQQx",
+   "mint": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 37982,
+   "jupiterLiquidityUsd": 1851967,
+   "pool": "GMjGLWzvK75LPetrgAmdeXnvxc4fUuQPwJxeQqTDU1aG",
+   "poolLiquidityUsd": 2193531,
+   "poolCreated": "2026-02-11T09:58:40Z",
+   "tokenHours": 4149,
+   "closures": 25,
+   "meanCoverage": 0.9745825410544512,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 23.504742064812678,
+    "closeBasisP95Bps": 66.569374944494,
+    "gapMedianAbsBps": 36.113270806910066,
+    "tokenImpliedErrorMedianBps": 26.835844163607643,
+    "tokenImpliedErrorP95Bps": 68.24220071094248,
+    "naiveErrorMedianBps": 35.98332325717923,
+    "naiveErrorP95Bps": 175.53357613842627,
+    "tokenBeatsNaive": 0.68,
+    "directionAgreement": {
+     "n": 12,
+     "share": 1
+    },
+    "slope": 0.9701431767426363,
+    "rSquared": 0.8275963669040486
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 1,
+    "worstTokenDrawdownBps": -2849.913853843359,
+    "worstGapBps": -161.7122186948172
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "AAPLx",
+   "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 36733,
+   "jupiterLiquidityUsd": 554606,
+   "pool": "ApniVWuZbZoruTAJdyJcLBA4AVw4DKGdV5fHxo6qrAZT",
+   "poolLiquidityUsd": 263815,
+   "poolCreated": "2026-09-11T06:20:23Z",
+   "tokenHours": 831,
+   "closures": 5,
+   "meanCoverage": 1,
+   "tracking": {
+    "n": 5,
+    "closeBasisMedianBps": 42.8192046045539,
+    "closeBasisP95Bps": 130.01025786998576,
+    "gapMedianAbsBps": 29.809014401747103,
+    "tokenImpliedErrorMedianBps": 95.35338483747613,
+    "tokenImpliedErrorP95Bps": 142.48147455179148,
+    "naiveErrorMedianBps": 29.898137803785357,
+    "naiveErrorP95Bps": 77.65061942492277,
+    "tokenBeatsNaive": 0.2,
+    "directionAgreement": {
+     "n": 1,
+     "share": 1
+    },
+    "slope": 0.2514619491860439,
+    "rSquared": 0.4633266484194507
+   },
+   "breaches": {
+    "n": 5,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -281.73570618518215,
+    "worstGapBps": -29.809014401747103
+   }
+  },
+  {
+   "weekendLowBreachCases": [
+    {
+     "date": "2026-08-10",
+     "ltvBps": 8000,
+     "lineBps": -1579,
+     "tokenLowBps": -2004,
+     "tokenPreOpenBps": 55,
+     "gapBps": 71,
+     "coverage": 0.95
+    }
+   ],
+   "weekendLowReplay": [
+    {
+     "date": "2026-08-10",
+     "bandRule": "wait",
+     "bandReasons": [
+      "sources disagree by 2506 bps (limit 400)",
+      "band half-width 5162 bps is too wide to mean anything"
+     ],
+     "spotRule": "liquidate",
+     "spotLtvBps": 10004
+    }
+   ],
+   "ticker": "MSFTx",
+   "mint": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 34640,
+   "jupiterLiquidityUsd": 778874,
+   "pool": "CLu4kFM4nb67xrdN7vJnMxXXir8Z5hA4HJUzPFccXjsL",
+   "poolLiquidityUsd": 377937,
+   "poolCreated": "2025-09-29T12:26:32Z",
+   "tokenHours": 3982,
+   "closures": 25,
+   "meanCoverage": 0.9194883318928264,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 42.50777776658721,
+    "closeBasisP95Bps": 91.56306432608119,
+    "gapMedianAbsBps": 76.37232459964505,
+    "tokenImpliedErrorMedianBps": 33.81369493382919,
+    "tokenImpliedErrorP95Bps": 135.19869364301832,
+    "naiveErrorMedianBps": 75.79347223325287,
+    "naiveErrorP95Bps": 281.16273651649595,
+    "tokenBeatsNaive": 0.88,
+    "directionAgreement": {
+     "n": 22,
+     "share": 0.9090909090909091
+    },
+    "slope": 1.0374220518211725,
+    "rSquared": 0.8133675159583422
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 1,
+    "worstTokenDrawdownBps": -2003.9009493221026,
+    "worstGapBps": -206.8395329964756
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "GOOGLx",
+   "mint": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 61056,
+   "jupiterLiquidityUsd": 1390932,
+   "pool": "B8YAwjGYk6qidWzGBXMAxP7nYfG8g74EZ3Y4gFSsobRw",
+   "poolLiquidityUsd": 1470087,
+   "poolCreated": "2025-07-19T13:37:59Z",
+   "tokenHours": 3703,
+   "closures": 25,
+   "meanCoverage": 0.8123768366464996,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 5.4664199059084595,
+    "closeBasisP95Bps": 55.5213161498247,
+    "gapMedianAbsBps": 80.00701832948431,
+    "tokenImpliedErrorMedianBps": 47.924532727005804,
+    "tokenImpliedErrorP95Bps": 108.55083062451061,
+    "naiveErrorMedianBps": 80.65229328016241,
+    "naiveErrorP95Bps": 237.53461445847603,
+    "tokenBeatsNaive": 0.68,
+    "directionAgreement": {
+     "n": 14,
+     "share": 0.9285714285714286
+    },
+    "slope": 1.2341866963404375,
+    "rSquared": 0.7927956106775413
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -1455.131901131922,
+    "worstGapBps": -171.90150377554227
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "AMZNx",
+   "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 18144,
+   "jupiterLiquidityUsd": 292435,
+   "pool": "6m5aXAve4uh6Kt4ytKyCLWNMjd8PYP5vujwNCtycrUiD",
+   "poolLiquidityUsd": 385404,
+   "poolCreated": "2025-07-01T23:25:50Z",
+   "tokenHours": 3510,
+   "closures": 25,
+   "meanCoverage": 0.7597649092480553,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 0.29120383414404927,
+    "closeBasisP95Bps": 45.728883906224205,
+    "gapMedianAbsBps": 67.6956378434479,
+    "tokenImpliedErrorMedianBps": 33.651275239497174,
+    "tokenImpliedErrorP95Bps": 97.96938356871742,
+    "naiveErrorMedianBps": 68.15703121360022,
+    "naiveErrorP95Bps": 269.2347388602777,
+    "tokenBeatsNaive": 0.72,
+    "directionAgreement": {
+     "n": 16,
+     "share": 0.9375
+    },
+    "slope": 1.0326984452978234,
+    "rSquared": 0.8078591027338997
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -320.14819817883676,
+    "worstGapBps": -161.0931258040249
+   }
+  },
+  {
+   "weekendLowBreachCases": [
+    {
+     "date": "2026-07-13",
+     "ltvBps": 8000,
+     "lineBps": -1579,
+     "tokenLowBps": -2574,
+     "tokenPreOpenBps": -117,
+     "gapBps": -117,
+     "coverage": 0.69
+    }
+   ],
+   "weekendLowReplay": [
+    {
+     "date": "2026-07-13",
+     "bandRule": "wait",
+     "bandReasons": [
+      "sources disagree by 3465 bps (limit 400)",
+      "band half-width 7080 bps is too wide to mean anything"
+     ],
+     "spotRule": "liquidate",
+     "spotLtvBps": 10772
+    }
+   ],
+   "ticker": "METAx",
+   "mint": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 39244,
+   "jupiterLiquidityUsd": 780471,
+   "pool": "3L7KbPVaAQA4UTecaGQYsm6UCq5F3sZM9zAYkxqYt63j",
+   "poolLiquidityUsd": 882382,
+   "poolCreated": "2025-08-12T15:31:58Z",
+   "tokenHours": 3272,
+   "closures": 25,
+   "meanCoverage": 0.7118893690579082,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 28.068737966766566,
+    "closeBasisP95Bps": 78.12069668262423,
+    "gapMedianAbsBps": 83.16395253586629,
+    "tokenImpliedErrorMedianBps": 51.92893037172885,
+    "tokenImpliedErrorP95Bps": 168.31346058277714,
+    "naiveErrorMedianBps": 83.8613768926153,
+    "naiveErrorP95Bps": 218.40714372730514,
+    "tokenBeatsNaive": 0.56,
+    "directionAgreement": {
+     "n": 14,
+     "share": 0.9285714285714286
+    },
+    "slope": 0.63415716936392,
+    "rSquared": 0.38238398611285945
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 1,
+    "worstTokenDrawdownBps": -2573.6127370644044,
+    "worstGapBps": -153.79627340372127
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "NVDAx",
+   "mint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 176992,
+   "jupiterLiquidityUsd": 3218067,
+   "pool": "49iMatQtoyabsYAQc8GafVq6aeBFVDxSRH44oiatyyw6",
+   "poolLiquidityUsd": 3095717,
+   "poolCreated": "2025-07-02T01:46:00Z",
+   "tokenHours": 4165,
+   "closures": 25,
+   "meanCoverage": 0.9791253241140881,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 5.530217329461351,
+    "closeBasisP95Bps": 39.809950036775454,
+    "gapMedianAbsBps": 61.67244551212203,
+    "tokenImpliedErrorMedianBps": 25.690390483799685,
+    "tokenImpliedErrorP95Bps": 70.08498491856199,
+    "naiveErrorMedianBps": 61.29442778633757,
+    "naiveErrorP95Bps": 241.45956442537133,
+    "tokenBeatsNaive": 0.72,
+    "directionAgreement": {
+     "n": 17,
+     "share": 0.9411764705882353
+    },
+    "slope": 0.9420847227549858,
+    "rSquared": 0.8902509075187078
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -359.5916527127718,
+    "worstGapBps": -326.3059219417119
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "TSLAx",
+   "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 50702,
+   "jupiterLiquidityUsd": 1464741,
+   "pool": "8aDaBQkTrS6HVMjyc6EZebgdiaXhLYGriDWKWWp1NpFF",
+   "poolLiquidityUsd": 2333578,
+   "poolCreated": "2026-02-11T11:43:11Z",
+   "tokenHours": 4165,
+   "closures": 25,
+   "meanCoverage": 0.981303370786517,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": 3.728938901728096,
+    "closeBasisP95Bps": 40.74254118775933,
+    "gapMedianAbsBps": 89.83642565403738,
+    "tokenImpliedErrorMedianBps": 27.846948797201286,
+    "tokenImpliedErrorP95Bps": 105.28804982708316,
+    "naiveErrorMedianBps": 89.0365530858579,
+    "naiveErrorP95Bps": 191.39858164455313,
+    "tokenBeatsNaive": 0.84,
+    "directionAgreement": {
+     "n": 18,
+     "share": 0.9444444444444444
+    },
+    "slope": 0.9362747514510874,
+    "rSquared": 0.7856719091400552
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 8000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -1397.134232530075,
+    "worstGapBps": -187.80403897584398
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "COINx",
+   "mint": "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 10324,
+   "jupiterLiquidityUsd": 887185,
+   "pool": "w7SGmPeXoMCsjvXqgsAmUn56uypyDsjAtsxeVkaiqxa",
+   "poolLiquidityUsd": 1502652,
+   "poolCreated": "2026-03-20T09:29:56Z",
+   "tokenHours": 2690,
+   "closures": 25,
+   "meanCoverage": 0.514648228176318,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": -13.105880188462038,
+    "closeBasisP95Bps": 108.95359560675332,
+    "gapMedianAbsBps": 150.6291458939335,
+    "tokenImpliedErrorMedianBps": 96.86694826617918,
+    "tokenImpliedErrorP95Bps": 187.39406596141518,
+    "naiveErrorMedianBps": 152.9327589803748,
+    "naiveErrorP95Bps": 550.9654544387497,
+    "tokenBeatsNaive": 0.64,
+    "directionAgreement": {
+     "n": 18,
+     "share": 1
+    },
+    "slope": 1.0639052735944408,
+    "rSquared": 0.8641671323561381
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 4000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -456.3446397358273,
+    "worstGapBps": -522.1943497189263
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "HOODx",
+   "mint": "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 13235,
+   "jupiterLiquidityUsd": 320736,
+   "pool": "DXWbip5LducMAbDSSpLYz9Xik3253EPeAYQufQtx7LXs",
+   "poolLiquidityUsd": 1371235,
+   "poolCreated": "2025-07-03T16:19:24Z",
+   "tokenHours": 2518,
+   "closures": 25,
+   "meanCoverage": 0.48527571305099393,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": -15.655588050904612,
+    "closeBasisP95Bps": 218.5622133603937,
+    "gapMedianAbsBps": 126.40232276937446,
+    "tokenImpliedErrorMedianBps": 57.34266566405184,
+    "tokenImpliedErrorP95Bps": 314.58692768492716,
+    "naiveErrorMedianBps": 128.02053203045654,
+    "naiveErrorP95Bps": 490.3264301763668,
+    "tokenBeatsNaive": 0.6,
+    "directionAgreement": {
+     "n": 19,
+     "share": 0.7894736842105263
+    },
+    "slope": 0.7422590318322623,
+    "rSquared": 0.5579603006319536
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 4000,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -721.0481104238353,
+    "worstGapBps": -467.408172128847
+   }
+  },
+  {
+   "weekendLowBreachCases": [],
+   "weekendLowReplay": [],
+   "ticker": "MSTRx",
+   "mint": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+   "tokenProgramDev": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+   "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+   "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+   "holders": 13736,
+   "jupiterLiquidityUsd": 1158783,
+   "pool": "RyhF4cksVZY7vcqJpoytHcxcGNKRp27PEGhSnEPpbGv",
+   "poolLiquidityUsd": 786812,
+   "poolCreated": "2025-06-27T12:59:33Z",
+   "tokenHours": 4081,
+   "closures": 25,
+   "meanCoverage": 0.9419671564390667,
+   "tracking": {
+    "n": 25,
+    "closeBasisMedianBps": -0.20996199483924727,
+    "closeBasisP95Bps": 50.963166405634254,
+    "gapMedianAbsBps": 218.0475109611768,
+    "tokenImpliedErrorMedianBps": 80.94016606686749,
+    "tokenImpliedErrorP95Bps": 235.43841898745913,
+    "naiveErrorMedianBps": 213.3944970673418,
+    "naiveErrorP95Bps": 706.2532203845882,
+    "tokenBeatsNaive": 0.8,
+    "directionAgreement": {
+     "n": 21,
+     "share": 0.9523809523809523
+    },
+    "slope": 1.0131007134995276,
+    "rSquared": 0.9442203159860307
+   },
+   "breaches": {
+    "n": 21,
+    "meanLtvBps": 6824.333333333333,
+    "gapBreaches": 0,
+    "preOpenBreaches": 0,
+    "weekendLowBreaches": 0,
+    "worstTokenDrawdownBps": -543.1186156240752,
+    "worstGapBps": -678.9931268389727
+   }
+  }
+ ],
+ "pooled": {
+  "tracking": {
+   "n": 280,
+   "closeBasisMedianBps": 18.67199378329687,
+   "closeBasisP95Bps": 91.56306432608119,
+   "gapMedianAbsBps": 76.88652964885523,
+   "tokenImpliedErrorMedianBps": 35.455932551574506,
+   "tokenImpliedErrorP95Bps": 168.31346058277714,
+   "naiveErrorMedianBps": 77.4822638868147,
+   "naiveErrorP95Bps": 368.0548617838617,
+   "tokenBeatsNaive": 0.6964285714285714,
+   "directionAgreement": {
+    "n": 181,
+    "share": 0.9337016574585635
+   },
+   "slope": 0.9263854868912671,
+   "rSquared": 0.7852959821161354
+  },
+  "breaches": {
+   "n": 236,
+   "gapBreaches": 0,
+   "preOpenBreaches": 0,
+   "weekendLowBreaches": 3,
+   "meanLtvBps": 7183.521186440678,
+   "worstTokenDrawdownBps": -2849.913853843359,
+   "worstGapBps": -678.9931268389727
+  }
+ },
+ "skipped": [
+  {
+   "ticker": "NFLX",
+   "why": "no genuine xStock mint with at least 100000 USD of liquidity"
+  },
+  {
+   "ticker": "AMD",
+   "why": "no genuine xStock mint with at least 100000 USD of liquidity"
+  },
+  {
+   "ticker": "JPM",
+   "why": "no genuine xStock mint with at least 100000 USD of liquidity"
+  }
+ ]
+}

@@ -42,7 +42,9 @@ import {
   readCrossExt,
 } from '@opening-cross/cross-core-client';
 import { calendarSessions } from '@opening-cross/indexer';
-import { lockupReleasable, nextSeriesClose, orderAddress, paddedRules, seriesAddress } from '@opening-cross/sdk';
+import { CLAIM_PARTNER_FEE_DISCRIMINATOR, CROSS_SETTLE_PROGRAM_ADDRESS } from '@opening-cross/cross-settle-client';
+import { POOL_PARTNER_BASE_FEE_OFFSET, POOL_PARTNER_QUOTE_FEE_OFFSET } from '../../src/partner-fees.js';
+import { ASSOCIATED_TOKEN_PROGRAM, ata, lockupReleasable, nextSeriesClose, orderAddress, paddedRules, seriesAddress } from '@opening-cross/sdk';
 import { type KeeperDeps, parseDuties } from '../../src/index.js';
 
 export const NOW = 1_800_000_000n;
@@ -71,6 +73,8 @@ export type CrossOpts = {
   filed?: number;
   open?: number;
   baseMint?: Address;
+  /** The fee rates the cross snapshotted and what buyers paid or sellers owed, so that `finalize` has fees to split. Default: a cross with no fees, which mints. */
+  fees?: { protocolBps: number; integratorBps: number; buyerPaid?: bigint; feesAccrued?: bigint; escrow?: boolean };
 };
 
 export class World {
@@ -89,6 +93,8 @@ export class World {
   /** Instructions whose send throws, by cross_core discriminator name. */
   refuse = new Set<string>();
   shards = new Set<string>();
+  /** Partner-fee claims the chain accepted: the cross, the pool and the two destinations named, and what the pool held for the partner. */
+  claims: { cross: Address; pool: Address; baseDestination: Address; quoteDestination: Address; base: bigint; quote: bigint }[] = [];
   base!: Address;
   quote!: Address;
   payer!: TransactionSigner;
@@ -114,6 +120,11 @@ export class World {
       baseBound: true,
       baseMint: o.baseMint ?? this.base,
       quoteMint: this.quote,
+      protocolFeeBps: o.fees?.protocolBps ?? 0,
+      integratorFeeBps: o.fees?.integratorBps ?? 0,
+      buyerPaid: o.fees?.buyerPaid ?? 0n,
+      feesAccrued: o.fees?.feesAccrued ?? 0n,
+      ...(o.fees ? { supplyMode: o.fees.escrow ? 0 : 1 } : {}),
       creator: this.payer.address,
       feeRecipient: this.payer.address,
       integrator: this.payer.address,
@@ -247,7 +258,25 @@ export class World {
 
   // ------------------------------------------------------------------------------------------------------------ the chain's answer to what the keeper sends
 
-  private apply(ix: Instruction): void {
+  private async apply(ix: Instruction): Promise<void> {
+    // The associated token program: creating an account that already exists changes nothing (the idempotent form, data byte 1).
+    if (ix.programAddress === ASSOCIATED_TOKEN_PROGRAM && ix.data?.[0] === 1) {
+      const created = ix.accounts![1]!.address;
+      if (!this.accounts.has(created)) this.accounts.set(created, new Uint8Array(165));
+      return;
+    }
+    // cross_settle's claim_partner_fee: DBC pays the partner's accrued fee straight into the two destinations, which must exist, and the pool's counters fall to zero.
+    if (ix.programAddress === CROSS_SETTLE_PROGRAM_ADDRESS && ix.data && eq(ix.data, CLAIM_PARTNER_FEE_DISCRIMINATOR)) {
+      const [cross, pool, baseDestination, quoteDestination] = [0, 4, 5, 6].map((i) => ix.accounts![i]!.address) as [Address, Address, Address, Address];
+      for (const dest of [baseDestination, quoteDestination]) if (!this.accounts.has(dest)) throw new Error(`AccountNotInitialized: ${dest}`);
+      const data = this.get(pool);
+      const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const [base, quote] = [v.getBigUint64(POOL_PARTNER_BASE_FEE_OFFSET, true), v.getBigUint64(POOL_PARTNER_QUOTE_FEE_OFFSET, true)];
+      v.setBigUint64(POOL_PARTNER_BASE_FEE_OFFSET, 0n, true);
+      v.setBigUint64(POOL_PARTNER_QUOTE_FEE_OFFSET, 0n, true);
+      this.claims.push({ cross, pool, baseDestination, quoteDestination, base, quote });
+      return;
+    }
     if (ix.programAddress !== CROSS_CORE_PROGRAM_ADDRESS || !ix.data) return;
     const is = (d: ArrayLike<number>) => eq(ix.data!, d);
     const at = (i: number) => ix.accounts![i]!.address;
@@ -286,6 +315,16 @@ export class World {
       const x = readCrossExt(this.get(cross));
       const c = getCrossDecoder().decode(this.get(cross));
       if (c.ordersOpen !== 0) throw new Error('OrdersOutstanding');
+      // finalize pays the referrer out of the protocol fee and refuses to run when the referrer's quote account is not among its accounts (programs/cross_core/src/lib.rs).
+      if (x && x.referral.shareBps > 0) {
+        const totalBps = BigInt(c.protocolFeeBps + c.integratorFeeBps);
+        const fees = c.supplyMode === 0 ? c.feesAccrued : (c.buyerPaid * totalBps) / 10_000n;
+        const protocolFee = totalBps === 0n ? 0n : (fees * BigInt(c.protocolFeeBps)) / totalBps;
+        if (protocolFee > 0n && (protocolFee * BigInt(x.referral.shareBps)) / 10_000n > 0n) {
+          const want = await ata(x.referral.referrer, c.quoteMint, c.quoteTokenProgram);
+          if (!ix.accounts!.some((a) => a.address === want) || !this.accounts.has(want)) throw new Error('ReferralAccountMissing');
+        }
+      }
       if (c.state === CrossState.Cleared && x && x.neutrality.bondQuote > 0n && (this.clock < x.clearing.clearedTs + BigInt(x.neutrality.challengeSecs) || x.neutralState.openChallenges > 0)) throw new Error('ChallengesOutstanding');
       this.patchCross(cross, (y) => ({ ...y, state: CrossState.Finalized }));
     } else if (is(EXPIRE_CHALLENGE_DISCRIMINATOR)) {
@@ -329,10 +368,11 @@ export class World {
     }
   }
 
-  private freshSpawned(_series: Address, _index: bigint): Uint8Array {
+  /** A cross as `spawn_next` makes it: the series' own address is its creator (ADR-0456). */
+  private freshSpawned(series: Address, _index: bigint): Uint8Array {
     const z = new Uint8Array(4096);
     z.set(CROSS_DISCRIMINATOR as Uint8Array, 0);
-    const body = getCrossEncoder().encode({ ...getCrossDecoder().decode(z), state: CrossState.Live, baseBound: true, baseMint: this.base, quoteMint: this.quote, shards: 2, mergedMask: 0, openTs: this.clock, closeTs: this.clock + 600n, revealEndTs: this.clock + 600n, oracle: none(), clearing: none() } as never);
+    const body = getCrossEncoder().encode({ ...getCrossDecoder().decode(z), creator: series, state: CrossState.Live, baseBound: true, baseMint: this.base, quoteMint: this.quote, shards: 2, mergedMask: 0, openTs: this.clock, closeTs: this.clock + 600n, revealEndTs: this.clock + 600n, oracle: none(), clearing: none() } as never);
     const data = new Uint8Array(CROSS_BODY_LEN + CROSS_EXT_LEN);
     data.set(body);
     const r = completeRules({});
@@ -351,7 +391,7 @@ export class World {
 
   // ------------------------------------------------------------------------------------------------------------ the keeper's dependencies
 
-  deps(over: Partial<KeeperDeps> & { duties?: string } = {}): KeeperDeps {
+  deps(over: Omit<Partial<KeeperDeps>, 'duties'> & { duties?: string } = {}): KeeperDeps {
     const { duties, ...rest } = over;
     return {
       payer: this.payer,
@@ -360,7 +400,7 @@ export class World {
       crosses: async () => this.crosses.filter((c) => this.accounts.has(c)),
       orders: async (c) => (this.orderOf.get(c) ?? []).filter((o) => this.accounts.has(o)),
       send: async (ixs) => {
-        for (const ix of ixs) this.apply(ix);
+        for (const ix of ixs) await this.apply(ix);
         this.sent.push(ixs);
         return `sig${this.sent.length}`;
       },

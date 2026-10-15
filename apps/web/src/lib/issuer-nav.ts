@@ -20,6 +20,7 @@ export const ISSUER_MENU: IssuerSection[] = [
       { href: '/issuer/series', label: 'Series', hint: 'Recur on a schedule' },
       { href: '/issuer/halts', label: 'Halts', hint: 'Halt, flag, resume' },
       { href: '/issuer/settle', label: 'Settle', hint: 'Payouts and the greenshoe' },
+      { href: '/pools', label: 'Pools', hint: 'Depth, price impact and liquidity health of your market' },
       { href: '/issuer/graduation', label: 'Graduation', hint: 'Charter and holder vote' },
       { href: '/issuer/listing', label: 'Listing venue', hint: 'Run a bonded venue' },
       { href: '/issuer/backing', label: 'Backing', hint: 'Watchdog policy and statements' },
@@ -35,6 +36,9 @@ export const ISSUER_MENU: IssuerSection[] = [
     ],
   },
 ];
+
+/** The liquidity-health page of one cross: its pools, how far each has moved from the clearing price, how deep each is. The issuer overview links here for the selected cross. */
+export const liquidityHref = (cross: string): string => `/pools/issuer/${cross}`;
 
 /** The link whose address is the longest prefix of the path, so /issuer/treasury/new highlights Treasury and /issuer highlights Overview only on itself. */
 export function activeLink(path: string): string | null {

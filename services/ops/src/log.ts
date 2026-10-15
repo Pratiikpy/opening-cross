@@ -60,6 +60,12 @@ export async function entries(db: pg.Pool, o: { after?: number; limit?: number }
   return rows.map((r) => ({ seq: Number(r.seq), at: Number(r.at), actor: r.actor, action: r.action, subject: r.subject, detail: r.detail, prevHash: r.prev_hash, hash: r.hash }));
 }
 
+/** The newest entries first: those with a sequence number below `before` (all of them when it is omitted). The console reads the end of the log this way. */
+export async function entriesNewestFirst(db: pg.Pool, o: { before?: number; limit?: number } = {}): Promise<Entry[]> {
+  const { rows } = await db.query<{ seq: string; at: string; actor: string; action: string; subject: string; detail: Json; prev_hash: string; hash: string }>('SELECT seq::text, at::text, actor, action, subject, detail, prev_hash, hash FROM ops_log WHERE ($1::bigint IS NULL OR seq < $1) ORDER BY ops_log.seq DESC LIMIT $2', [o.before ?? null, Math.min(500, o.limit ?? 100)]);
+  return rows.map((r) => ({ seq: Number(r.seq), at: Number(r.at), actor: r.actor, action: r.action, subject: r.subject, detail: r.detail, prevHash: r.prev_hash, hash: r.hash }));
+}
+
 export const HEAD_SCHEMA = 'opening-cross/ops-log-head/v1';
 /** The head of the chain, signed by the operator key, to be published somewhere the operator cannot quietly rewrite. */
 export async function signedHead(db: pg.Pool, keyPair: CryptoKeyPair, now: number): Promise<{ check: ChainCheck; document: Signed<{ schema: typeof HEAD_SCHEMA; head: string; length: number; at: number }> | null }> {

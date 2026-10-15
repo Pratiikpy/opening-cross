@@ -33,7 +33,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:svm": "vitest run --config vitest.svm.config.ts",
+    "vendor:web": "node scripts/vendor-web.mjs"
   },
   "dependencies": {
     "@solana/kit": "8.4.0",

@@ -13,9 +13,18 @@ export async function paymentsOf(db: pg.Pool, issuer: string): Promise<{ signatu
   return rows.map((r) => ({ signature: r.signature, plan: r.plan, paidAt: Number(r.paid_at), amountUnits: BigInt(r.amount) }));
 }
 
-/** Recurring crosses (kind 3) the issuer created whose call opens inside [start, end). */
+/**
+ * Recurring crosses the issuer ran whose call opens inside [start, end): the recurring-kind (3) crosses the issuer's wallet created, and every cross a series of the
+ * issuer's spawned. `spawn_next` makes the series' own address the creator of what it spawns (ADR-0456), and a series can be of any kind, so the crosses of the issuer's
+ * series are counted by the series, not by the wallet or the kind: counting by wallet alone sees none of the crosses a subscriber's managed scheduler runs for them.
+ */
 export async function recurringCrossesIn(db: pg.Pool, issuer: string, start: number, end: number): Promise<number> {
-  const { rows } = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM crosses WHERE creator = $1 AND kind = 3 AND open_ts >= $2 AND open_ts < $3', [issuer, start, end]);
+  const { rows } = await db.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM crosses
+      WHERE open_ts >= $2 AND open_ts < $3
+        AND ((creator = $1 AND kind = 3) OR creator IN (SELECT address FROM series WHERE authority = $1))`,
+    [issuer, start, end],
+  );
   return rows[0]!.n;
 }
 

@@ -4,3 +4,4 @@ export * from './ltv.js';
 export * from './fair-value.js';
 export * from './liquidation.js';
 export * from './backtest.js';
+export * from './tokenized.js';

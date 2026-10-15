@@ -82,7 +82,7 @@ describe('ledger entries', () => {
     const bad = ledgerEntry(facts, { ...recorded, protocolFee: 7n }, tx);
     const unknown = ledgerEntry(facts, recorded, null);
     const t = totalsByMint([good, bad, unknown]);
-    expect(t.verified[QUOTE]).toEqual({ protocolFee: 1_200_000n, integratorFee: 4_800_000n, crosses: 1 });
+    expect(t.verified[QUOTE]).toEqual({ protocolFee: 1_200_000n, integratorFee: 4_800_000n, referralFee: 0n, crosses: 1 });
     expect(t.mismatched).toBe(1);
     expect(t.unverified).toBe(1);
   });

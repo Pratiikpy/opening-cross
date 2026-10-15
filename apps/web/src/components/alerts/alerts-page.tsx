@@ -8,7 +8,11 @@ import {
   TOPICS,
   TOPIC_LABEL,
   type Topic,
+  type Watch,
+  ageText,
   allWatched,
+  isMovementKind,
+  toggleTopic,
   createPushSubscription,
   dropPushSubscription,
   pushSupport,
@@ -22,6 +26,7 @@ import {
 } from '@/lib/holder-alerts';
 import { shortAddress } from '@/lib/units';
 import { useWallet } from '@/lib/wallet';
+import { MovementSection } from './movement-section';
 import { useAlertConfig, useFeed, useSaved, useWatchList } from './use-alerts';
 
 const CARD = 'rounded-[var(--radius-card)] border border-border p-5';
@@ -31,25 +36,52 @@ const GHOST = 'min-h-11 rounded-full border border-border-strong px-4 py-2 text-
 export function AlertsPage() {
   const { account } = useWallet();
   const wallet = account?.address ?? null;
-  const { watch, follow } = useWatchList();
+  const { watch, follow, setWatch } = useWatchList();
   const { saved, set } = useSaved();
   const { config, error: configError } = useAlertConfig();
+  // Everything the server is told: crosses and markets, then the tokens and treasuries followed for movements.
   const list = allWatched(watch);
   const { feed, error: feedError, loading } = useFeed(wallet, list);
 
   const topics = saved.topics;
+  const managed = [saved.push, saved.telegram].filter((m): m is NonNullable<typeof m> => m !== null);
   const setTopics = useCallback(
     async (next: Topic[]) => {
       set({ ...saved, topics: next });
-      await Promise.all([saved.push, saved.telegram].filter((m): m is NonNullable<typeof m> => m !== null).map((m) => updateSubscription(m.id, m.token, { topics: next })));
+      await Promise.all(managed.map((m) => updateSubscription(m.id, m.token, { topics: next })));
     },
+    // `managed` is derived from `saved`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [saved, set],
+  );
+  /** Saves a change to the movement topics or to what is followed for them and tells the subscriptions this browser manages; returns what went wrong, if anything. */
+  const changeMovement = useCallback(
+    async (next: { topics?: Topic[]; watch?: Watch }): Promise<string | null> => {
+      const nextTopics = next.topics ?? topics;
+      const nextWatch = next.watch ?? watch;
+      if (next.topics && !set({ ...saved, topics: nextTopics })) return 'This browser would not save the change, so it will be forgotten when you leave.';
+      if (next.watch && !setWatch(nextWatch)) return 'This browser would not save the change, so it will be forgotten when you leave.';
+      const answers = await Promise.all(managed.map((m) => updateSubscription(m.id, m.token, { topics: nextTopics, watch: allWatched(nextWatch) })));
+      const failed = answers.find((a) => !a.ok);
+      return failed && !failed.ok ? `Saved here, but a channel did not accept it: ${failed.error}` : null;
+    },
+    // `managed` is derived from `saved`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [saved, set, setWatch, topics, watch],
   );
 
   return (
     <div className="mt-8 space-y-12">
       <NeedsYou items={feed?.items ?? null} asOf={feed?.asOf ?? null} wallet={wallet} following={list.length} loading={loading} error={feedError} />
       <Following watch={watch} follow={follow} />
+      <MovementSection
+        topics={topics}
+        watch={watch}
+        available={config?.available ?? null}
+        thresholdPercent={config?.movementThresholdPercent ?? null}
+        channels={managed.length > 0}
+        onChange={changeMovement}
+      />
       <section aria-labelledby="channels-h">
         <h2 id="channels-h" className="text-xl font-semibold tracking-tight">
           Where to reach you
@@ -104,7 +136,7 @@ function NeedsYou({ items, asOf, wallet, following, loading, error }: { items: F
                   <p className="mt-1 text-sm text-muted">{i.body}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
-                  <span className="font-mono text-muted">{relativeTime(i.at, asOf ?? Math.floor(Date.now() / 1000))}</span>
+                  <span className="font-mono text-muted">{isMovementKind(i.kind) ? ageText(i.at, asOf ?? Math.floor(Date.now() / 1000)) : relativeTime(i.at, asOf ?? Math.floor(Date.now() / 1000))}</span>
                   <Link href={i.href} className="inline-flex min-h-11 items-center rounded-full border border-border-strong px-4 hover:bg-surface">
                     {i.kind === 'claimable' ? 'Claim' : 'Open'}
                   </Link>
@@ -114,7 +146,7 @@ function NeedsYou({ items, asOf, wallet, following, loading, error }: { items: F
           </ul>
         ) : (
           <p className={`${CARD} text-sm text-muted`} data-testid="feed-empty">
-            Nothing needs you right now. Orders that can be claimed, and crosses about to open or close on your orders or your follows, appear here.
+            Nothing needs you right now. Orders that can be claimed, crosses about to open or close, and insider or treasury movements for what you follow, appear here.
           </p>
         )}
       </div>
@@ -155,6 +187,7 @@ function Following({ watch, follow }: { watch: { crosses: string[]; markets: str
 
 // ---------------------------------------------------------------- topics
 
+/** The reminder topics. The insider and treasury topics have their own section, since they come with the things to follow; both edit the one list. */
 function TopicPicker({ topics, onChange }: { topics: Topic[]; onChange: (t: Topic[]) => void }) {
   return (
     <fieldset className="mt-4">
@@ -168,7 +201,7 @@ function TopicPicker({ topics, onChange }: { topics: Topic[]; onChange: (t: Topi
                 type="checkbox"
                 checked={on}
                 disabled={on && topics.length === 1}
-                onChange={() => onChange(on ? topics.filter((x) => x !== t) : TOPICS.filter((x) => x === t || topics.includes(x)))}
+                onChange={() => onChange(toggleTopic(topics, t))}
                 className="mt-0.5 size-5 shrink-0 accent-[var(--accent-fill)]"
               />
               <span>

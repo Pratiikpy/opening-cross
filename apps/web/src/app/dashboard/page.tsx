@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { DashboardView } from '@/components/dashboard/dashboard-view';
+import { PoolsInDetail } from '@/components/pools/liquidity-section';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -12,6 +13,7 @@ export default function Page() {
       <h1 className="text-[34px] font-semibold tracking-tight sm:text-[44px]">Dashboard</h1>
       <p className="mt-2 max-w-2xl text-muted">The protocol’s live figures on one page. The dashboard computes nothing: every section is the answer of a route you can open yourself, named under its heading, and a section that failed says so instead of showing a default.</p>
       <DashboardView />
+      <PoolsInDetail />
     </div>
   );
 }

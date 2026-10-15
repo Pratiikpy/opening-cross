@@ -1,0 +1,26 @@
+[package]
+name = "clearing-wasm-v2"
+version = "0.1.0"
+description = "The Opening Cross clearing rule with the v2 rules (supply cap, raise, float, valuation and price-move guards, allocation classes with the class-1 lottery, and declared insiders) as a WebAssembly module: the same clearing-core that runs on chain."
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/Pratiikpy/opening-cross"
+publish = false
+
+# A workspace of its own: this crate lives beside the TypeScript loader it serves, outside the repository's Cargo workspace, and builds
+# the module `clearing-v2.wasm` from the same `clearing-core` source the programs use.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+clearing-core = { path = "../../../crates/clearing-core" }
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+overflow-checks = true
+strip = true

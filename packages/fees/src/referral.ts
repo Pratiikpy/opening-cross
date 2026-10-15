@@ -1,9 +1,10 @@
 // Referrals (PRODUCT_FEATURES W6: "optional 10% referrer"). The share is 10% of the protocol fee that a referred
 // owner's order generated; it comes out of the protocol's take, never out of the integrator's or the user's.
 //
-// cross_core has no referrer field (ADR-0010 deferred it), so the share is settled by the fee router from the
-// protocol fee wallet, and every payout is an ordinary token transfer anyone can check against the ledger. A
-// program-enforced version is specified in  as a handoff.
+// This is the router's per-owner referral: it is settled from the protocol fee wallet, and every payout is an ordinary
+// token transfer anyone can check against the ledger. A cross can also name one referrer in its own rules, and then
+// `finalize` pays that referrer a share of the protocol fee itself (ADR-0460, `referralShare` in schedule.ts); the
+// ledger records that share (ledger.ts) and the router leaves such a cross alone (`referralLines`).
 //
 // A referral is a document the referred owner signs with their wallet key. Without that signature anyone could
 // register a referrer for somebody else's orders. The signature covers a domain prefix and the hash of the
@@ -99,7 +100,18 @@ export type ReferredOrder = {
   readonly escrowFee: bigint;
 };
 
-export type ReferralCross = { readonly cross: string; readonly supplyMode: 'escrow' | 'mint' | 'deferred-mint'; readonly protocolBps: number; readonly integratorBps: number; readonly protocolFee: bigint };
+export type ReferralCross = {
+  readonly cross: string;
+  readonly supplyMode: 'escrow' | 'mint' | 'deferred-mint';
+  readonly protocolBps: number;
+  readonly integratorBps: number;
+  readonly protocolFee: bigint;
+  /**
+   * The share of the protocol fee the cross itself pays a referrer at finalize (ADR-0460), when its rules name one. Such a cross already gives away part of the
+   * protocol fee on chain, so the router owes nothing on it: paying the router's 10% as well would pay two referrals out of one fee.
+   */
+  readonly referralShareBps?: number | undefined;
+};
 
 export type ReferralLine = { readonly cross: string; readonly order: string; readonly owner: string; readonly referrer: string; readonly protocolFeeShare: bigint; readonly payout: bigint };
 
@@ -112,6 +124,7 @@ export type ReferralLine = { readonly cross: string; readonly order: string; rea
 export function referralLines(cross: ReferralCross, orders: readonly ReferredOrder[], docs: readonly ReferralBody[]): ReferralLine[] {
   const total = BigInt(cross.protocolBps + cross.integratorBps);
   const lines: ReferralLine[] = [];
+  if ((cross.referralShareBps ?? 0) > 0) return lines;
   for (const o of orders) {
     const referrer = referrerAt(docs, o.owner, o.placedAt);
     if (!referrer || referrer === o.owner) continue;

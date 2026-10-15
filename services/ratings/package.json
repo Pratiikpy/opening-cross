@@ -1,0 +1,28 @@
+{
+  "name": "@opening-cross/ratings",
+  "version": "0.1.0",
+  "private": true,
+  "description": "What happened afterwards (V5): writes the outcome of each rated cross from a price source so the rating's track record can be scored, and builds the cross-venue venture index from launches observed on Solana venues, with the share it could not resolve stated beside every figure (ADR-0952).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opening-cross/integrity": "workspace:*",
+    "@opening-cross/sdk": "workspace:*",
+    "@solana/kit": "8.4.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

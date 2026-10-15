@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { address, getAddressEncoder } from '@solana/kit';
-import { OrderSide, costCeil, crossAddress, orderCommitment, shardIndexFor } from '../src/index.js';
+import { OrderSide, SupplyMode, ata, buildFinalizeWithAccounts, costCeil, crossAddress, orderCommitment, shardIndexFor } from '../src/index.js';
+import { type Address, createNoopSigner, getAddressDecoder } from '@solana/kit';
 
 describe('sdk helpers', () => {
   it('commitment equals sha256(cross ‖ owner ‖ nonce ‖ side ‖ price ‖ quantity ‖ salt)', () => {
@@ -39,5 +40,38 @@ describe('sdk helpers', () => {
   it('derives distinct cross addresses per creator and id', async () => {
     const a = address('DTB3Jtxb6dy7GvocUbypiJb548ZLGRzVdPrNNCWAKEdC');
     expect(await crossAddress(a, 1n)).not.toBe(await crossAddress(a, 2n));
+  });
+});
+
+describe('buildFinalizeWithAccounts', () => {
+  const key = (label: string): Address => getAddressDecoder().decode(createHash('sha256').update(label).digest());
+  const quoteMint = key('quote');
+  const token = address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+  const payer = createNoopSigner(key('payer'));
+  const view = (referral: { referrer: Address; shareBps: number } | null) =>
+    ({
+      address: key('cross'),
+      data: { supplyMode: SupplyMode.Mint, baseBound: true, baseMint: key('base'), quoteMint, baseTokenProgram: token, quoteTokenProgram: token, feeRecipient: key('fees'), integrator: key('integrator'), proceedsTo: key('proceeds') },
+      ext: referral ? { referral } : null,
+    }) as never;
+  // The accounts an idempotent create-ATA instruction creates: [payer, ata, owner, mint, ...]
+  const opened = (ixs: { accounts?: readonly { address: Address }[] }[]) => ixs.slice(0, -1).map((ix) => ix.accounts![1]!.address);
+
+  it('opens the referrer’s account too when the rules name one, so finalize does not fail with ReferralAccountMissing', async () => {
+    const referrer = key('referrer');
+    const ixs = await buildFinalizeWithAccounts(view({ referrer, shareBps: 1000 }), payer);
+    expect(opened(ixs)).toContain(await ata(referrer, quoteMint, token));
+    expect(opened(ixs)).toHaveLength(4);
+    // The finalize itself carries the referrer's account after the named ones.
+    expect(ixs.at(-1)!.accounts?.at(-1)?.address).toBe(await ata(referrer, quoteMint, token));
+  });
+
+  it('opens three accounts and no more when there is no referral, or a referral of zero', async () => {
+    expect(opened(await buildFinalizeWithAccounts(view(null), payer))).toHaveLength(3);
+    expect(opened(await buildFinalizeWithAccounts(view({ referrer: key('referrer'), shareBps: 0 }), payer))).toHaveLength(3);
+  });
+
+  it('opens one account for a referrer who is also the fee recipient', async () => {
+    expect(opened(await buildFinalizeWithAccounts(view({ referrer: key('fees'), shareBps: 500 }), payer))).toHaveLength(3);
   });
 });

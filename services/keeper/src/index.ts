@@ -7,3 +7,8 @@ export * from './calendar.js';
 export * from './duties.js';
 export * from './program-duties.js';
 export * from './program-passes.js';
+export * from './entitlements.js';
+export * from './referral.js';
+export * from './partner-fees.js';
+export * from './config.js';
+export * from './scope.js';

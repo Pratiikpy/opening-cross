@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clearing rule in the browser</title>
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --ink: #0b0b0f; --muted: #5a5a62; --ok: #17703f; --bad: #b3261e; --border: #d7d7dc; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0b0b0f; --ink: #f4f4f2; --muted: #a3a3ab; --ok: #5fd08f; --bad: #ff8a80; --border: #34343c; } }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  p { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  .sr-only { position: absolute; left: -9999px; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The clearing rule, in this browser</h1>
+  <p id="status" role="status">Loading the compiled rule…</p>
+  <p>Every conformance vector the program generated is run through the compiled WebAssembly module in this page, and each answer is compared with the one the program produced.</p>
+  <table>
+    <caption class="sr-only">Conformance results</caption>
+    <thead><tr><th scope="col">Vector set</th><th scope="col">Cases</th><th scope="col">Matching</th><th scope="col">First mismatch</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<script type="module" src="./page.js"></script>
+</body>
+</html>

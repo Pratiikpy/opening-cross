@@ -2,7 +2,7 @@
   "name": "@opening-cross/identity-attester",
   "version": "0.1.0",
   "private": true,
-  "description": "Devnet test attester: signs a Solana Attestation Service attestation for a wallet that proves it controls the wallet. It verifies no identity; a real KYC or accredited-investor check is a separate provider (docs/HUMAN_TASKS.md HI2, HG2).",
+  "description": "Two attesters for cross_gate. The devnet test attester signs a SAS attestation for a wallet that proves it controls the wallet (no identity check). The KYC attester turns what an identity provider says about a wallet (Cleanverse A-Pass, or a manual allowlist) into the oc-identity attestation cross_gate reads, keeps it true and closes it when the provider stops vouching.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "src/index.ts",
@@ -11,9 +11,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "tsx src/main.ts",
     "init": "tsx src/cli.ts init",
+    "kyc": "tsx src/kyc-cli.ts",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@opening-cross/cleanverse": "workspace:*",
+    "@opening-cross/cross-gate-client": "workspace:*",
     "@solana/kit": "8.4.0",
     "fastify": "5.12.5",
     "sas-lib": "1.0.10"

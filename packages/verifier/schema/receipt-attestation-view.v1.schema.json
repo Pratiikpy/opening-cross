@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opening-cross:schema:receipt-attestation-view:v1",
+  "title": "Opening Cross receipt attestation, as the API serves it",
+  "description": "The answer of GET /v1/crosses/{address}/receipt-attestation (ADR-0941): the newest signed attestation of a cross's receipt and the chain anchor that covers it, or null for either when it does not exist yet. With ?optional=1 an unattested cross answers 200 with `attestation: null`.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cluster", "cross", "attestation", "note"],
+      "properties": {
+        "cluster": { "type": "string", "minLength": 1 },
+        "cross": { "$ref": "#/$defs/address" },
+        "attestation": { "type": "null" },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cluster", "cross", "attestation", "recordedAt", "attestations", "publishedSigner", "signerIsPublished", "anchor"],
+      "properties": {
+        "cluster": { "type": "string", "minLength": 1 },
+        "cross": { "$ref": "#/$defs/address" },
+        "attestation": { "$ref": "urn:opening-cross:schema:receipt-attestation:v1" },
+        "recordedAt": { "type": "integer", "minimum": 0, "description": "When the promiser stored the attestation, unix seconds. Only the anchor's block time bounds when it existed." },
+        "attestations": { "type": "integer", "minimum": 1, "description": "How many attestations the cross has; more than one means the served receipt changed after it had been attested, and every earlier one is kept." },
+        "publishedSigner": { "oneOf": [{ "$ref": "#/$defs/address" }, { "type": "null" }] },
+        "signerIsPublished": { "type": ["boolean", "null"], "description": "Whether `attestation.signer` is the published signer; null when the API publishes none." },
+        "anchor": {
+          "oneOf": [
+            { "type": "null", "description": "The attestation has not been written to the chain yet; anchors are written every few minutes." },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["root", "count", "signature", "slot", "blockTime", "memo", "proof"],
+              "properties": {
+                "root": { "$ref": "#/$defs/sha256", "description": "Merkle root over the ids of the attestations in this anchor (leaf prefix 0x00, node prefix 0x01, odd node promoted)." },
+                "count": { "type": "integer", "minimum": 1 },
+                "signature": { "type": "string", "minLength": 64, "maxLength": 100, "description": "The Memo transaction that wrote the root." },
+                "slot": { "type": ["integer", "null"], "minimum": 0 },
+                "blockTime": { "type": ["integer", "null"], "minimum": 0, "description": "Unix seconds of the block: the attestation existed no later than this." },
+                "memo": { "type": "string", "pattern": "^opening-cross/receipts/v1 root=[0-9a-f]{64} n=[0-9]+$", "description": "The text the transaction must carry." },
+                "proof": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["hash", "side"],
+                    "properties": { "hash": { "$ref": "#/$defs/sha256" }, "side": { "enum": ["L", "R"] } }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "address": { "type": "string", "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

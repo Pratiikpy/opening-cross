@@ -18,11 +18,13 @@ import {
   CROSS_GATE_PROGRAM_ADDRESS,
   GATE_CONFIG_DISCRIMINATOR,
   Mode,
+  PRESET_IDS,
   findConfigPda,
   getClaimPassInstruction,
   getClaimPassMerkleInstruction,
   getGateConfigDecoder,
   getPassDecoder,
+  preset as jurisdictionPreset,
 } from '@opening-cross/cross-gate-client';
 import { GATE_PRESETS, type GatePreset } from '@opening-cross/presets/gate';
 import { buildAllowlist, parseAllowlist, toHex, verifyAllowlistProof, allowlistLeaf } from '@opening-cross/presets/gate-allowlist';
@@ -305,7 +307,23 @@ export function registerGate(app: FastifyInstance, d: GateDeps) {
   };
 
   // ---- presets
-  app.get('/v1/gates/presets', async (_req, reply) => send(reply, { presets: GATE_PRESETS satisfies readonly GatePreset[], note: 'Presets carry no jurisdiction rules. Which wallets an offering may admit is a question for counsel.' }));
+  //   `presets`: the three ways a gate admits a wallet (no jurisdiction rule in them).
+  //   `jurisdictionPresets`: rule templates for the offering types the specification names (ADR-0903), as the rules a gate takes (`set_rules`), with the plain-language notes and
+  //   primary sources next to each. `?restricted=KP,IR` is the list of countries counsel has told the issuer to exclude (the templates apply it as a deny list, or remove it from an allow list);
+  //   `?quoteUnit=` is the atoms of one whole quote unit, to express caps (default 1000000). Templates, not legal advice: every one says `requiresCounsel`.
+  app.get('/v1/gates/presets', async (req, reply) => {
+    const q = req.query as { restricted?: string; quoteUnit?: string };
+    const restricted = (q.restricted ?? '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
+    for (const c of restricted) if (!/^[A-Z]{2}$/.test(c)) throw new RequestError(400, `restricted must be a comma separated list of ISO 3166-1 alpha-2 codes; ${JSON.stringify(c)} is not one`);
+    if (q.quoteUnit !== undefined && !/^[1-9][0-9]{0,18}$/.test(q.quoteUnit)) throw new RequestError(400, 'quoteUnit must be a positive integer (atoms of one whole quote unit)');
+    const params = { restrictedCountries: restricted, ...(q.quoteUnit !== undefined && { quoteUnit: BigInt(q.quoteUnit) }) };
+    return send(reply, {
+      presets: GATE_PRESETS satisfies readonly GatePreset[],
+      note: '`presets` carry no jurisdiction rules. `jurisdictionPresets` are templates for counsel to approve for the actual offering, never legal clearance.',
+      jurisdictionPresets: PRESET_IDS.map((id) => jurisdictionPreset(id, params)),
+      restrictedCountries: restricted,
+    });
+  });
 
   // ---- discovery: gates found on recent crosses. A cross's gate mint never changes, so each cross is read once.
   const gateOfCross = new Map<string, Address | null>();

@@ -46,12 +46,14 @@ import { calendarSessions } from '@opening-cross/indexer';
 import { type Action, type OpenOrder, type Skip, plan } from './plan.js';
 import { type ChallengeFacts, type HaltFacts, type LockFacts, type SeriesFacts, planExpiries, planHalt, planRelease, planSpawn } from './duties.js';
 import { programPasses } from './program-passes.js';
+import type { EntitlementSource } from './entitlements.js';
+import type { PartnerFeeConfig } from './partner-fees.js';
 
 export type AccountFetcher = (address: Address) => Promise<Uint8Array | null>;
 
 /** The optional work beyond the lifecycle of a cross. A duty not named is not done. */
-export type Duty = 'refunds' | 'challenges' | 'locks' | 'series' | 'halts' | 'graduation' | 'listings' | 'bounties' | 'backing';
-export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 'series', 'halts', 'graduation', 'listings', 'bounties', 'backing'];
+export type Duty = 'refunds' | 'challenges' | 'locks' | 'series' | 'halts' | 'graduation' | 'listings' | 'bounties' | 'backing' | 'partner-fees';
+export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 'series', 'halts', 'graduation', 'listings', 'bounties', 'backing', 'partner-fees'];
 /**
  * What a keeper does when nobody says otherwise: the duties that cost it nothing beyond transaction fees. `locks` pays for the owner's token account on a first release, `series` for the rent of every
  * cross it spawns and `listings` for the venue's slash account when a slash is the first thing to reach it, so those are asked for by name; `bounties` sends rewards to the keeper's own wallet, so the
@@ -60,7 +62,7 @@ export const ALL_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'locks', 's
  */
 export const DEFAULT_DUTIES: readonly Duty[] = ['refunds', 'challenges', 'halts', 'graduation', 'backing'];
 
-/** `all`, `none`, `default`, or a comma-separated list of duty names; an unknown name is an error, never silently ignored. */
+/** `all`, `none`, `default`, or a comma-separated list of duty names, in which `default` stands for the default duties (`default,locks`); an unknown name is an error, never silently ignored. */
 export function parseDuties(text: string | undefined): Set<Duty> {
   const t = (text ?? 'default').trim();
   if (t === 'default') return new Set(DEFAULT_DUTIES);
@@ -68,6 +70,10 @@ export function parseDuties(text: string | undefined): Set<Duty> {
   if (t === 'none' || t === '') return new Set();
   const out = new Set<Duty>();
   for (const name of t.split(',').map((x) => x.trim()).filter(Boolean)) {
+    if (name === 'default') {
+      for (const d of DEFAULT_DUTIES) out.add(d);
+      continue;
+    }
     if (!(ALL_DUTIES as readonly string[]).includes(name)) throw new Error(`unknown keeper duty "${name}"; the duties are ${ALL_DUTIES.join(', ')}, or all, none, default`);
     out.add(name as Duty);
   }
@@ -128,6 +134,17 @@ export type KeeperDeps = {
   bountyCrosses?: () => Promise<Address[]>;
   /** Backing policy accounts (duty `backing`). Each is re-read before use. */
   policies?: () => Promise<Address[]>;
+  /**
+   * Subscriptions from the billing service (ADR-0960). When given, the `series` duty spawns the next cross only for an issuer with a paid period. Only the keeper's own
+   * spend is conditioned on it: settling, claims, refunds, finalizing and lock releases are never held back, and the program stays permissionless.
+   */
+  entitlement?: EntitlementSource;
+  /** Series authorities the managed scheduler serves without a subscription (the operator's own issuers). */
+  entitlementExempt?: ReadonlySet<string>;
+  /** Crosses that may have a DBC continuation pool, finalized ones included (duty `partner-fees`); defaults to `bountyCrosses`, then `crosses`. */
+  partnerCrosses?: () => Promise<Address[]>;
+  /** When and how much to claim of the protocol's partner fees (duty `partner-fees`); see partner-fees.ts for the defaults. */
+  partnerFees?: PartnerFeeConfig;
 };
 
 export type MintHalt = { code: string; message: string };
@@ -382,10 +399,31 @@ async function seriesPass(d: KeeperDeps, now: bigint, result: PassResult): Promi
     result.skipped.push(...p.skipped);
     for (const action of p.actions) {
       if (action.kind !== 'spawn-next') continue;
+      // Spawning is the managed scheduler: the keeper pays the rent of every cross it spawns, so it does that for subscribers (ADR-0960). Anyone else may spawn this cross.
+      const held = await entitlementHold(d, series.authority, address);
+      if (held) {
+        result.skipped.push(held);
+        continue;
+      }
       const sent = await perform(d, result, action, async () => [[(await buildSpawnNext({ address, data: series }, d.payer, { feed: action.feed })).instruction]]);
       // The spawned cross has no shards yet: nobody can trade, and nothing can be cleared, until they exist. They follow the spawn, from the cross as it is on chain.
       if (sent) await initShards(d, result, await crossAddress(address, series.nextIndex), action);
     }
+  }
+}
+
+/**
+ * Whether the managed scheduler should spawn for `issuer`, when the keeper is given the billing service's entitlements: a skip saying why not, or null to go ahead.
+ * Without entitlements configured the keeper spawns for every series it is scoped to, as before. The program is permissionless either way, so the skip says who else can do it.
+ */
+async function entitlementHold(d: KeeperDeps, issuer: Address, series: Address): Promise<Skip | null> {
+  if (!d.entitlement || d.entitlementExempt?.has(issuer)) return null;
+  try {
+    const e = await d.entitlement(issuer);
+    if (e.entitled) return null;
+    return { cross: series, code: 'NOT_ENTITLED', reason: `${issuer} has no paid subscription period, so the managed scheduler does not spawn this series' next cross; spawn_next is permissionless, and anyone may send it` };
+  } catch (e) {
+    return { cross: series, code: 'ENTITLEMENT_UNKNOWN', reason: `the subscription of ${issuer} could not be checked (${e instanceof Error ? e.message : String(e)}); the managed scheduler waits rather than spend rent on a guess` };
   }
 }
 
@@ -461,8 +499,10 @@ async function instructionsFor(a: Action, view: { address: Address; data: Cross;
       return [[await buildPushRefunds(view, a.orders.map((o) => ({ owner: o.owner, nonce: o.nonce, side: o.side === 'sell' ? OrderSide.Sell : OrderSide.Buy })))]];
     case 'expire-challenge':
       return [[await buildExpireChallenge({ cross: a.cross, id: a.id, challenger: a.challenger })]];
-    case 'finalize':
+    case 'finalize': {
+      // The accounts finalize pays into are opened first (one transaction finishes any cross), the referrer's among them when the rules name one: finalize refuses to run without it.
       return [await buildFinalizeWithAccounts(view, d.payer)];
+    }
     default:
       throw new Error(`${a.kind} is not a step of a cross's lifecycle`);
   }

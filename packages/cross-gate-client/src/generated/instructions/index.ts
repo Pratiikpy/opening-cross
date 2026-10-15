@@ -6,20 +6,37 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './allowWallet.js';
 export * from './canFreezePermissionless.js';
 export * from './canThawPermissionless.js';
 export * from './claimPass.js';
+export * from './claimPassAttested.js';
 export * from './claimPassMerkle.js';
+export * from './claimPassMerkleTerms.js';
 export * from './closeLock.js';
 export * from './createConfig.js';
+export * from './denyWallet.js';
 export * from './execute.js';
 export * from './grantPass.js';
+export * from './grantPassTerms.js';
 export * from './initGateMetas.js';
 export * from './initHookMetas.js';
+export * from './initRules.js';
+export * from './openVolume.js';
+export * from './receiveLocked.js';
+export * from './refreshTerms.js';
+export * from './releaseAllocation.js';
+export * from './reserveAllocation.js';
+export * from './revokeDenied.js';
+export * from './revokeExpired.js';
+export * from './revokeNonconforming.js';
 export * from './revokePass.js';
+export * from './revokePassTerms.js';
 export * from './revokeUnattested.js';
 export * from './setAllowlistRoot.js';
 export * from './setAuthority.js';
 export * from './setLock.js';
 export * from './setMode.js';
+export * from './setRules.js';
 export * from './setSasRequirement.js';
+export * from './updateHookMetas.js';

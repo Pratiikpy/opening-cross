@@ -41,7 +41,7 @@ export function useSaved(): { saved: Saved; set: (s: Saved) => boolean } {
 }
 
 /** What this browser follows. `follow` flips one address and tells the server's subscriptions about the new list. */
-export function useWatchList(): { watch: Watch; follow: (kind: WatchKind, address: string) => Promise<{ saved: boolean; following: boolean }> } {
+export function useWatchList(): { watch: Watch; follow: (kind: WatchKind, address: string) => Promise<{ saved: boolean; following: boolean }>; setWatch: (next: Watch) => boolean } {
   const text = useSyncExternalStore(subscribe, readWatch, () => '');
   const follow = useCallback(async (kind: WatchKind, address: string) => {
     const before = loadWatch();
@@ -53,7 +53,12 @@ export function useWatchList(): { watch: Watch; follow: (kind: WatchKind, addres
     await Promise.all([s.push, s.telegram].filter((x): x is NonNullable<typeof x> => x !== null).map((m) => updateSubscription(m.id, m.token, { watch: allWatched(next) })));
     return { saved, following: next[kind].includes(address) };
   }, []);
-  return { watch: parseWatch(text), follow };
+  const setWatch = useCallback((next: Watch) => {
+    const ok = writeWatch(next);
+    emit();
+    return ok;
+  }, []);
+  return { watch: parseWatch(text), follow, setWatch };
 }
 
 export function useAlertConfig(): { config: AlertConfig | null; error: string | null } {

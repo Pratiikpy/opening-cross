@@ -380,13 +380,15 @@ export async function buildFinalize(cross: CrossView, payer: TransactionSigner):
   return x && x.referral.shareBps > 0 ? withAccounts(ix, [writable(await ata(x.referral.referrer, c.quoteMint, c.quoteTokenProgram))]) : ix;
 }
 
-/** Finalize pays the protocol fee, the integrator fee and the proceeds into token accounts that must exist; a quote mint the
+/** Finalize pays the protocol fee, the integrator fee, the proceeds and a named referrer's share into token accounts that must exist; a quote mint the
  *  fee recipient has never held has no such account yet. This creates whichever are missing (idempotent, paid by `payer`) and
  *  then finalizes, so one transaction finishes any cross, not only crosses whose accounts someone prepared. */
 export async function buildFinalizeWithAccounts(cross: CrossView, payer: TransactionSigner): Promise<Instruction[]> {
   const c = cross.data;
   const ensure = async (owner: Address, mint: Address, tokenProgram: Address) => getCreateAssociatedTokenIdempotentInstruction({ payer, ata: await ata(owner, mint, tokenProgram), owner, mint, tokenProgram });
-  const owners = [...new Set<Address>([c.feeRecipient, c.integrator, c.proceedsTo])];
+  // A cross whose rules name a referrer pays it a share of the protocol fee at finalize, so its account must exist too (ReferralAccountMissing otherwise).
+  const referrer = cross.ext && cross.ext.referral.shareBps > 0 ? cross.ext.referral.referrer : null;
+  const owners = [...new Set<Address>([c.feeRecipient, c.integrator, c.proceedsTo, ...(referrer ? [referrer] : [])])];
   const ixs: Instruction[] = [];
   for (const owner of owners) ixs.push(await ensure(owner, c.quoteMint, c.quoteTokenProgram));
   if (c.supplyMode === SupplyMode.Escrow) ixs.push(await ensure(c.proceedsTo, c.baseMint, c.baseTokenProgram));

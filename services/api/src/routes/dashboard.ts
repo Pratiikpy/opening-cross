@@ -5,7 +5,8 @@
 // This route computes nothing. Each section is the answer of a route that already exists, fetched through the server itself, with
 // the route named beside it, so a figure on the dashboard can be checked by opening the route it came from. A section whose route
 // fails or is not enabled on this deployment is reported as unavailable, with the reason; it is never filled with a default. The
-// program section is read from chain: when each of the five programs was last deployed and who may upgrade it.
+// program section is read from chain: when each of the five programs was last deployed and who may upgrade it. The liquidity section is the pool summary
+// (routes/pools.ts) and appears when that route is mounted.
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Address } from '@solana/kit';
 import { CROSS_CORE_PROGRAM_ADDRESS } from '@opening-cross/sdk';
@@ -138,6 +139,14 @@ export function registerDashboard(app: FastifyInstance, d: DashboardDeps, opts: 
         }
       },
     };
+    // Liquidity: the pools of the latest cleared crosses. The section exists only on a deployment that mounts the pool routes (routes/pools.ts), so a
+    // deployment without them is not shown a section that can only say it is missing; unlike the sections above, it is not reported as unavailable there.
+    if (app.hasRoute({ method: 'GET', url: '/v1/pools/summary' })) {
+      sections.liquidity = () => viaRoute('/v1/pools/summary', (b) => {
+        const { discovery: _discovery, ...rest } = b as { discovery?: string };
+        return rest;
+      });
+    }
     const names = Object.keys(sections).filter((n) => !skip.has(n));
     const results = await Promise.all(names.map((n) => bounded(n, sections[n]!)));
     return {

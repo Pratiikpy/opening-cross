@@ -7,7 +7,7 @@
 // What it does NOT do, and what is therefore accounting and a transfer made by whoever holds the fee wallet: the optional 10%
 // referrer share, the 25% reopen rebate pool for registered market makers, the issuer subscription and the listing fee. This module
 // computes those exactly (packages/fees, integer arithmetic) from the finalized crosses the chain proves, and states them as
-// figures, never as a payment that happened. A referral program-side (a referrer field in the cross) needs a program change.
+// figures, never as a payment that happened. A cross whose rules name a referrer pays it on chain at finalize (ADR-0460); the ledger reads that from the cross's rules tail and expects the transfer (ADR-0962), and the router's per-order referral below covers only crosses that do not.
 //
 //   GET  /v1/fees/schedule              the schedule read from the Protocol account and the rules around it
 //   GET  /v1/fees/ledger?limit=         one line per finalized cross: counters, event and the finalize transaction's own token balances
@@ -19,7 +19,7 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type pg from 'pg';
 import { type Address, isAddress } from '@solana/kit';
-import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, getCrossDecoder, getProtocolDecoder, protocolAddress } from '@opening-cross/sdk';
+import { CROSS_CORE_PROGRAM_ADDRESS, CROSS_DISCRIMINATOR, getCrossDecoder, getProtocolDecoder, protocolAddress, readCrossExt } from '@opening-cross/sdk';
 import {
   type CrossFeeFacts,
   type LedgerEntry,
@@ -36,7 +36,7 @@ import {
   allocateAll,
   ledgerEntry,
   referralLines,
-  referrerStatement,
+  referrerStatementWithRouter,
   signStatement,
   statementFromEntries,
   totalsByMint,
@@ -101,9 +101,13 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
       const acct = await d.account(r.address as Address);
       if (!acct || acct.owner !== CROSS_CORE_PROGRAM_ADDRESS || !CROSS_DISCRIMINATOR.every((b, i) => acct.data[i] === b)) continue;
       const c = getCrossDecoder().decode(acct.data);
+      // A cross of the extended layout may name a referrer that the finalize pays out of the protocol fee (ADR-0460, ADR-0962).
+      const ext = readCrossExt(acct.data);
+      const referral = ext && ext.referral.shareBps > 0 ? ext.referral : null;
       const facts: CrossFeeFacts = {
         cross: r.address, creator: c.creator, kind: KINDS[c.kind]!, supplyMode: SUPPLY[c.supplyMode]!, quoteMint: c.quoteMint, protocolBps: c.protocolFeeBps, integratorBps: c.integratorFeeBps,
         integrator: c.integrator, feeRecipient: c.feeRecipient, proceedsTo: c.proceedsTo, buyerPaid: c.buyerPaid, feesAccrued: c.feesAccrued,
+        ...(referral && { referrer: referral.referrer, referralShareBps: referral.shareBps }),
       };
       let tx: TransactionBalances | null = null;
       let transient = false;
@@ -123,6 +127,7 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
   const entryOut = (e: LedgerEntry) => ({
     cross: e.facts.cross, kind: e.facts.kind, supplyMode: e.facts.supplyMode, quoteMint: e.facts.quoteMint, protocolBps: e.facts.protocolBps, integratorBps: e.facts.integratorBps,
     signature: e.recorded.signature, blockTime: e.recorded.blockTime, protocolFee: e.recorded.protocolFee, integratorFee: e.recorded.integratorFee, proceedsQuote: e.recorded.proceedsQuote,
+    referrer: e.referrer, referral: e.referral,
     expected: e.expected, verdict: e.verdict, reasons: e.reasons,
   });
 
@@ -146,7 +151,7 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
       ],
       inProgram: ['the schedule and its snapshot per cross', 'who pays and when', 'the split of the vault at finalize'],
       offChainOnly: {
-        referrerShareBps: { value: REFERRAL_SHARE_BPS, kind: 'accounting and a transfer from the fee wallet; cross_core has no referrer field' },
+        referrerShareBps: { value: REFERRAL_SHARE_BPS, kind: 'the off-chain router accounting and a transfer from the fee wallet, for orders placed by a referred wallet; a cross whose rules name a referrer pays it on chain at finalize instead (ADR-0460), and the router owes nothing on that cross' },
         rebateShareBps: { value: REBATE_SHARE_BPS, kind: 'accounting and a transfer; reopen crosses only; registered market makers other than the company\'s own' },
         subscriptionsAndListing: 'a rate card (packages/fees): the managed service around the program, never a condition of using it',
       },
@@ -163,7 +168,7 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
       network: cluster,
       method: 'Each line compares three sources: the cross account\'s counters run through the program\'s fee rules, the CrossFinalized event, and the token balance changes of the finalize transaction. MATCH needs all three to agree to the atom; UNVERIFIED means the transaction could not be read, and is never counted.',
       entries: entries.map(entryOut),
-      totals: { verified: Object.fromEntries(Object.entries(t.verified).map(([m, v]) => [m, { protocolFee: v.protocolFee, integratorFee: v.integratorFee, crosses: v.crosses }])), unverified: t.unverified, mismatched: t.mismatched },
+      totals: { verified: Object.fromEntries(Object.entries(t.verified).map(([m, v]) => [m, { protocolFee: v.protocolFee, integratorFee: v.integratorFee, referralFee: v.referralFee, crosses: v.crosses }])), unverified: t.unverified, mismatched: t.mismatched },
     });
   });
 
@@ -203,7 +208,7 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
           const notional = buy ? BigInt(r.escrow) - BigInt(r.quote_out ?? '0') : BigInt(r.quote_out ?? '0') + BigInt(r.fee ?? '0');
           return { cross: e.facts.cross, order: r.address, owner: r.owner, side: buy ? ('buy' as const) : ('sell' as const), placedAt: Number(r.placed), notional, escrowFee: BigInt(r.fee ?? '0') };
         });
-      const ls = referralLines({ cross: e.facts.cross, supplyMode: e.facts.supplyMode, protocolBps: e.facts.protocolBps, integratorBps: e.facts.integratorBps, protocolFee: e.recorded.protocolFee }, orders, bodies);
+      const ls = referralLines({ cross: e.facts.cross, supplyMode: e.facts.supplyMode, protocolBps: e.facts.protocolBps, integratorBps: e.facts.integratorBps, protocolFee: e.recorded.protocolFee, referralShareBps: e.facts.referralShareBps }, orders, bodies);
       for (const l of ls) {
         out.push(l);
         meta.set(l.order, { quoteMint: e.facts.quoteMint, at: e.recorded.blockTime });
@@ -248,7 +253,7 @@ export function registerFees(app: FastifyInstance, d: FeesDeps, opts: FeesOption
     const entries = await ledger(LEDGER_MAX);
     const body =
       role === 'referrer'
-        ? referrerStatement(cluster, who, (await payouts(entries)).lines.map((l) => ({ ...l, quoteMint: entries.find((e) => e.facts.cross === l.cross)!.facts.quoteMint, at: entries.find((e) => e.facts.cross === l.cross)!.recorded.blockTime, paidBy: null })), from, to)
+        ? referrerStatementWithRouter(cluster, who, entries, (await payouts(entries)).lines.map((l) => ({ ...l, quoteMint: entries.find((e) => e.facts.cross === l.cross)!.facts.quoteMint, at: entries.find((e) => e.facts.cross === l.cross)!.recorded.blockTime, paidBy: null })), from, to)
         : statementFromEntries(cluster, role as Exclude<StatementRole, 'referrer'>, who, entries, from, to);
     const signed = opts.signer ? await signStatement(body, opts.signer.keyPair, opts.signer.address) : null;
     return send(reply, signed ?? { body, unsigned: true, reason: 'no attestation key is configured on this deployment' });

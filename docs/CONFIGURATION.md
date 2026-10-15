@@ -24,11 +24,23 @@ Every environment variable the shipped processes read, taken from their entry po
 | | `DATABASE_URL` | no | unset | When set, crosses are discovered from the indexer; otherwise by scanning the program's accounts. |
 | | `KEEPER_CREATORS` | no | all | Comma-separated creator addresses; the keeper then acts only on their crosses. |
 | | `PASS_MS` | no | `10000` | Time between passes. |
+| | `KEEPER_DUTIES` | no | `default` | Which optional duties to do: `default`, `all`, `none`, or a comma-separated list of `refunds`, `challenges`, `locks`, `series`, `halts`, `graduation`, `listings`, `bounties`, `backing`, `partner-fees`, in which the word `default` stands for the default duties (`refunds`, `challenges`, `halts`, `graduation`, `backing`), for example `default,locks,partner-fees`. A blank value is the default, not "none". The duties that spend the keeper's money are done only when named: `locks` (opens an owner's token account on a first release), `series` (pays the rent of every cross it spawns), `listings`, `bounties`, `partner-fees` (opens the fee recipient's two token accounts, then claims the protocol's accrued Meteora DBC trading fees to it). |
+| | `KEEPER_DRY_RUN` | no | off | `1` plans every action, sends nothing and logs what would have been sent. |
+| | `KEEPER_MIN_RELEASE` | no | `1` | Base atoms below which a vesting release waits for more to vest. The last release is always sent. |
+| | `KEEPER_PARTNER_FEE_EVERY_SECS` | no | `3600` | `partner-fees`: seconds between two looks at one cross's DBC pool. |
+| | `KEEPER_MIN_PARTNER_QUOTE`, `KEEPER_MIN_PARTNER_BASE` | no | `1`, `1` | `partner-fees`: accrued atoms below which a claim waits (1 claims any accrued fee). |
+| | `KEEPER_BILLING_URL` | no | unset | The billing service (`http://billing:8791` with the billing profile). Set, the `series` duty spawns a series' next cross only for an issuer with a paid subscription period (ADR-0960); clearing, claims, refunds, finalizing and lock releases never depend on it. Unset: every series in scope is served. It must be an http(s) URL or the keeper stops. Billing itself is H35 in `docs/HUMAN_TASKS.md`. |
+| | `KEEPER_ENTITLEMENT_EXEMPT` | no | empty | Comma-separated series authorities served without a subscription (the operator's own issuers). |
+| | `KEEPER_BREAKER_FEEDS` | no | empty | Comma-separated hex Pyth feed ids whose sponsored push-oracle account the keeper may feed to a halt state's circuit breaker. |
+| `services/keeper` (gate sweep, `src/main-gate.ts`) | `RPC_URL`, `KEEPER_KEYPAIR` | yes | | As above. The sweep closes the `cross_gate` passes anyone may close (terms lapsed, attestation gone, no longer conforming, wallet denied); the rent goes to the pass owner. It reads every `Terms` account with `getProgramAccounts`, so the endpoint must allow that call. Run with `pnpm --filter @opening-cross/keeper start:gate`, or under the compose profile `gate` (`GATE_KEEPER_PASS_MS`, `GATE_KEEPER_DRY_RUN` in `deploy/.env`); it does nothing until a gate has rules. |
+| | `PASS_MS`, `KEEPER_DRY_RUN` | no | `60000`, off | Time between sweeps (at least 1000); `1` names what would be closed and sends nothing. |
 | `services/promiser` | `DATABASE_URL`, `RPC_URL` | yes | | As above. |
 | | `NETWORK` | yes | | Cluster name recorded in every signed promise (`devnet`, `mainnet-beta`, `localnet`). |
 | | `PROMISE_KEYPAIR` | yes | | Path to the Solana CLI JSON keypair that signs promises and pays the memo anchor fees. |
 | | `ROUND_MS` | no | `10000` | Time between sign-and-grade rounds. |
 | | `ANCHOR_EVERY_MS` | no | `600000` | Time between Merkle-root memo transactions. |
+| | `RECEIPT_URL` (or `WEB_URL`) | no | unset | Base URL of the web app. With it the promiser also signs and anchors the receipt of every cross that has settled for good (ADR-0941): it fetches the receipt from the web app, checks it against the cross account on chain, signs it and anchors batches of signatures in one memo transaction. Without it that part is off and the start-up log line says so. `RECEIPT_URL` wins when both are set. |
+| | `RECEIPT_PER_ROUND`, `RECEIPT_RECHECK_MS` | no | `20`, `21600000` | How many crosses one round attests, and how long a cross that could not be attested is left before it is looked at again. |
 | `services/premium` | `DATABASE_URL` | yes | | Postgres for observations. |
 | | `RPC_URL` | yes | | A Solana **mainnet** endpoint: the monitor measures mainnet liquidity. |
 | | `NETWORK` | yes | | Must be `mainnet-beta`; the process refuses anything else. |
@@ -96,7 +108,7 @@ Registered with one call, `registerW2A(app, deps, process.env)` from `services/a
 | | `OPS_API_URL` | no | unset | The public API, where a reviewer's evidence is gathered from. |
 | | `OPS_WEBHOOK_SECRET` | no | unset | Secret in the monitor webhook's path. Unset turns the webhook off. |
 | | `OPS_KEYPAIR` | no | unset | Keypair file that signs the audit-log head (documents only, no funds). |
-| | `OPS_PORT`, `OPS_HOST` | no | `8792`, `127.0.0.1` | Listen address. Not exposed through Caddy by default. |
+| | `OPS_PORT`, `OPS_HOST` | no | `8792`, `127.0.0.1` | Listen address. The compose service binds loopback on the host. Not reachable through the `SITE_HOST` block of the Caddyfile; a web app on another host reaches it through the `OPS_SITE_HOST` block, which allows `OPS_ALLOWED_IPS` only (`deploy/README.md`). |
 
 ## Rules, treasury and settlement layer (workstream W3A)
 
@@ -127,7 +139,7 @@ The off-chain layer under `cross_mandate`, `cross_conviction`, `cross_basket`, `
 
 ## Web app (`apps/web`)
 
-These are inlined at build time: change one and rebuild.
+`NEXT_PUBLIC_*` values are inlined at build time: change one and rebuild. `OPS_CONSOLE_URL` is read by the server at run time.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -135,6 +147,27 @@ These are inlined at build time: change one and rebuild.
 | `NEXT_PUBLIC_RPC_URL` | `https://api.devnet.solana.com` | RPC the browser sends signed transactions to. |
 | `NEXT_PUBLIC_CHAIN` | `solana:devnet` | Wallet Standard chain id the app asks wallets for (`solana:mainnet`, `solana:devnet`, `solana:localnet`). Wallets that do not list it are hidden. |
 | `NEXT_PUBLIC_SITE_URL` | unset | Public address of this deployment, used for absolute URLs in metadata, the sitemap and robots. On Vercel the production URL is used when this is unset; with neither, absolute URLs are left out. |
+| `OPS_CONSOLE_URL` | `http://127.0.0.1:8792` | Server side only. Where the web app's `/ops/api` route passes a request on to: the operations console API (`services/ops`). The browser never talks to that service. The default reaches it only from the same host; a web app deployed elsewhere (Vercel) needs an address it can reach, which is a deliberate decision: see "The operations console and the docs service" in `deploy/README.md`. `/ops` is left out of the sitemap, disallowed in `robots.txt` and marked `noindex`. |
+
+## The documentation service (`services/docs-mcp`)
+
+Optional. The repository's documents served as a searchable site, over MCP (Streamable HTTP) and as JSON; read-only, no key, no database (ADR-0972). Runs from `deploy/docker-compose.yml` under the `docs` profile.
+
+| Variable | Required | Default | Meaning |
+|---|---|---|---|
+| `DOCS_PORT`, `DOCS_HOST` | no | `8793`, `127.0.0.1` | Listen address. The compose service binds `0.0.0.0` inside its network. |
+| `DOCS_DIR` | no | this checkout | Repository root to read. The deploy image holds only the Markdown documents, at `/app`. |
+| `DOCS_CORPUS` | no | unset | A corpus file written by `pnpm --filter @opening-cross/mcp docs:corpus`, read instead of the directory (a host without the documents checked out). |
+| `DOCS_KINDS` | no | everything except `runbook` and `security` | Comma-separated document kinds to publish (`overview`, `spec`, `adr`, `reference`, `guide`, `evidence`, `package`, `runbook`, `security`). A mistyped kind stops the start. Runbooks and security notes describe how the operation is run, so they are off unless named. |
+| `DOCS_PUBLIC_URL` | no | unset | The address the service is reached at, written into `/llms.txt`. |
+| `DOCS_RATE_PER_MINUTE` | no | `120` | Requests one client may make per minute. `0` turns the limit off. |
+| `DOCS_TRUST_PROXY` | no | off | `1` takes the client address from `X-Forwarded-For`; only behind a proxy that sets it (the compose service sets it, Caddy is in front). |
+
+`deploy/docker-compose.yml` also takes `DOCS_SITE_HOST` (the hostname Caddy gets a certificate for, default `docs.localhost`, which is not reachable from outside) and `OPS_SITE_HOST` and `OPS_ALLOWED_IPS` for the operations console API (see `deploy/README.md`).
+
+## The identity attester (`services/identity-attester`)
+
+Its variables are in the runbook, `services/identity-attester/RUNBOOK.md`: the keypair and secret file (HI2 in `docs/HUMAN_TASKS.md`), the provider (`cleanverse` or `allowlist`), the tier thresholds, the token and wallet-signed mode. The API does not call it. The web app's gate pages call it with a wallet-signed request at `NEXT_PUBLIC_KYC_ATTESTER_URL` (inlined at build time), which needs `ATTESTER_WALLET_SIGNED=1` and `ATTESTER_CORS_ORIGIN` on the attester; `ATTESTER_API_TOKEN` is for the operator's own calls.
 
 ## Mobile app (`apps/mobile`)
 

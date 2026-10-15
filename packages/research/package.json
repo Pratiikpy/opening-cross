@@ -1,0 +1,23 @@
+{
+  "name": "@opening-cross/research",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The cited research-note writer (J3): a language model writes prose over a table of cited facts, and every sentence it writes passes a gate (known citations, every number equal to a cited fact, no contradicted claim, no advice, no instruction-shaped text) before it is published; what fails is dropped, never repaired.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "@opening-cross/integrity": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

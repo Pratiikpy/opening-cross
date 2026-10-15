@@ -9,6 +9,7 @@
 // not manipulative. Ranking on the lower bound is the conservative reading and the one the product definition asks for.
 import { type ConflictReport } from './conflicts.js';
 import { type ClusterResult } from './funding.js';
+import type { CoordinationReport } from './jito.js';
 import type { Funding } from './types.js';
 
 export interface OrderWeight {
@@ -34,11 +35,17 @@ export interface OrganicReport {
   perOwner: Record<string, Standing>;
   crossSideClusters: { members: string[]; buy: bigint; sell: bigint; potentialSelfTrade: bigint }[];
   unweightedOrders: number;
+  /** The Jito bundle evidence, when it was gathered: how many order placements were looked up and how they came out. Absent when no bundle check was made. */
+  coordination?: { placements: number; bundled: number; notBundled: number; unknown: number; linkedOwners: number };
   /** What this version does not do, and the bars it has not met. */
   barsUnmet: string[];
 }
 
-export function organicVolume(orders: readonly OrderWeight[], conflicts: ConflictReport, clusters: ClusterResult, fundings: ReadonlyMap<string, Funding> = new Map()): OrganicReport {
+/**
+ * `clusters` should already carry any bundle links (`clusterByFunding(..., { extraLinks: coordination.links })`); `coordination` is passed here only so the report can say that the
+ * bundle check was made and how much of the cross it covered.
+ */
+export function organicVolume(orders: readonly OrderWeight[], conflicts: ConflictReport, clusters: ClusterResult, fundings: ReadonlyMap<string, Funding> = new Map(), coordination?: CoordinationReport | null): OrganicReport {
   const owners = [...new Set(orders.map((o) => o.owner))];
   const clusterOf = new Map<string, number>();
   clusters.clusters.forEach((c, i) => c.members.forEach((m) => clusterOf.set(m, i)));
@@ -103,8 +110,11 @@ export function organicVolume(orders: readonly OrderWeight[], conflicts: Conflic
     perOwner,
     crossSideClusters: crossSide,
     unweightedOrders: orders.filter((o) => o.weight === null).length,
+    ...(coordination && { coordination: { placements: coordination.placements.length, bundled: coordination.bundled, notBundled: coordination.notBundled, unknown: coordination.unknown.count, linkedOwners: coordination.coordinated.length } }),
     barsUnmet: [
-      'No Jito bundle data: bundled or atomic wash patterns on a venue are not seen.',
+      coordination
+        ? `Jito bundle evidence covers ${coordination.placements.length - coordination.unknown.count} of ${coordination.placements.length} order placements; the public explorer keeps about seven days, so an older or unreachable placement is unknown, not clean.`
+        : 'No Jito bundle data was gathered for this measure: orders assembled together by one party in a bundle are not seen.',
       'Not validated against a labelled set of real wash trading; the wash-injection tests prove the bounds move the right way on synthetic injections, not how accurate they are on real manipulation.',
       'First-funder tracing only: a wallet funded through a chain of intermediaries is not linked.',
       'Devnet traffic only so far; no mainnet crosses exist to score.',

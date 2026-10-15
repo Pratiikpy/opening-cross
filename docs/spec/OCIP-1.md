@@ -211,6 +211,11 @@ Seeds are concatenated byte strings. `u64` seeds are 8 bytes little-endian, `u8`
 | Transfer-hook extra metas | `cross_gate` | `"extra-account-metas"`, mint |
 | Token ACL thaw metas | `cross_gate` | `"thaw_extra_account_metas"`, mint |
 | Token ACL freeze metas | `cross_gate` | `"freeze_extra_account_metas"`, mint |
+| Terms | `cross_gate` | `"terms"`, mint, owner |
+| Identity binding | `cross_gate` | `"identity"`, mint, identity id |
+| Affiliate volume | `cross_gate` | `"volume"`, mint, owner |
+| Denied wallet | `cross_gate` | `"deny"`, mint, owner |
+| Allocation | `cross_gate` | `"alloc"`, cross, key |
 | Calendar | `cross_calendar` | `"calendar"`, admin, `id` as `u64` |
 | Settler | `cross_settle` | `"settler"`, cross |
 | DBC config | `cross_settle` | `"dbc_config"`, cross |
@@ -238,6 +243,11 @@ The seed constants as they appear in the sources:
     "PASS_SEED": "pass",
     "LOCK_SEED": "lock",
     "HOOK_METAS_SEED": "extra-account-metas",
+    "TERMS_SEED": "terms",
+    "IDENTITY_SEED": "identity",
+    "VOLUME_SEED": "volume",
+    "DENY_SEED": "deny",
+    "ALLOC_SEED": "alloc",
     "THAW_METAS_SEED": "thaw_extra_account_metas",
     "FREEZE_METAS_SEED": "freeze_extra_account_metas"
   },
@@ -292,9 +302,11 @@ Every account type in the program IDLs, with its 8-byte discriminator (hex) and 
 | `cross_core` | `PrintFeed` | `7127297f81d184da` | 322 |
 | `cross_core` | `Protocol` | `2d27652b73488328` | 147 |
 | `cross_core` | `Series` | `f06108b78b4dfaa2` | 1087 |
+| `cross_gate` | `Denied` | `59862f86e9263056` | 82 |
 | `cross_gate` | `GateConfig` | `a1c80a3db9785c15` | 172 |
 | `cross_gate` | `Lock` | `08ff24cad2163989` | 89 |
 | `cross_gate` | `Pass` | `28f78c71380e392c` | 73 |
+| `cross_gate` | `Terms` | `df1828dff9db0e61` | 134 |
 | `cross_settle` | `Greenshoe` | `43ca1a80e5cfa525` | 387 |
 | `cross_calendar` | `Calendar` | `9df0ba39d593972e` | 2683 |
 | `treasury` | `Grant` | `a1a60bcdcc87cd36` | 195 |
@@ -589,23 +601,40 @@ Every instruction of the four normative programs and of `treasury`, with its 8-b
 | `cross_core` | `set_series_active` | `2fa403c9b1d49fdf` | Anchor default |
 | `cross_core` | `spawn_next` | `00547321e4e0416d` | Anchor default |
 | `cross_core` | `sync_pause` | `4064d0cc9b84312a` | Anchor default |
+| `cross_gate` | `allow_wallet` | `20009d4eb5a02643` | Anchor default |
 | `cross_gate` | `can_freeze_permissionless` | `d68d6d4bf8012d1d` | explicit |
 | `cross_gate` | `can_thaw_permissionless` | `08afa981894a3df1` | explicit |
 | `cross_gate` | `claim_pass` | `8ef8bc42ea65c6d3` | Anchor default |
+| `cross_gate` | `claim_pass_attested` | `648aa25ed0b78b37` | Anchor default |
 | `cross_gate` | `claim_pass_merkle` | `734231613e480dde` | Anchor default |
+| `cross_gate` | `claim_pass_merkle_terms` | `93697d504f28411e` | Anchor default |
 | `cross_gate` | `close_lock` | `3afeb78297ee5f36` | Anchor default |
 | `cross_gate` | `create_config` | `c9cff3724b6f2fbd` | Anchor default |
+| `cross_gate` | `deny_wallet` | `38696274e428cf78` | Anchor default |
 | `cross_gate` | `execute` | `692565c54bfb661a` | explicit |
 | `cross_gate` | `grant_pass` | `08064d3d5e06ca7b` | Anchor default |
+| `cross_gate` | `grant_pass_terms` | `94266d3ff2308bf3` | Anchor default |
 | `cross_gate` | `init_gate_metas` | `289b4ea44c25b3ea` | Anchor default |
 | `cross_gate` | `init_hook_metas` | `2b220d31a758ebeb` | explicit |
+| `cross_gate` | `init_rules` | `157ff625248ce832` | Anchor default |
+| `cross_gate` | `open_volume` | `c8e1c35ea0c52e58` | Anchor default |
+| `cross_gate` | `receive_locked` | `b4612916adb3d6d2` | Anchor default |
+| `cross_gate` | `refresh_terms` | `4cca6822a3b1ee06` | Anchor default |
+| `cross_gate` | `release_allocation` | `eadd24ee7d791333` | Anchor default |
+| `cross_gate` | `reserve_allocation` | `bd71e0f5525fc5e2` | Anchor default |
+| `cross_gate` | `revoke_denied` | `23fc6c91a7a440a3` | Anchor default |
+| `cross_gate` | `revoke_expired` | `4fbb3fb70f6d3bd0` | Anchor default |
+| `cross_gate` | `revoke_nonconforming` | `80abf40ba81f6de9` | Anchor default |
 | `cross_gate` | `revoke_pass` | `08ce8864b2dba8fc` | Anchor default |
+| `cross_gate` | `revoke_pass_terms` | `a7e3089139324faa` | Anchor default |
 | `cross_gate` | `revoke_unattested` | `551bcab225496f45` | Anchor default |
 | `cross_gate` | `set_allowlist_root` | `91eefcad0f035e17` | Anchor default |
 | `cross_gate` | `set_authority` | `85fa25156ea31a79` | Anchor default |
 | `cross_gate` | `set_lock` | `4a2d89840b56d5f2` | Anchor default |
 | `cross_gate` | `set_mode` | `9f2f93f7553554e6` | Anchor default |
+| `cross_gate` | `set_rules` | `4294c42be8d2aea9` | Anchor default |
 | `cross_gate` | `set_sas_requirement` | `88a313cf52a69bb7` | Anchor default |
+| `cross_gate` | `update_hook_metas` | `e64e006f220c575e` | Anchor default |
 | `cross_settle` | `bind_dbc_mint` | `5c4c468431421010` | Anchor default |
 | `cross_settle` | `claim_partner_fee` | `61ce27695e5e7e94` | Anchor default |
 | `cross_settle` | `claim_partner_pool_creation_fee` | `faee1a048b0a65f8` | Anchor default |
@@ -2201,6 +2230,47 @@ Authority-signed instructions fail with `Unauthorized` for any other signer. The
 
 When `Cross.gate_mint` is set, `commit_order` requires the optional `pass` account and accepts the order only if: the account is owned by `cross_gate` and non-empty; it decodes as a `Pass`; `pass.mint` equals `gate_mint`; `pass.owner` equals the order's owner; and the account's address equals `["pass", gate_mint, owner]` derived under the stored `pass.bump` with the `cross_gate` program id. Otherwise `NotEligible`.
 
+### 10.6 Compliance rules
+
+A gate may carry compliance rules (ADR-0900). They are for issuers who must say who may hold a token. A gate without rules behaves exactly as §10.1 to §10.5 describe. The instructions, accounts, events and errors this section names are the ones the §4.1, §12 and generated account tables list for `cross_gate` after `claim_pass_merkle`.
+
+**Where the rules live.** `init_rules(rules)` (gate authority, once; `RulesAlreadyActive`) reallocates `GateConfig` and writes an extension region at offset `EXT_OFFSET` = 172 (the end of the §10.1 layout): the magic byte `0xE1` followed by the Borsh `Rules` struct, 481 bytes in all, so the account grows from 172 to 653 bytes. A reader that stops at 172 bytes keeps working; "are rules active" is the question whether byte 172 is `0xE1`. `rules.passes` in `init_rules` is the number of live passes issued before the rules existed, which the authority states. `set_rules(rules)` (authority) replaces every field except the live-pass counter (`RulesNotActive` before `init_rules`). Both emit `RulesChanged` and refuse a malformed value with `BadRules`: a version other than 1, a required flag outside the four known bits, `min_tier` above 3, `issuance_start` not before a non-zero `issuance_end`, a blackout window that is neither all zero nor `start < end`, an affiliate limit with a zero window or amount, or a lock policy with a non-positive duration.
+
+**While rules are active the original issuance paths refuse** with `UseRulesPath`: `grant_pass`, `revoke_pass`, `set_sas_requirement`, `claim_pass`, `revoke_unattested`, `set_allowlist_root` and `claim_pass_merkle`. No permissionless path can skip a rule or let the holder counter drift.
+
+**Terms.** A pass issued under rules has a `Terms` account at `["terms", mint, owner]` beside its `Pass`: an `identity` id (all zero = none; unique per person per attester, never personal data), the ISO 3166-1 numeric `country` (0 = unknown), `tier` (0 any, 1 retail, 2 accredited or professional, 3 qualified), `flags`, a per-identity `cap` in quote atoms (0 = the gate default), the `source` (0 authority, 1 SAS attestation, 2 Merkle allowlist), `issued_ts` and `expires_ts` (0 = never). Flags: bit 0 accredited, bit 1 affiliate, bit 2 sanctions clear, bit 3 KYC; bits 4 to 7 are reserved and MUST be zero. Terms with an unknown flag bit, a tier above 3 or a country of 1000 or more are `BadTerms`.
+
+**The rules.**
+
+| Field | Meaning |
+|---|---|
+| `country_policy`, `countries` | `Off`; `Allow` (only listed countries may hold); `Deny` (listed countries refused). `countries` is a bit set over the ISO numeric codes 0 to 999: bit `n` set (byte `n / 8`, bit `n % 8`) means code `n` is listed. Under `Allow` or `Deny` a wallet of unknown country cannot be shown to satisfy the list (`CountryUnknown`); a country the policy excludes is `CountryNotAllowed` |
+| `min_tier`, `required_flags` | A wallet's tier MUST be at least `min_tier` (`TierTooLow`) and carry every required flag (`MissingFlags`) |
+| `one_identity_one_pass` | A wallet whose terms name an identity that another wallet holds is refused unless that wallet has lost its pass: the caller passes the previous holder's pass account, which MUST be the PDA for the wallet the identity binding names (`WrongPreviousPass`) and MUST no longer exist (`IdentityAlreadyBound`) |
+| `max_passes`, `passes` | Investor cap: live passes MUST NOT exceed `max_passes` (0 = no cap; `HolderCapReached`). `passes` is maintained by the program |
+| `default_cap` | The per-identity allocation cap in quote atoms used when a wallet's terms carry none (0 = no cap), enforced at order entry (see below) |
+| `issuance_start`, `issuance_end` | Passes can be issued only inside the window, 0 meaning unbounded on that side (`IssuanceNotOpen`, `IssuanceClosed`) |
+| `identity`, `accreditation` | SAS credential and schema of the issuer-signed identity attestations (`oc-identity` v1) and, optionally, of a separate accreditation attester (`oc-accreditation` v1). The identity attestation payload is 44 bytes: identity id (32), country (`u16` little-endian), tier, flags, cap (`u64` little-endian); its expiry is the terms' expiry. When an accreditation attester is set, the accredited flag of the identity attestation is ignored and set only if a valid accreditation attestation for the wallet is presented, and the terms expire at the earlier expiry |
+| `allowlist_root` | Merkle root of terms-bearing leaves: `SHA-256(0x02 ‖ mint ‖ owner ‖ identity ‖ country ‖ tier ‖ flags ‖ cap ‖ expires_ts)` with `country` a `u16` and `cap` and `expires_ts` 8-byte integers, all little-endian; inner nodes as in §10.4 |
+| `lock_policy`, `lock_delegate` | The resale lock `receive_locked` applies to tokens a gated cross pays out; and the one wallet (a keeper) that may call `set_lock` besides the authority. `set_lock` by the delegate can only strengthen a lock |
+| `blackouts`, `affiliate_limit` | For wallets whose terms carry the affiliate flag: a transfer inside a blackout window is refused (`Blackout`), and at most `max_amount` atoms may leave in any window of `window_secs` (`VolumeLimit`) |
+
+**Three ways to a pass, one issuance function.** `claim_pass_attested(identity)` (anyone; the wallet's SAS identity attestation and, if the gate has an accreditation attester, its accreditation attestation; the terms come from the attestation, not from the caller), `claim_pass_merkle_terms(args, proof)` (anyone) and `grant_pass_terms(owner, args)` (the authority, which cannot violate its own rules without publicly changing them) all run the same checks in one function: the wallet is not denied (`WalletDenied`); the terms are well formed (`BadTerms`) and not expired (`TermsExpired`); the issuance window; the country, tier and flag rules; the holder cap; one identity one pass; and the wallet holds no pass yet (`PassExists`). They create the `Pass`, the `Terms`, the identity binding and, for an affiliate-flagged wallet when an affiliate limit is set, its volume account. Event `PassIssued`. The attested path fails with `SasNotConfigured`, `AttestationInvalid`, `BadAttestationData` or `IdentityMismatch` when the attestation cannot supply terms.
+
+**After issuance.** `refresh_terms` (anyone) re-reads the wallet's attestations and updates its terms in place; the identity cannot change and the new terms MUST satisfy the rules (`NotAttestedPass` for a pass that did not come from an attestation). `revoke_pass_terms` (authority) closes a pass with its terms, identity binding and volume account, and also closes a pass issued before the rules existed. Anyone may close a pass that has ended: `revoke_expired` (the terms have lapsed, or the SAS attestation is gone; `NotExpired` otherwise), `revoke_nonconforming` (the terms no longer satisfy the current rules; `StillConforms` otherwise) and `revoke_denied` (the wallet is denied; `NotDenied` otherwise). Each returns the rent to the pass owner, decrements the live-pass counter and emits `PassClosed` with a reason: 0 authority, 1 expired, 2 nonconforming, 3 denied, 4 attestation gone. `deny_wallet(owner, reason)` (authority) creates the `Denied` account at `["deny", mint, owner]`, which blocks a new pass and lets anyone close the existing one; `allow_wallet` (authority) lifts it. Event `WalletDenied`.
+
+**Enforcement on every transfer.** A hooked mint's extra-account list is the three accounts of §10.2 until `update_hook_metas` (authority, payer; `RulesNotActive` before `init_rules`, `WrongHookProgram` for a mint whose hook is not this program) rewrites it to six: those three plus the sender's `Terms`, the sender's volume account and the receiver's `Terms`. A gate with rules and the short list refuses every transfer (`RulesAccountsMissing`): it fails closed instead of skipping the rules. With the long list `execute` additionally requires the receiver's terms, if it has any, to be unexpired and to satisfy the current country, tier and flag rules, so a rule change takes effect on the next transfer and not only when someone closes a pass; a pass issued before the rules existed has no terms and is left alone until the authority revokes it. If the gate has blackout windows or an affiliate limit, a sender whose terms carry the affiliate flag is also held to them: the volume account MUST exist, be writable and belong to the sender (`VolumeMissing`), and its window restarts at the first sale after `window_secs` have passed. `open_volume` (anyone pays) creates the volume account of a wallet that became an affiliate, or of a gate that set the limit, after the pass was issued (`NoVolumeLimit` without a limit, `NotAffiliate` for terms without the flag). A mint that loses its transfer hook is no longer subject to the transfer-time rules.
+
+**Allocation caps and resale locks, for `cross_core`.** These are instructions for a `cross_core` release that makes the calls; the `cross_core` of this specification does not (ADR-0900), so today no order is refused for exceeding an identity's cap and no claim applies a lock through them. `reserve_allocation(amount)` and `release_allocation(amount)` can be signed only by an account owned by `cross_core` that carries the `Cross` discriminator (`NotCross`). An order entry that makes the call reserves quote atoms of the wallet's allocation in one cross at `["alloc", cross, key]`, refusing past the cap (`OverIdentityCap`); a cancel or refund releases them. `key` is the identity id, or the wallet when its terms carry no identity. A gate with no cap for the terms reserves nothing and succeeds. Release never fails for want of an account or on arithmetic, so a refund can always be paid. Event `AllocationChanged`. `receive_locked(owner, amount)` applies the rules' `lock_policy` to the amount a gated cross paid out, on top of any lock still active; it is refused with `WrongGate` when the cross does not sell the gate's token. `WrongAccount` is the refusal for an account that is not the one an instruction expects.
+
+**Accounts without an IDL entry.** Three accounts are created by the program with their own layout, each starting with the 8-byte Anchor discriminator:
+
+| Account | Seeds | Layout after the discriminator |
+|---|---|---|
+| Identity binding | `"identity"`, mint, identity id | `mint` (32), `identity` (32), `wallet` (32), `bump` (1): the wallet that holds the identity's live pass |
+| Volume | `"volume"`, mint, owner | `mint` (32), `owner` (32), `window_start` (`i64`), `sold` (`u64`), `bump` (1): an affiliate wallet's rolling sold amount |
+| Allocation | `"alloc"`, cross, key | `cross` (32), `key` (32), `reserved` (`u64`), `bump` (1) |
+
 ## 11. The calendar (`cross_calendar`)
 
 A calendar lists upcoming trading sessions as UTC instants and the Pyth feed ids approved for oracle-guarded crosses on it. A cross scheduled on a calendar must close exactly when a session starts.
@@ -2300,13 +2370,19 @@ Events are emitted with Anchor `emit!`: the program writes a log line `Program d
 
 | Event | Discriminator | Fields |
 |---|---|---|
+| `AllocationChanged` | `c5ad1f98a543d955` | `cross: Pubkey`, `key: [u8; 32]`, `reserved: u64`, `cap: u64` |
 | `AllowlistRootChanged` | `8672555b97833bc9` | `mint: Pubkey`, `root: Option<[u8; 32]>` |
 | `AuthorityChanged` | `1f13ae980452d7e2` | `mint: Pubkey`, `authority: Pubkey` |
 | `ConfigCreated` | `c34968a1a6f50478` | `mint: Pubkey`, `authority: Pubkey`, `mode: Mode` |
 | `LockChanged` | `53845d32789b51fc` | `mint: Pubkey`, `owner: Pubkey`, `amount: u64`, `unlock_ts: i64` |
 | `ModeChanged` | `957b4e1ded4843e5` | `mint: Pubkey`, `mode: Mode` |
 | `PassChanged` | `09651fec6ded5cae` | `mint: Pubkey`, `owner: Pubkey`, `granted: bool` |
+| `PassClosed` | `7a4c4534440a21df` | `mint: Pubkey`, `owner: Pubkey`, `reason: u8` |
+| `PassIssued` | `034fe62a8663a690` | `mint: Pubkey`, `owner: Pubkey`, `identity: [u8; 32]`, `country: u16`, `tier: u8`, `flags: u8`, `cap: u64`, `expires_ts: i64`, `source: u8` |
+| `RulesChanged` | `f67f34025b1baf9d` | `mint: Pubkey`, `rules: Rules` |
 | `SasRequirementChanged` | `62a504c689716a65` | `mint: Pubkey`, `sas: Option<SasRequirement>` |
+| `TermsRefreshed` | `eeeb34ae522e33f4` | `mint: Pubkey`, `owner: Pubkey`, `country: u16`, `tier: u8`, `flags: u8`, `cap: u64`, `expires_ts: i64` |
+| `WalletDenied` | `84e1b5cb3536fbf8` | `mint: Pubkey`, `owner: Pubkey`, `reason: u8`, `denied: bool` |
 <!-- /ocip:events -->
 
 <!-- ocip:events cross_calendar -->
@@ -2462,6 +2538,40 @@ Custom error codes start at 6000 in declaration order.
 | 6013 | `AttestationInvalid` | Attestation is missing, foreign, expired or not for this wallet |
 | 6014 | `AttestationStillValid` | Attestation is still valid |
 | 6015 | `OwnerAllowed` | Owner holds a pass; permissionless freeze is not allowed |
+| 6016 | `UseRulesPath` | This gate has compliance rules: use the terms-bearing instructions |
+| 6017 | `RulesAlreadyActive` | Compliance rules are already active on this gate |
+| 6018 | `RulesNotActive` | This gate has no compliance rules |
+| 6019 | `BadRules` | The rules are malformed |
+| 6020 | `BadTerms` | The terms are malformed |
+| 6021 | `CountryUnknown` | The wallet's country is unknown, so it cannot satisfy a country list |
+| 6022 | `CountryNotAllowed` | The wallet's country is not allowed for this token |
+| 6023 | `TierTooLow` | The wallet's tier is below the minimum for this token |
+| 6024 | `MissingFlags` | The wallet lacks a flag this token requires |
+| 6025 | `HolderCapReached` | The investor cap for this token has been reached |
+| 6026 | `IssuanceNotOpen` | Passes cannot be issued yet |
+| 6027 | `IssuanceClosed` | Passes can no longer be issued |
+| 6028 | `TermsExpired` | The terms have already expired |
+| 6029 | `WalletDenied` | This wallet is denied |
+| 6030 | `IdentityAlreadyBound` | This identity already holds a live pass on another wallet |
+| 6031 | `WrongPreviousPass` | The previous holder's pass account is not the one for this identity |
+| 6032 | `IdentityMismatch` | The identity does not match the attestation |
+| 6033 | `BadAttestationData` | The attestation data is not an identity record |
+| 6034 | `NotAttestedPass` | Only an attested pass can be refreshed |
+| 6035 | `NotExpired` | The pass has not expired and its attestation still holds |
+| 6036 | `StillConforms` | The terms still satisfy the rules |
+| 6037 | `NotDenied` | The wallet is not denied |
+| 6038 | `RulesAccountsMissing` | The transfer hook was not given the accounts this gate's transfer rules need |
+| 6039 | `Blackout` | Transfers by this wallet are blocked in this window |
+| 6040 | `VolumeLimit` | This transfer exceeds the wallet's volume limit for the window |
+| 6041 | `VolumeMissing` | The wallet's volume account is missing or wrong |
+| 6042 | `OverIdentityCap` | This order would exceed the identity's allocation cap |
+| 6043 | `NotCross` | Only an account owned by the cross program may call this |
+| 6044 | `WrongAccount` | The account is not the one this instruction expects |
+| 6045 | `WrongGate` | This cross does not sell this token |
+| 6046 | `PassExists` | This wallet already holds a pass |
+| 6047 | `NoVolumeLimit` | This gate has no affiliate volume limit |
+| 6048 | `NotAffiliate` | The wallet's terms do not carry the affiliate flag |
+| 6049 | `Overflow` | Arithmetic overflow |
 <!-- /ocip:errors -->
 
 <!-- ocip:errors cross_calendar -->
@@ -2946,6 +3056,7 @@ The accounts a rule needs beyond an instruction's own list are passed as remaini
 <!-- ocip-gen:enums -->
 - `ChallengeStatus`: 0 `Open`, 1 `Upheld`, 2 `Rejected`
 - `HaltReason`: 0 `None`, 1 `IssuerPause`, 2 `VenueHalt`, 3 `CircuitBreaker`, 4 `CorporateAction`
+- `CountryPolicy`: 0 `Off`, 1 `Allow`, 2 `Deny`
 - `ProposalKind`: 0 `Spend`, 1 `OpenNav`, 2 `CloseNav`
 <!-- /ocip-gen:enums -->
 
@@ -3077,6 +3188,36 @@ The accounts a rule needs beyond an instruction's own list are passed as remaini
 | 11 | `last_price` | `u64` | 8 | 1077 |
 | 12 | `active` | `bool` | 1 | 1085 |
 | 13 | `bump` | `u8` | 1 | 1086 |
+<!-- /ocip:account -->
+
+#### `Denied` (`cross_gate`)
+
+<!-- ocip:account Denied -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `mint` | `Pubkey` | 32 | 8 |
+| 2 | `owner` | `Pubkey` | 32 | 40 |
+| 3 | `reason` | `u8` | 1 | 72 |
+| 4 | `since` | `i64` | 8 | 73 |
+| 5 | `bump` | `u8` | 1 | 81 |
+<!-- /ocip:account -->
+
+#### `Terms` (`cross_gate`)
+
+<!-- ocip:account Terms -->
+| # | Field | Type | Size | Offset |
+|---|---|---|---|---|
+| 1 | `mint` | `Pubkey` | 32 | 8 |
+| 2 | `owner` | `Pubkey` | 32 | 40 |
+| 3 | `identity` | `[u8; 32]` | 32 | 72 |
+| 4 | `country` | `u16` | 2 | 104 |
+| 5 | `tier` | `u8` | 1 | 106 |
+| 6 | `flags` | `u8` | 1 | 107 |
+| 7 | `cap` | `u64` | 8 | 108 |
+| 8 | `source` | `u8` | 1 | 116 |
+| 9 | `issued_ts` | `i64` | 8 | 117 |
+| 10 | `expires_ts` | `i64` | 8 | 125 |
+| 11 | `bump` | `u8` | 1 | 133 |
 <!-- /ocip:account -->
 
 #### `Grant` (`treasury`)
@@ -3463,6 +3604,49 @@ The accounts a rule needs beyond an instruction's own list are passed as remaini
 | `center` | `u64` |
 <!-- /ocip:struct -->
 
+<!-- ocip:struct AffiliateLimit -->
+**`AffiliateLimit`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `window_secs` | `i64` |
+| `max_amount` | `u64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct LockPolicy -->
+**`LockPolicy`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `duration_secs` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct Rules -->
+**`Rules`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `version` | `u8` |
+| `country_policy` | `CountryPolicy` |
+| `countries` | `[u8; 125]` |
+| `min_tier` | `u8` |
+| `required_flags` | `u8` |
+| `one_identity_one_pass` | `bool` |
+| `max_passes` | `u32` |
+| `passes` | `u32` |
+| `default_cap` | `u64` |
+| `issuance_start` | `i64` |
+| `issuance_end` | `i64` |
+| `identity` | `Option<SasRequirement>` |
+| `accreditation` | `Option<SasRequirement>` |
+| `allowlist_root` | `Option<[u8; 32]>` |
+| `lock_policy` | `Option<LockPolicy>` |
+| `lock_delegate` | `Option<Pubkey>` |
+| `blackouts` | `[TimeWindow; 4]` |
+| `affiliate_limit` | `Option<AffiliateLimit>` |
+| `reserved` | `[u8; 32]` |
+<!-- /ocip:struct -->
+
 <!-- ocip:struct SasRequirement -->
 **`SasRequirement`** (`cross_gate`)
 
@@ -3470,6 +3654,28 @@ The accounts a rule needs beyond an instruction's own list are passed as remaini
 |---|---|
 | `credential` | `Pubkey` |
 | `schema` | `Pubkey` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct TermsData -->
+**`TermsData`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `identity` | `[u8; 32]` |
+| `country` | `u16` |
+| `tier` | `u8` |
+| `flags` | `u8` |
+| `cap` | `u64` |
+| `expires_ts` | `i64` |
+<!-- /ocip:struct -->
+
+<!-- ocip:struct TimeWindow -->
+**`TimeWindow`** (`cross_gate`)
+
+| Field | Type |
+|---|---|
+| `start` | `i64` |
+| `end` | `i64` |
 <!-- /ocip:struct -->
 
 <!-- ocip:struct PendingAdmin -->
@@ -3979,6 +4185,7 @@ The reference deployment serves a read API (`services/api/src/server.ts`, Fastif
 | GET | `/v1/crosses/:address/book` | The resting book and the price it would clear at now |
 | GET | `/v1/crosses/:address/proof` | The fairness proof of §13 |
 | GET | `/v1/crosses/:address/promise` | The latest signed promise for a cross |
+| GET | `/v1/crosses/:address/receipt-attestation` | The signed, Merkle-anchored attestation of a settled cross's receipt (404 until one exists) |
 | GET | `/v1/crosses/:address/authenticity` | Whether each token of the cross is the issuer's real token (mainnet mints) |
 | GET | `/v1/promises/signer` | The key that signs promises |
 | GET | `/v1/promises/:id` | A signed promise with its grade and anchor proof |

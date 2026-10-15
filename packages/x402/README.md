@@ -61,7 +61,7 @@ const { response, paid } = await payFetch('https://api.example.com/v1/paid/repor
 
 ## Tests
 
-`pnpm --filter @opening-cross/x402 test`. The unit tests need nothing. `test/payments.test.ts` needs a local `solana-test-validator` on `X402_TEST_RPC` (default `127.0.0.1:8940`) and Postgres on `DATABASE_URL`; it skips itself when no validator answers. It creates a real mint, token accounts and a fee payer, and reads every outcome back from token balances, fee payer lamports and signature status.
+`pnpm --filter @opening-cross/x402 test`. The unit tests need nothing. `test/payments.test.ts` and `test/api-paid-routes.test.ts` need a local `solana-test-validator` on `X402_TEST_RPC` (default `127.0.0.1:8940`) and Postgres on `DATABASE_URL`; they skip themselves when no validator answers. They create a real mint, token accounts and a fee payer, and read every outcome back from token balances, fee payer lamports and signature status. `test/api-paid-routes.test.ts` mounts the API's own `registerPaid` (services/api) behind the real gate and pays its three routes over MPP and x402, and with `MPP_INTEROP_DIR` set also with the official client (ADR-0965). It imports `services/api` and sibling packages by path, so `tsconfig.test.json` leaves it out of `typecheck`; it was checked on its own.
 
 The MPP interoperability test pays with the official Solana Foundation client in a separate process. It needs that client installed outside the repository and `MPP_INTEROP_DIR` pointing at it; it skips otherwise:
 
@@ -69,3 +69,6 @@ The MPP interoperability test pays with the official Solana Foundation client in
 mkdir mpp-interop && cd mpp-interop && npm init -y && npm i @solana/mpp@0.7.0 @solana/kit@6 mppx@0.13.4
 MPP_INTEROP_DIR=$PWD pnpm --filter @opening-cross/x402 test
 ```
+
+On Windows the validator does not start (it cannot unpack its genesis archive); run it in WSL and Postgres in a container, both on the loopback address, for example `solana-test-validator --reset --rpc-port 8940` and `docker run -e POSTGRES_PASSWORD=oc -p 127.0.0.1:55434:5432 postgres:17` with `DATABASE_URL=postgres://postgres:oc@127.0.0.1:55434/postgres`.
+

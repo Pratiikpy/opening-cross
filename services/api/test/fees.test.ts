@@ -5,7 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Address, generateKeyPair, getAddressFromPublicKey, none } from '@solana/kit';
-import { CROSS_CORE_PROGRAM_ADDRESS, CrossState, getProtocolEncoder, protocolAddress } from '@opening-cross/sdk';
+import { CROSS_BODY_LEN, CROSS_CORE_PROGRAM_ADDRESS, CROSS_EXT_LEN, CrossState, completeRules, getCrossExtEncoder, getProtocolEncoder, protocolAddress } from '@opening-cross/sdk';
 import { REFERRAL_SCHEMA, signReferral, verifyStatement } from '@opening-cross/fees';
 import type { SignedStatement, TransactionBalances } from '@opening-cross/fees';
 import { registerFees } from '../src/routes/fees.js';
@@ -120,7 +120,7 @@ describeDb('fee routes', () => {
     expect(bySig.get('sigAltered').reasons.join(' ')).toContain('chain:');
     expect(bySig.get('sigBusy').verdict).toBe('UNVERIFIED');
     // Only the matching line is counted.
-    expect(r.body.totals.verified[quote]).toEqual({ protocolFee: String(ok.protocol), integratorFee: String(ok.integratorFee), crosses: 1 });
+    expect(r.body.totals.verified[quote]).toEqual({ protocolFee: String(ok.protocol), integratorFee: String(ok.integratorFee), referralFee: '0', crosses: 1 });
     expect(r.body.totals).toMatchObject({ unverified: 2, mismatched: 2 });
     // A busy endpoint is retried on the next request instead of being remembered as a verdict.
     txs.set('sigBusy', finalizeBalances((r.body.entries.find((e: { signature: string }) => e.signature === 'sigBusy') as { cross: Address }).cross, { protocol: 77_500n, integrator: 310_000n, proceeds: 3000n }));
@@ -129,6 +129,42 @@ describeDb('fee routes', () => {
     expect((await get('/v1/fees/ledger?limit=0')).status).toBe(400);
     expect((await get('/v1/fees/ledger?limit=1000')).status).toBe(400);
   });
+
+  /** A finalized escrow cross whose rules name a referrer (ADR-0460): the finalize pays the referrer `floor(protocol fee x share / 10,000)` out of the protocol fee. */
+  async function referredCross(o: { sig: string; slot: number; gross: bigint; referrer: Address; shareBps: number; tx?: 'ok' | 'paid-in-full' }) {
+    const total = (o.gross * 25n) / 10_000n;
+    const protocol = (total * 5n) / 25n;
+    const integratorFee = total - protocol;
+    const referral = (protocol * BigInt(o.shareBps)) / 10_000n;
+    const address = await chain.putCross({ state: CrossState.Finalized, kind: 1, supplyMode: 0, quoteMint: quote, creator, integrator, feeRecipient, proceedsTo, protocolFeeBps: 5, integratorFeeBps: 20, buyerPaid: o.gross, feesAccrued: total });
+    const body = chain.accounts.get(address)!;
+    const r = completeRules({});
+    const ext = getCrossExtEncoder().encode({
+      version: 1, rulesSet: true, createdSlot: 1n, flags: r.flags, guards: { ...r.guards, haltSource: null }, ending: r.ending,
+      draw: { epoch: 0, pendingSlot: 0n, pendingPurpose: 0, seed: new Uint8Array(32), seedEpoch: 0, seedReady: true, endBucket: 255, extPending: false, extensionUsed: false, auxMerged: 0n },
+      identity: r.identity, alloc: { ...r.alloc, priorityGate: null },
+      neutrality: { insiders: Array.from({ length: 8 }, () => '11111111111111111111111111111111'), insiderCount: 0, insiderCliffSecs: 0, insiderVestSecs: 0, bondQuote: 0n, challengeSecs: 0 },
+      neutralState: { bondHeld: 0n, slashed: 0n, openChallenges: 0, challenges: 0 },
+      clearing: { classQty: [0n, 0n, 0n], tickets: 0, rho: 0, clearedTs: 0n, insiderUb: 0n }, referral: { referrer: o.referrer, shareBps: o.shareBps },
+      oracleSet: { extraFeeds: [new Uint8Array(32), new Uint8Array(32)] as never, extraCount: 0, quorum: 0, maxSpreadBps: 0, offHoursWidenBps: 0 },
+    } as never);
+    const data = new Uint8Array(CROSS_BODY_LEN + CROSS_EXT_LEN);
+    data.set(body.data.subarray(0, CROSS_BODY_LEN));
+    data.set(ext, CROSS_BODY_LEN);
+    chain.set(address, { owner: CROSS_CORE_PROGRAM_ADDRESS as Address, data });
+    await insertCross(db, address, { state: 'Finalized', kind: 1, slot: o.slot });
+    await db.query(`UPDATE crosses SET quote_mint = $2, protocol_fee_bps = 5, integrator_fee_bps = 20 WHERE address = $1`, [address, quote]);
+    await db.query(`INSERT INTO events (signature, seq, slot, block_time, name, cross_address, payload) VALUES ($1,0,$2,to_timestamp($3),'CrossFinalized',$4,$5)`, [o.sig, o.slot, NOW - 1_000 + o.slot, address, JSON.stringify({ cross: address, protocolFee: protocol.toString(), integratorFee: integratorFee.toString(), proceedsQuote: '3000', dustBase: '0' })]);
+    const bal = (owner: string, amount: bigint, accountIndex: number) => ({ accountIndex, mint: quote as string, owner, uiTokenAmount: { amount: amount.toString() } });
+    const toRecipient = o.tx === 'paid-in-full' ? protocol : protocol - referral;
+    const toReferrer = o.tx === 'paid-in-full' ? 0n : referral;
+    txs.set(o.sig, {
+      err: null,
+      preTokenBalances: [bal(address, total + 3000n + 10n, 0), bal(feeRecipient, 0n, 1), bal(integrator, 0n, 2), bal(proceedsTo, 0n, 3), bal(o.referrer, 0n, 4)],
+      postTokenBalances: [bal(address, 10n, 0), bal(feeRecipient, toRecipient, 1), bal(integrator, integratorFee, 2), bal(proceedsTo, 3000n, 3), bal(o.referrer, toReferrer, 4)],
+    });
+    return { address, protocol, referral, integratorFee };
+  }
 
   it('stores a referral only if the referred wallet signed it, and pays 10% of the protocol fee the referred orders generated', async () => {
     const referredKp = await generateKeyPair();
@@ -178,5 +214,30 @@ describeDb('fee routes', () => {
     expect((await get(`/v1/fees/statement/integrator/${integrator}?from=5&to=2`)).status).toBe(400);
     const none = await get(`/v1/fees/statement/integrator/${await newAddress()}`);
     expect(none.body.body.lines).toEqual([]);
+  });
+
+  it('reads the referrer a cross names from its rules, expects the transfer in the finalize transaction and counts the referral apart', async () => {
+    const referrer = await newAddress();
+    const paid = await referredCross({ sig: 'sigReferred', slot: 30, gross: 155_000_000n, referrer, shareBps: 1_000 });
+    const full = await referredCross({ sig: 'sigReferredFull', slot: 31, gross: 155_000_000n, referrer, shareBps: 1_000, tx: 'paid-in-full' });
+    expect(paid.referral).toBe(7_750n);
+    const r = await get('/v1/fees/ledger');
+    const bySig = new Map<string, any>(r.body.entries.map((e: { signature: string }) => [e.signature, e]));
+    // The fee recipient was paid the protocol fee less the referral and the referrer the referral: MATCH, with the referral on the line.
+    expect(bySig.get('sigReferred')).toMatchObject({ cross: paid.address, verdict: 'MATCH', referrer, referral: '7750' });
+    // A finalize that paid the fee recipient the whole protocol fee and the referrer nothing is not what the rules call for.
+    expect(bySig.get('sigReferredFull').verdict).toBe('MISMATCH');
+    expect(bySig.get('sigReferredFull').reasons.join(' ')).toContain('the ledger expects 69750');
+    expect(r.body.totals.verified[quote].referralFee).toBe('7750');
+    // The referrer's statement has a line per cross, with the verdict of its finalize: MATCH for the cross that paid it, MISMATCH for the one that did not.
+    const s = await get(`/v1/fees/statement/referrer/${referrer}`);
+    expect(s.status).toBe(200);
+    expect(s.body.body.lines).toEqual(expect.arrayContaining([expect.objectContaining({ ref: paid.address, amount: '7750', verdict: 'MATCH' }), expect.objectContaining({ ref: full.address, verdict: 'MISMATCH' })]));
+    expect(s.body.body.lines).toHaveLength(2);
+    // The protocol's own statement shows what the fee recipient was paid: the protocol fee less the referral.
+    const p = await get(`/v1/fees/statement/protocol/${feeRecipient}`);
+    expect(p.body.body.lines.find((l: { ref: string }) => l.ref === paid.address).amount).toBe(String(paid.protocol - paid.referral));
+    // The router's per-order referral owes nothing on a cross that names a referrer on chain.
+    expect((await get(`/v1/fees/referrals/${referrer}`)).body.payouts).toEqual([]);
   });
 });

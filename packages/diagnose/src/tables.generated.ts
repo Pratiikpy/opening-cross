@@ -2006,6 +2006,142 @@ export const PROGRAMS: readonly ProgramTable[] = [
    "6015": [
     "OwnerAllowed",
     "Owner holds a pass; permissionless freeze is not allowed"
+   ],
+   "6016": [
+    "UseRulesPath",
+    "This gate has compliance rules: use the terms-bearing instructions"
+   ],
+   "6017": [
+    "RulesAlreadyActive",
+    "Compliance rules are already active on this gate"
+   ],
+   "6018": [
+    "RulesNotActive",
+    "This gate has no compliance rules"
+   ],
+   "6019": [
+    "BadRules",
+    "The rules are malformed"
+   ],
+   "6020": [
+    "BadTerms",
+    "The terms are malformed"
+   ],
+   "6021": [
+    "CountryUnknown",
+    "The wallet's country is unknown, so it cannot satisfy a country list"
+   ],
+   "6022": [
+    "CountryNotAllowed",
+    "The wallet's country is not allowed for this token"
+   ],
+   "6023": [
+    "TierTooLow",
+    "The wallet's tier is below the minimum for this token"
+   ],
+   "6024": [
+    "MissingFlags",
+    "The wallet lacks a flag this token requires"
+   ],
+   "6025": [
+    "HolderCapReached",
+    "The investor cap for this token has been reached"
+   ],
+   "6026": [
+    "IssuanceNotOpen",
+    "Passes cannot be issued yet"
+   ],
+   "6027": [
+    "IssuanceClosed",
+    "Passes can no longer be issued"
+   ],
+   "6028": [
+    "TermsExpired",
+    "The terms have already expired"
+   ],
+   "6029": [
+    "WalletDenied",
+    "This wallet is denied"
+   ],
+   "6030": [
+    "IdentityAlreadyBound",
+    "This identity already holds a live pass on another wallet"
+   ],
+   "6031": [
+    "WrongPreviousPass",
+    "The previous holder's pass account is not the one for this identity"
+   ],
+   "6032": [
+    "IdentityMismatch",
+    "The identity does not match the attestation"
+   ],
+   "6033": [
+    "BadAttestationData",
+    "The attestation data is not an identity record"
+   ],
+   "6034": [
+    "NotAttestedPass",
+    "Only an attested pass can be refreshed"
+   ],
+   "6035": [
+    "NotExpired",
+    "The pass has not expired and its attestation still holds"
+   ],
+   "6036": [
+    "StillConforms",
+    "The terms still satisfy the rules"
+   ],
+   "6037": [
+    "NotDenied",
+    "The wallet is not denied"
+   ],
+   "6038": [
+    "RulesAccountsMissing",
+    "The transfer hook was not given the accounts this gate's transfer rules need"
+   ],
+   "6039": [
+    "Blackout",
+    "Transfers by this wallet are blocked in this window"
+   ],
+   "6040": [
+    "VolumeLimit",
+    "This transfer exceeds the wallet's volume limit for the window"
+   ],
+   "6041": [
+    "VolumeMissing",
+    "The wallet's volume account is missing or wrong"
+   ],
+   "6042": [
+    "OverIdentityCap",
+    "This order would exceed the identity's allocation cap"
+   ],
+   "6043": [
+    "NotCross",
+    "Only an account owned by the cross program may call this"
+   ],
+   "6044": [
+    "WrongAccount",
+    "The account is not the one this instruction expects"
+   ],
+   "6045": [
+    "WrongGate",
+    "This cross does not belong to this gate or does not sell this token"
+   ],
+   "6046": [
+    "PassExists",
+    "This wallet already holds a pass"
+   ],
+   "6047": [
+    "NoVolumeLimit",
+    "This gate has no affiliate volume limit"
+   ],
+   "6048": [
+    "NotAffiliate",
+    "The wallet's terms do not carry the affiliate flag"
+   ],
+   "6049": [
+    "Overflow",
+    "Arithmetic overflow"
    ]
   }
  },
@@ -3056,3 +3192,1244 @@ export const PROGRAMS: readonly ProgramTable[] = [
   }
  }
 ];
+
+export interface ProgramDocs {
+  /** Documentation pages for the program, from the local capture of its published docs. */
+  readonly pages: readonly { readonly title: string; readonly url: string }[];
+  /** The release the documentation's changelog lists first. */
+  readonly docsRelease: string | null;
+  /** The source the line numbers point into, pinned to a commit of the program's repository. */
+  readonly source: { readonly repo: string; readonly commit: string; readonly release: string | null; readonly file: string } | null;
+  /** What the documentation says about an error and where the source defines it, only where both name the error the IDL does. */
+  readonly errors: Record<number, { readonly cause?: string; readonly raisedIn?: string; readonly line?: number }>;
+}
+
+/** Keyed by program address. */
+export const DOCS: Record<string, ProgramDocs> = {
+ "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN": {
+  "pages": [
+   {
+    "title": "Meteora Dynamic Bonding Curve: program errors",
+    "url": "https://docs.meteora.ag/developer-guides/dbc/program/errors"
+   },
+   {
+    "title": "Meteora Dynamic Bonding Curve: changelog",
+    "url": "https://docs.meteora.ag/developer-guides/dbc/changelog"
+   }
+  ],
+  "docsRelease": "0.2.1",
+  "source": {
+   "repo": "MeteoraAg/dynamic-bonding-curve",
+   "commit": "f552f20aa3c1c7631427c3827aeea7c58b902813",
+   "release": "0.2.1",
+   "file": "programs/dynamic-bonding-curve/src/error.rs"
+  },
+  "errors": {
+   "6000": {
+    "cause": "Amounts, prices, or liquidity values exceed supported integer bounds.",
+    "line": 9
+   },
+   "6001": {
+    "cause": "Base fee, dynamic fee, or fee scheduler parameters are inconsistent.",
+    "line": 12
+   },
+   "6002": {
+    "cause": "Swap output is below the minimum output, or exact-out input exceeds the maximum input.",
+    "line": 15
+   },
+   "6003": {
+    "cause": "Fee numerator is above the program maximum.",
+    "line": 18
+   },
+   "6004": {
+    "cause": "Signer is not an admin for an admin-only instruction.",
+    "line": 21
+   },
+   "6005": {
+    "cause": "Swap, claim, or migration amount is zero where a positive amount is required.",
+    "line": 24
+   },
+   "6006": {
+    "cause": "Integer conversion failed.",
+    "line": 27
+   },
+   "6007": {
+    "cause": "Activation type is not slot (`0`) or timestamp (`1`).",
+    "line": 30
+   },
+   "6008": {
+    "cause": "Quote mint does not match the config or supported path.",
+    "line": 34
+   },
+   "6009": {
+    "cause": "Collect fee mode is not quote token (`0`) or output token (`1`).",
+    "line": 37
+   },
+   "6010": {
+    "cause": "Migration fee option is outside the supported range, or custom option is used with the wrong destination.",
+    "line": 40
+   },
+   "6011": {
+    "cause": "Generic parameter validation failure.",
+    "line": 43
+   },
+   "6012": {
+    "cause": "Swap or migration needs more liquidity than the curve can provide.",
+    "line": 46
+   },
+   "6013": {
+    "cause": "Attempted a pre-migration action after the curve completed.",
+    "line": 49
+   },
+   "6014": {
+    "cause": "Attempted migration or post-completion action before the threshold was reached.",
+    "line": 52
+   },
+   "6015": {
+    "cause": "Migration option is not DAMM v1 (`0`) or DAMM v2 (`1`). New configs must use DAMM v2.",
+    "line": 55
+   },
+   "6016": {
+    "cause": "Token decimals are outside supported bounds.",
+    "line": 58
+   },
+   "6017": {
+    "cause": "Token type is not SPL Token or Token-2022, or is incompatible with the migration.",
+    "line": 61
+   },
+   "6018": {
+    "cause": "Partner or creator migration fee split is outside allowed bounds.",
+    "line": 64
+   },
+   "6019": {
+    "cause": "Migration quote threshold is zero or invalid.",
+    "line": 67
+   },
+   "6020": {
+    "cause": "Pre-migration and post-migration supply values are inconsistent.",
+    "line": 70
+   },
+   "6021": {
+    "cause": "Curve points are empty, unsorted, out of price range, or have invalid liquidity.",
+    "line": 73
+   },
+   "6022": {
+    "cause": "Signer is not the expected partner, creator, or authorized actor.",
+    "line": 76
+   },
+   "6023": {
+    "cause": "Token account owner does not match expected authority.",
+    "line": 79
+   },
+   "6024": {
+    "cause": "Config account does not match the pool or instruction.",
+    "line": 82
+   },
+   "6025": {
+    "cause": "Surplus was already claimed.",
+    "line": 85
+   },
+   "6026": {
+    "cause": "Leftover tokens were already claimed.",
+    "line": 88
+   },
+   "6027": {
+    "cause": "Config or pool creation would exceed allowed base supply.",
+    "line": 92
+   },
+   "6028": {
+    "cause": "Native mint was used with an unsupported Token-2022 path.",
+    "line": 95
+   },
+   "6029": {
+    "cause": "Pool does not have enough liquidity to initialize the destination DAMM pool.",
+    "line": 98
+   },
+   "6030": {
+    "cause": "Required config account was not supplied in remaining accounts.",
+    "line": 101
+   },
+   "6031": {
+    "cause": "Vesting schedule is malformed or has invalid totals.",
+    "line": 104
+   },
+   "6032": {
+    "cause": "Leftover receiver is missing or invalid when fixed supply requires it.",
+    "line": 107
+   },
+   "6033": {
+    "cause": "Curve segment cannot support the requested price movement.",
+    "line": 110
+   },
+   "6034": {
+    "cause": "Scheduler periods, duration, or reduction factor are invalid.",
+    "line": 113
+   },
+   "6035": {
+    "cause": "Creator trading fee share is outside allowed bounds.",
+    "line": 116
+   },
+   "6036": {
+    "cause": "New creator address is invalid or equals the old creator.",
+    "line": 119
+   },
+   "6037": {
+    "cause": "Token authority mode is outside supported values.",
+    "line": 122
+   },
+   "6038": {
+    "cause": "Account does not match expected PDA, mint, vault, or owner.",
+    "line": 125
+   },
+   "6039": {
+    "cause": "Migrator fee setting is outside allowed range.",
+    "line": 128
+   },
+   "6040": {
+    "cause": "Partner or creator migration fee was already withdrawn.",
+    "line": 131
+   },
+   "6041": {
+    "cause": "Base fee mode is not linear scheduler, exponential scheduler, or rate limiter.",
+    "line": 134
+   },
+   "6042": {
+    "cause": "Rate limiter fields are missing or invalid.",
+    "line": 137
+   },
+   "6043": {
+    "cause": "Instruction sysvar validation failed for a rate limiter swap.",
+    "line": 140
+   },
+   "6044": {
+    "cause": "DAMM v2 graduated-pool fee params are invalid.",
+    "line": 143
+   },
+   "6045": {
+    "cause": "Generic fallback error.",
+    "line": 146
+   },
+   "6046": {
+    "cause": "Rate limiter was used in an unsupported context.",
+    "line": 150
+   },
+   "6047": {
+    "cause": "Exact-in path did not consume the expected amount. Use partial fill near curve completion.",
+    "line": 153
+   },
+   "6048": {
+    "cause": "Swap movement would cross below the curve start.",
+    "line": 157
+   },
+   "6049": {
+    "cause": "Minimum base fee is below the program requirement.",
+    "line": 160
+   },
+   "6050": {
+    "cause": "CPI account owner, lamports, or data length changed unexpectedly.",
+    "line": 163
+   },
+   "6051": {
+    "cause": "Pool creation fee is outside allowed bounds.",
+    "line": 166
+   },
+   "6052": {
+    "cause": "Pool creation fee was already claimed.",
+    "line": 169
+   },
+   "6053": {
+    "cause": "Signer lacks the required authority.",
+    "line": 172
+   },
+   "6054": {
+    "cause": "Attempted to claim a zero pool creation fee.",
+    "line": 175
+   },
+   "6055": {
+    "cause": "Liquidity distribution does not satisfy locked-liquidity requirements.",
+    "line": 178
+   },
+   "6056": {
+    "cause": "DAMM v2 market-cap fee scheduler params are invalid.",
+    "line": 181
+   },
+   "6057": {
+    "cause": "First-swap-with-min-fee transaction context failed validation.",
+    "line": 185
+   },
+   "6058": {
+    "cause": "Associated token account does not match expected owner or mint.",
+    "line": 189
+   },
+   "6059": {
+    "cause": "Pool account cannot pay required lamports for the operation.",
+    "line": 192
+   },
+   "6060": {
+    "cause": "Operator permission bits are invalid.",
+    "line": 195
+   },
+   "6061": {
+    "cause": "Protocol zap account list is malformed.",
+    "line": 199
+   },
+   "6062": {
+    "cause": "Restricted mint was used with zap.",
+    "line": 203
+   },
+   "6063": {
+    "cause": "Zap output parameters are invalid.",
+    "line": 207
+   },
+   "6064": {
+    "cause": "Protocol zap CPI is disabled by the downstream zap program.",
+    "line": 211
+   },
+   "6065": {
+    "cause": "Required zap instruction was not found.",
+    "line": 215
+   },
+   "6066": {
+    "cause": "Zap accounts do not match the expected route.",
+    "line": 219
+   },
+   "6067": {
+    "cause": "DAMM v2 compounding fee settings are invalid.",
+    "line": 222
+   },
+   "6068": {
+    "cause": "Protocol fee claim account list does not match the selected mint, pool, receiver, or pool type.",
+    "line": 225
+   },
+   "6069": {
+    "cause": "Instructions sysvar account is missing or not the canonical sysvar account.",
+    "line": 228
+   },
+   "6070": {
+    "cause": "Transfer-hook remaining account slices require more accounts than were provided.",
+    "line": 231
+   },
+   "6071": {
+    "cause": "A base mint has a transfer hook, but required extra accounts were not supplied.",
+    "line": 234
+   },
+   "6072": {
+    "cause": "Transfer-hook accounts were supplied for a mint without an active transfer-hook program.",
+    "line": 237
+   },
+   "6073": {
+    "cause": "`TransferHookAccountsInfo` contains duplicate slice types.",
+    "line": 240
+   },
+   "6074": {
+    "cause": "Transfer-hook program is missing, non-executable, default, or one of the disallowed program IDs.",
+    "line": 243
+   },
+   "6075": {
+    "cause": "Pool account owner, discriminator, or expected account variant is invalid.",
+    "line": 246
+   },
+   "6076": {
+    "cause": "A standard pool was sent to a transfer-hook-only instruction, or a transfer-hook pool was sent to a standard-only instruction.",
+    "line": 249
+   },
+   "6077": {
+    "cause": "Transfer-hook remaining account metadata includes a slice type that the instruction does not accept.",
+    "line": 252
+   },
+   "6078": {
+    "cause": "New config or pool creation used `BaseFeeMode::RateLimiter`.",
+    "line": 255
+   },
+   "6079": {
+    "cause": "A token badge was requested for a quote mint that is already permissionless-supported.",
+    "line": 258
+   },
+   "6080": {
+    "cause": "Token badge account is missing, closed, or does not match the quote mint.",
+    "line": 261
+   },
+   "6081": {
+    "cause": "Current or scheduled quote-mint transfer fee is not zero.",
+    "line": 264
+   },
+   "6082": {
+    "cause": "New config or pool creation used `MigrationOption::MeteoraDamm`.",
+    "line": 267
+   }
+  }
+ },
+ "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG": {
+  "pages": [
+   {
+    "title": "Meteora DAMM v2: program errors",
+    "url": "https://docs.meteora.ag/developer-guides/damm-v2/program/errors"
+   },
+   {
+    "title": "Meteora DAMM v2: changelog",
+    "url": "https://docs.meteora.ag/developer-guides/damm-v2/changelog"
+   }
+  ],
+  "docsRelease": "0.2.4",
+  "source": {
+   "repo": "MeteoraAg/damm-v2",
+   "commit": "a85c926607433f23f0ea60f4ca7b1ae92f4156cb",
+   "release": "0.2.4",
+   "file": "programs/cp-amm/src/error.rs"
+  },
+  "errors": {
+   "6000": {
+    "cause": "Checked arithmetic overflowed during fee, price, swap, reward, or liquidity math.",
+    "line": 9
+   },
+   "6001": {
+    "cause": "Base, dynamic, protocol, referral, or compounding fee parameters failed validation.",
+    "line": 12
+   },
+   "6002": {
+    "cause": "The output, input, or liquidity amount was worse than the caller's threshold. Refresh the quote.",
+    "line": 15
+   },
+   "6003": {
+    "cause": "The pool status does not allow the requested action.",
+    "line": 18
+   },
+   "6004": {
+    "cause": "Fee settings exceed the pool version's maximum fee.",
+    "line": 21
+   },
+   "6005": {
+    "cause": "An admin or operator-only action was signed by an unauthorized account.",
+    "line": 24
+   },
+   "6006": {
+    "cause": "Swap, liquidity, reward, or fee amount is zero.",
+    "line": 27
+   },
+   "6007": {
+    "cause": "A numeric conversion failed after large integer math.",
+    "line": 30
+   },
+   "6008": {
+    "cause": "A config or pool activation point can no longer be changed.",
+    "line": 34
+   },
+   "6009": {
+    "cause": "The signer is not allowed to create a pool from the selected config.",
+    "line": 37
+   },
+   "6010": {
+    "cause": "Activation type is not slot or timestamp.",
+    "line": 40
+   },
+   "6011": {
+    "cause": "Activation point is invalid for the selected activation type or launch state.",
+    "line": 43
+   },
+   "6012": {
+    "cause": "A restricted quote-mint path received a non-supported quote mint.",
+    "line": 47
+   },
+   "6013": {
+    "cause": "Fee schedule parameters do not produce a valid curve.",
+    "line": 51
+   },
+   "6014": {
+    "cause": "Minimum, maximum, or initial square-root price is outside the allowed range.",
+    "line": 54
+   },
+   "6015": {
+    "cause": "Swap or liquidity math would move outside pool price bounds.",
+    "line": 57
+   },
+   "6016": {
+    "cause": "Generic validation failure for instruction parameters.",
+    "line": 60
+   },
+   "6017": {
+    "cause": "The collect fee mode byte or mode/config combination is unsupported.",
+    "line": 63
+   },
+   "6018": {
+    "cause": "Generic input guard failed, often from token order, amount, or mode mismatch.",
+    "line": 66
+   },
+   "6019": {
+    "cause": "A token badge was requested for a mint that does not need one.",
+    "line": 69
+   },
+   "6020": {
+    "cause": "Token badge account is missing, wrong, or does not match the mint.",
+    "line": 72
+   },
+   "6021": {
+    "cause": "Pool creation or liquidity change would violate minimum liquidity.",
+    "line": 75
+   },
+   "6022": {
+    "cause": "Vesting schedule fields are invalid or inconsistent.",
+    "line": 78
+   },
+   "6023": {
+    "cause": "The pool or position cannot satisfy the requested swap or withdrawal.",
+    "line": 81
+   },
+   "6024": {
+    "cause": "External vesting account does not match the position or expected PDA.",
+    "line": 84
+   },
+   "6025": {
+    "cause": "Status byte is invalid or status update is not allowed.",
+    "line": 87
+   },
+   "6026": {
+    "cause": "Native SOL mint was used through the Token 2022 path.",
+    "line": 90
+   },
+   "6027": {
+    "cause": "Reward index is outside the two supported reward slots.",
+    "line": 93
+   },
+   "6028": {
+    "cause": "Reward campaign duration is outside allowed bounds.",
+    "line": 96
+   },
+   "6029": {
+    "cause": "The selected reward slot has already been initialized.",
+    "line": 99
+   },
+   "6030": {
+    "cause": "Claim, fund, or update targeted an uninitialized reward slot.",
+    "line": 102
+   },
+   "6031": {
+    "cause": "Reward vault account does not match the pool reward slot.",
+    "line": 105
+   },
+   "6032": {
+    "cause": "Ineligible reward must be withdrawn before the next reward action.",
+    "line": 108
+   },
+   "6033": {
+    "cause": "Reward duration update used the existing duration.",
+    "line": 111
+   },
+   "6034": {
+    "cause": "Reward duration update was attempted before the campaign ended.",
+    "line": 114
+   },
+   "6035": {
+    "cause": "Reward funder update used the current funder.",
+    "line": 117
+   },
+   "6036": {
+    "cause": "Signer or funder account does not match reward authority requirements.",
+    "line": 120
+   },
+   "6037": {
+    "cause": "Ineligible reward withdrawal was attempted before campaign end.",
+    "line": 123
+   },
+   "6038": {
+    "cause": "Fee inverse calculation failed validation.",
+    "line": 126
+   },
+   "6039": {
+    "cause": "Close was attempted while liquidity, fees, rewards, or locks remain.",
+    "line": 129
+   },
+   "6040": {
+    "cause": "Config creator authority is invalid or mismatched.",
+    "line": 132
+   },
+   "6041": {
+    "cause": "Static and dynamic config paths were mixed incorrectly.",
+    "line": 135
+   },
+   "6042": {
+    "cause": "Pool creator account does not satisfy config or operator constraints.",
+    "line": 139
+   },
+   "6043": {
+    "cause": "Reward vault is frozen and the caller did not use the skip-reward path.",
+    "line": 142
+   },
+   "6044": {
+    "cause": "Split numerator, target position, or liquidity state is invalid.",
+    "line": 145
+   },
+   "6045": {
+    "cause": "Split operation is not supported for the current vesting lock state.",
+    "line": 148
+   },
+   "6046": {
+    "cause": "Source and destination position are the same.",
+    "line": 151
+   },
+   "6047": {
+    "cause": "Base fee mode is not one of the supported scheduler modes. New configs and new pools cannot use rate limiter; that rejection is `DeprecatedBaseFeeMode` (`6071`).",
+    "line": 154
+   },
+   "6048": {
+    "cause": "Rate limiter fee parameters failed validation.",
+    "line": 157
+   },
+   "6049": {
+    "cause": "Rate-limiter swap did not include the instructions sysvar or violated single-swap checks.",
+    "line": 160
+   },
+   "6050": {
+    "cause": "Time scheduler fee parameters failed validation.",
+    "line": 163
+   },
+   "6051": {
+    "cause": "Fallback error for unexpected internal state.",
+    "line": 166
+   },
+   "6052": {
+    "cause": "Pool layout or fee version is unsupported by the requested path.",
+    "line": 169
+   },
+   "6053": {
+    "cause": "Signer does not own or control the position, pool, config, or operator action.",
+    "line": 172
+   },
+   "6054": {
+    "cause": "Operator permission bits do not allow the requested action.",
+    "line": 175
+   },
+   "6055": {
+    "cause": "Market-cap scheduler parameters failed validation.",
+    "line": 178
+   },
+   "6056": {
+    "cause": "Base fee update is not allowed for the current pool or mode.",
+    "line": 181
+   },
+   "6057": {
+    "cause": "Dynamic fee configuration failed bounds checks.",
+    "line": 184
+   },
+   "6058": {
+    "cause": "Pool fee update parameters are inconsistent or unauthorized.",
+    "line": 187
+   },
+   "6059": {
+    "cause": "Operator-only instruction did not include the required operator PDA.",
+    "line": 190
+   },
+   "6060": {
+    "cause": "Associated token account does not match the expected mint or owner.",
+    "line": 193
+   },
+   "6061": {
+    "cause": "Protocol-fee zap parameters are invalid.",
+    "line": 197
+   },
+   "6062": {
+    "cause": "Zap protocol-fee accounts are missing or mismatched.",
+    "line": 201
+   },
+   "6063": {
+    "cause": "Restricted fee mint was used in the zap protocol-fee path.",
+    "line": 205
+   },
+   "6064": {
+    "cause": "A disallowed CPI path was attempted.",
+    "line": 209
+   },
+   "6065": {
+    "cause": "Zap protocol-fee flow did not include the required downstream instruction.",
+    "line": 213
+   },
+   "6066": {
+    "cause": "Zap accounts do not match the whitelisted route or expected account set.",
+    "line": 217
+   },
+   "6067": {
+    "cause": "Compounding fee bps is outside allowed bounds or incompatible with collect fee mode.",
+    "line": 220
+   },
+   "6068": {
+    "cause": "`claim_protocol_fee2` receiver token account mint or token program does not match pool token A or token B.",
+    "line": 223
+   },
+   "6069": {
+    "cause": "Token-2022 transfer fee would reduce the claimed protocol fee amount to zero.",
+    "line": 226
+   },
+   "6070": {
+    "cause": "Position NFT token account has a non-zero `delegated_amount` on a delegate path.",
+    "line": 229
+   },
+   "6071": {
+    "cause": "New config or new pool creation used `BaseFeeMode::RateLimiter`. Existing rate-limiter pools are unaffected.",
+    "line": 232
+   },
+   "6072": {
+    "cause": "Non-zero `permission` was set on a public config (default `pool_creator_authority`), or permission bits are outside the defined `ConfigPermission` range.",
+    "line": 235
+   }
+  }
+ },
+ "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo": {
+  "pages": [
+   {
+    "title": "Meteora DLMM: program errors",
+    "url": "https://docs.meteora.ag/developer-guides/dlmm/program/errors"
+   },
+   {
+    "title": "Meteora DLMM: changelog",
+    "url": "https://docs.meteora.ag/developer-guides/dlmm/changelog"
+   }
+  ],
+  "docsRelease": "0.12.0",
+  "source": null,
+  "errors": {
+   "6000": {
+    "cause": "A bin array start index cannot be represented or does not align with the expected bin-array boundary in `state/bin.rs`.",
+    "raisedIn": "*Shared:* bin state"
+   },
+   "6001": {
+    "cause": "A bin ID is outside the position range, outside the valid bin array range, or otherwise cannot be used for the requested liquidity or resize operation.",
+    "raisedIn": "initialize_permissionless_lb_pair, go_to_a_bin, increase_position_length, increase_position_length2, rebalance_position, add_liquidity2, remove_liquidity2, Shared: bin state"
+   },
+   "6002": {
+    "cause": "A generic guard failed, such as an empty input vector, reversed min/max bin range, invalid preset field, invalid permission bits, or zero swap amount.",
+    "raisedIn": "add_liquidity, add_liquidity_by_strategy, add_liquidity_by_weight, add_liquidity_by_weight_one_side, set_permissionless_operation_bits, set_pair_status_permissionless, claim_fee2, claim_reward2, remove_liquidity2, swap2, update_fees_and_reward2, remove_liquidity, Shared: weight-to-amounts math, permission pair access, bin state, preset parameters"
+   },
+   "6003": {
+    "cause": "The actual token amount in or out after simulation/execution is worse than the caller's amount slippage limit. Refresh the quote or widen tolerance.",
+    "raisedIn": "rebalance_position, swap, add_liquidity_single_side_precise2, swap2"
+   },
+   "6004": {
+    "cause": "The active bin moved outside the caller's allowed bin range before or during the instruction. Refresh the quote and active bin.",
+    "raisedIn": "add_liquidity_by_strategy, add_liquidity_by_weight, add_liquidity_by_weight_one_side, place_limit_order, rebalance_position"
+   },
+   "6005": {
+    "cause": "A liquidity composition calculation produced an invalid factor for the selected strategy or bin distribution.",
+    "raisedIn": "add_liquidity"
+   },
+   "6006": {
+    "cause": "Pool creation used a `bin_step` that does not match the selected preset parameter account.",
+    "raisedIn": "initialize_permissionless_lb_pair"
+   },
+   "6007": {
+    "cause": "The liquidity calculation produced zero shares or a funding amount was too small to create any usable liquidity.",
+    "raisedIn": "add_liquidity, add_liquidity_single_side_precise2"
+   },
+   "6008": {
+    "cause": "The position account or requested bin range does not match the operation, such as withdrawing outside the position's lower/upper bin IDs.",
+    "raisedIn": "remove_liquidity_by_range2, remove_liquidity_by_range, Shared: dynamic position state"
+   },
+   "6009": {
+    "cause": "A required bin array account for the target bin range was not provided or could not be found.",
+    "raisedIn": "go_to_a_bin"
+   },
+   "6010": {
+    "cause": "Swap or pool accounts use mismatched token mints, identical input/output mints, or mints that are not the pool's token X/Y mints.",
+    "raisedIn": "swap, swap2"
+   },
+   "6011": {
+    "cause": "Single-sided deposit accounts do not match the side being deposited, usually token X versus token Y account ordering.",
+    "raisedIn": "add_liquidity_by_weight_one_side, add_liquidity_single_side_precise2"
+   },
+   "6012": {
+    "cause": "A swap or quote path cannot find enough liquidity across the provided bin arrays to satisfy the requested amount.",
+    "raisedIn": "swap, swap2, Shared: lb pair state"
+   },
+   "6013": {
+    "cause": "The signer or destination does not match the fee owner recorded on the position.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6014": {
+    "cause": "A protocol-fee or position-fee withdrawal amount is invalid for the fee state being withdrawn.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6015": {
+    "cause": "An admin-only operation was signed by an address that is not the configured admin or authorized operator.",
+    "raisedIn": "fund_reward, withdraw_ineligible_reward, Shared: access control"
+   },
+   "6016": {
+    "cause": "A fee-owner update tried to set the new fee owner to the current fee owner.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6017": {
+    "cause": "A basis-point value exceeds the maximum allowed basis points, for example more than 10000 for full withdrawal.",
+    "raisedIn": "add_liquidity, remove_liquidity2, remove_liquidity_by_range2, remove_liquidity, remove_liquidity_by_range"
+   },
+   "6018": {
+    "cause": "Checked arithmetic, exponentiation, shifting, multiplication, division, or fee/liquidity math overflowed.",
+    "raisedIn": "rebalance_position, swap2, Shared: price math, safe math, utils math, bin state, lb pair state, oracle state, Token-2022 utilities"
+   },
+   "6019": {
+    "cause": "A numeric conversion failed, commonly when converting between large math types and narrower onchain integer types.",
+    "raisedIn": "claim_reward, add_liquidity, add_liquidity_by_strategy, initialize_customizable_permissionless_lb_pair, fund_reward, initialize_reward, update_reward_duration, update_reward_funder, withdraw_ineligible_reward, increase_position_length2, rebalance_position, set_pair_status_permissionless, claim_reward2, swap2, remove_liquidity, Shared: bin math, safe math, utils math, weight-to-amounts math, bin state, dynamic position state, lb pair state, parameters state"
+   },
+   "6020": {
+    "cause": "The reward index is outside the supported reward slots or cannot be converted to a valid array index.",
+    "raisedIn": "claim_reward, fund_reward, initialize_reward, update_reward_duration, update_reward_funder, withdraw_ineligible_reward, claim_reward2, Shared: remaining accounts"
+   },
+   "6021": {
+    "cause": "Reward initialization or duration update used a duration outside the allowed range.",
+    "raisedIn": "initialize_reward, update_reward_duration"
+   },
+   "6022": {
+    "cause": "The selected reward slot is already initialized and cannot be initialized again.",
+    "raisedIn": "initialize_reward"
+   },
+   "6023": {
+    "cause": "A claim, fund, or update instruction targeted a reward slot that has not been initialized.",
+    "raisedIn": "claim_reward, fund_reward, update_reward_duration, update_reward_funder, withdraw_ineligible_reward, claim_reward2"
+   },
+   "6024": {
+    "cause": "A reward-funder update tried to set the funder to the current funder.",
+    "raisedIn": "update_reward_funder"
+   },
+   "6025": {
+    "cause": "A reward duration change was attempted while the current reward campaign is still active.",
+    "raisedIn": "update_reward_duration"
+   },
+   "6026": {
+    "cause": "A reward duration update used the same duration already stored on the reward.",
+    "raisedIn": "update_reward_duration"
+   },
+   "6027": {
+    "cause": "A provided bin array has the wrong index, wrong relationship to the requested bin, or does not match the expected contiguous array set.",
+    "raisedIn": "swap, Shared: bin state, dynamic position state"
+   },
+   "6028": {
+    "cause": "Multiple bin arrays were provided in an order or sequence with gaps where the instruction requires continuous arrays.",
+    "raisedIn": "*Shared:* bin state"
+   },
+   "6029": {
+    "cause": "The reward vault account does not match the reward slot's configured vault.",
+    "raisedIn": "claim_reward, fund_reward, withdraw_ineligible_reward, rebalance_position, claim_reward2"
+   },
+   "6030": {
+    "cause": "A close or shrink operation was attempted while the position still has liquidity, fees, rewards, or non-empty bin data.",
+    "raisedIn": "close_position, decrease_position_length, close_position2"
+   },
+   "6031": {
+    "cause": "The action is not permitted for the pool type, pair status, operator, creator, or permissionless operation configuration.",
+    "raisedIn": "initialize_bin_array, initialize_position_by_operator, Shared: position helpers, customizable permissionless pair access, permission pair access, permissionless pair access"
+   },
+   "6032": {
+    "cause": "Fee parameter updates failed bounds checks such as factor, period, decay, reduction, or activation constraints.",
+    "raisedIn": "update_fee_parameters"
+   },
+   "6033": {
+    "cause": "An operation that needs the oracle account did not include it.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6034": {
+    "cause": "Oracle lookup could not find enough observation samples for the requested timestamp or TWAP calculation.",
+    "raisedIn": "*Shared:* oracle state"
+   },
+   "6035": {
+    "cause": "Oracle lookup was requested for a timestamp that is not valid for the stored observation window.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6036": {
+    "cause": "The target bin array index is outside the default bitmap range, but the bitmap extension account was not supplied.",
+    "raisedIn": "initialize_permissionless_lb_pair, Shared: lb pair state"
+   },
+   "6037": {
+    "cause": "Bitmap search could not find the next bin array with non-zero liquidity in the requested direction.",
+    "raisedIn": "*Shared:* bin array bitmap"
+   },
+   "6038": {
+    "cause": "A bin ID is outside the min/max bin IDs supported by the program's price and bin math.",
+    "raisedIn": "*Shared:* position helpers"
+   },
+   "6039": {
+    "cause": "The resulting output amount is below the caller's minimum output amount, or a zap output amount is zero.",
+    "raisedIn": "zap_protocol_fee, swap, swap2"
+   },
+   "6040": {
+    "cause": "Position initialization or resize would create a width outside the allowed position length or dynamic-position limits.",
+    "raisedIn": "increase_position_length, increase_position_length2, rebalance_position, Shared: position helpers"
+   },
+   "6041": {
+    "cause": "Fee update logic detected too much elapsed time or too large an update step for the variable fee state.",
+    "raisedIn": "*Shared:* lb pair state, parameters state"
+   },
+   "6042": {
+    "cause": "The pool status disallows the requested action, such as swap or add liquidity while that action is disabled.",
+    "raisedIn": "add_liquidity, add_liquidity_by_weight_one_side, place_limit_order, go_to_a_bin, rebalance_position, swap, add_liquidity2, add_liquidity_single_side_precise2, swap2"
+   },
+   "6043": {
+    "cause": "The stored pool type cannot be decoded or the instruction is not valid for that pool type.",
+    "raisedIn": "set_pair_status_permissionless, Shared: pair access (base), lb pair state"
+   },
+   "6044": {
+    "cause": "A whitelist update would exceed the maximum number of whitelisted wallets.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6045": {
+    "cause": "An index into a pool bitmap, reward array, bin array list, or similar indexed structure is invalid.",
+    "raisedIn": "*Shared:* lb pair state"
+   },
+   "6046": {
+    "cause": "Ineligible reward withdrawal was attempted before the reward campaign ended.",
+    "raisedIn": "withdraw_ineligible_reward"
+   },
+   "6047": {
+    "cause": "Reward funding or updates require ineligible rewards to be withdrawn first.",
+    "raisedIn": "fund_reward"
+   },
+   "6048": {
+    "cause": "A supplied address is not the configured authority, funder, owner, or allowed address for the requested action.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6049": {
+    "cause": "A position operator update tried to set the new operator to the current operator.",
+    "raisedIn": "update_position_operator"
+   },
+   "6050": {
+    "cause": "Fee, reward, or liquidity withdrawal destination token accounts do not match the expected mint or owner.",
+    "raisedIn": "claim_fee, claim_reward, claim_fee2, claim_reward2, remove_liquidity2, remove_liquidity"
+   },
+   "6051": {
+    "cause": "A close instruction supplied a rent receiver that is not allowed to receive the closed account lamports.",
+    "raisedIn": "close_position, close_position2, close_position_if_empty"
+   },
+   "6052": {
+    "cause": "Activation point, fee, or pool setup changes were attempted after the configured activation point has already passed.",
+    "raisedIn": "initialize_customizable_permissionless_lb_pair, update_fee_parameters, Shared: permission pair access"
+   },
+   "6053": {
+    "cause": "A pre-activation or capped swap flow would exceed the configured maximum swapped amount.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6054": {
+    "cause": "Liquidity strategy parameters are inconsistent, outside allowed ranges, or incompatible with the active bin.",
+    "raisedIn": "add_liquidity_by_strategy, add_liquidity_by_strategy_one_side"
+   },
+   "6055": {
+    "cause": "A remove-liquidity or rebalance remove step was attempted before the position's lock release point.",
+    "raisedIn": "cancel_limit_order, rebalance_position, remove_liquidity2, remove_all_liquidity, remove_liquidity"
+   },
+   "6056": {
+    "cause": "A bin range expected to be empty still contains liquidity or position data.",
+    "raisedIn": "go_to_a_bin"
+   },
+   "6057": {
+    "cause": "Exact-out swap execution did not produce the requested exact output amount.",
+    "raisedIn": "swap, swap2"
+   },
+   "6058": {
+    "cause": "The activation type byte cannot be decoded into a supported activation type.",
+    "raisedIn": "initialize_permission_lb_pair, Shared: customizable permissionless pair access, permission pair access, permissionless pair access"
+   },
+   "6059": {
+    "cause": "The activation duration or activation window is outside the allowed range for that pair type.",
+    "raisedIn": "initialize_customizable_permissionless_lb_pair, Shared: pair access (base)"
+   },
+   "6060": {
+    "cause": "A launch-owner proof flow expected token amount evidence, but the required amount/account proof was missing.",
+    "raisedIn": "initialize_customizable_permissionless_lb_pair, initialize_position_by_operator"
+   },
+   "6061": {
+    "cause": "A restricted launch or pool creation flow used a quote token other than SOL or USDC.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6062": {
+    "cause": "A preset or pool creation request used a bin step outside the program's allowed range.",
+    "raisedIn": "*Shared:* preset parameters"
+   },
+   "6063": {
+    "cause": "Preset fee fields calculate to a base fee outside the allowed bounds.",
+    "raisedIn": "*Shared:* preset parameters"
+   },
+   "6064": {
+    "cause": "Pre-activation duration is too long, too short, or invalid for the pair's activation configuration.",
+    "raisedIn": "*Shared:* permission pair access"
+   },
+   "6065": {
+    "cause": "The pre-activation swap address or pre-activation setting was changed after the pre-activation swap point passed.",
+    "raisedIn": "*Shared:* permission pair access"
+   },
+   "6066": {
+    "cause": "A status byte cannot be decoded or a status update tried to set the pool to its current status.",
+    "raisedIn": "set_pair_status"
+   },
+   "6067": {
+    "cause": "Oracle length expansion would exceed the maximum oracle observation capacity.",
+    "raisedIn": "increase_oracle_length"
+   },
+   "6068": {
+    "cause": "A bin or position operation would violate the minimum liquidity requirement after adding or removing liquidity.",
+    "raisedIn": "*Shared:* bin state, dynamic position state"
+   },
+   "6069": {
+    "cause": "A Token-2022 mint contains an extension that the pool creation or token validation path does not support.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6070": {
+    "cause": "Token-2022 validation found a mint extension outside the supported extension set.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6071": {
+    "cause": "The native mint was supplied through the Token-2022 path, which is not supported.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6072": {
+    "cause": "A token account, mint account, or remaining account does not match the expected pool or reward mint.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6073": {
+    "cause": "The token mint is not supported for the requested pool or token path.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6074": {
+    "cause": "Token-2022 transfer hooks, reward accounts, or other extension paths require more remaining accounts than were provided.",
+    "raisedIn": "rebalance_position, add_liquidity_by_strategy2, add_liquidity_by_weight2, Shared: remaining accounts"
+   },
+   "6075": {
+    "cause": "The encoded remaining-account slice metadata does not line up with the remaining accounts passed to the instruction.",
+    "raisedIn": "*Shared:* remaining accounts"
+   },
+   "6076": {
+    "cause": "The same remaining-account category was supplied more than once.",
+    "raisedIn": "*Shared:* remaining accounts"
+   },
+   "6077": {
+    "cause": "A Token-2022 mint has a transfer hook, but the required extra accounts for the hook were not included.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6078": {
+    "cause": "Transfer-hook remaining accounts were supplied for a mint that has no transfer-hook program.",
+    "raisedIn": "*Shared:* Token-2022 utilities"
+   },
+   "6079": {
+    "cause": "Reward funding was attempted with an amount of zero.",
+    "raisedIn": "fund_reward"
+   },
+   "6080": {
+    "cause": "A resize or single-sided operation used a side value that cannot be decoded into the supported side enum.",
+    "raisedIn": "decrease_position_length, increase_position_length"
+   },
+   "6081": {
+    "cause": "Position resize length is zero, exceeds limits, or would shrink/grow the account in an invalid way.",
+    "raisedIn": "decrease_position_length, increase_position_length, increase_position_length2"
+   },
+   "6082": {
+    "cause": "The requested flow is recognized but intentionally disabled or not implemented in the current program path.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6083": {
+    "cause": "Rebalance add/remove/resize/shrink parameters are inconsistent, exceed slippage, or produce invalid target amounts.",
+    "raisedIn": "rebalance_position"
+   },
+   "6084": {
+    "cause": "Reward accounts provided to a rebalance or reward claim flow do not match the expected reward mints/vaults.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6085": {
+    "cause": "A defensive fallback branch was reached in bin, rebalance, or resize logic where no more specific error applied.",
+    "raisedIn": "close_bin_array, patch_bin_array_bitmap_extension, place_limit_order, rebalance_position, Shared: bin state"
+   },
+   "6086": {
+    "cause": "Dynamic position resizing would reallocate more bytes than the program allows in a single instruction.",
+    "raisedIn": "rebalance_position"
+   },
+   "6087": {
+    "cause": "Preset base-fee mantissa has more precision than the program accepts.",
+    "raisedIn": "*Shared:* preset parameters"
+   },
+   "6088": {
+    "cause": "The position owner is invalid, missing, or mismatched with the signer/position account for initialization.",
+    "raisedIn": "initialize_position2"
+   },
+   "6089": {
+    "cause": "A position account is being initialized or used with an `lb_pair` address that does not match the expected pool.",
+    "raisedIn": "initialize_position2"
+   },
+   "6090": {
+    "cause": "Token badge validation found an unsupported badge type.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6091": {
+    "cause": "The configured transfer-hook authority is not the authority expected by the Token-2022 validation path.",
+    "raisedIn": "— *(IDL only)*"
+   },
+   "6092": {
+    "cause": "Rebalance math produced a negative token X amount where only unsigned token amounts are valid.",
+    "raisedIn": "rebalance_position"
+   },
+   "6093": {
+    "cause": "Rebalance math produced a negative token Y amount where only unsigned token amounts are valid.",
+    "raisedIn": "rebalance_position"
+   },
+   "6094": {
+    "cause": "A creator-only operation was signed by an address that is not the pool creator.",
+    "raisedIn": "*Shared:* access control"
+   },
+   "6095": {
+    "cause": "A fee or reward flow used a function type that cannot be decoded or is not supported for the operation.",
+    "raisedIn": "claim_reward, place_limit_order, fund_reward, initialize_reward, update_reward_duration, update_reward_funder, withdraw_ineligible_reward, claim_reward2"
+   },
+   "6096": {
+    "cause": "Operator or permission-bit configuration includes a permission outside the supported permission mask.",
+    "raisedIn": "create_operator_account, Shared: access control"
+   },
+   "6097": {
+    "cause": "A token account is not the associated token account for the expected owner and mint.",
+    "raisedIn": "*Shared:* token utilities"
+   },
+   "6098": {
+    "cause": "Protocol-fee zap account ordering, token accounts, vaults, or fee accounts do not match the expected zap layout.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6099": {
+    "cause": "Protocol fees for restricted SOL/USDC mints were routed through zap, which the program forbids.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6100": {
+    "cause": "The zap flow attempted to CPI into a program or path that is disabled by configuration.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6101": {
+    "cause": "The instruction sysvar did not contain the expected zap-out instruction at the required position.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6102": {
+    "cause": "Zap accounts are missing, out of order, duplicated incorrectly, or do not match the expected pool/token accounts.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6103": {
+    "cause": "Zap-out instruction data, route parameters, amount, direction, or decoded fields are invalid.",
+    "raisedIn": "zap_protocol_fee"
+   },
+   "6104": {
+    "cause": "The input amount available to a swap, bin, or zap calculation is not enough to continue the operation.",
+    "raisedIn": "*Shared:* bin state"
+   },
+   "6105": {
+    "cause": "Limit order placement parameters are invalid, such as inconsistent bins, side, amount, or active-bin relationship.",
+    "raisedIn": "place_limit_order, Shared: bin state"
+   },
+   "6106": {
+    "cause": "The signer is not the owner allowed to create, update, or cancel the limit order account.",
+    "raisedIn": "*Shared:* access control"
+   },
+   "6107": {
+    "cause": "Cancel parameters do not match an existing order bin, side, amount, or cancellation constraints.",
+    "raisedIn": "cancel_limit_order"
+   },
+   "6108": {
+    "cause": "The limit order account does not contain an order entry for the requested bin ID.",
+    "raisedIn": "*Shared:* limit order state"
+   },
+   "6109": {
+    "cause": "A limit order close/cancel path expected the limit order to be empty, but order data remains.",
+    "raisedIn": "cancel_limit_order"
+   },
+   "6110": {
+    "cause": "The stored collect-fee mode byte cannot be decoded into a supported collect fee mode.",
+    "raisedIn": "*Shared:* fee calculator"
+   }
+  }
+ },
+ "zapvX9M3uf5pvy4wRPAbQgdQsM1xmuiFnkfHKPvwMiz": {
+  "pages": [
+   {
+    "title": "Meteora Zap: program errors",
+    "url": "https://docs.meteora.ag/developer-guides/zap/program/errors"
+   },
+   {
+    "title": "Meteora Zap: changelog",
+    "url": "https://docs.meteora.ag/developer-guides/zap/changelog"
+   }
+  ],
+  "docsRelease": "0.2.2",
+  "source": null,
+  "errors": {
+   "6000": {
+    "cause": "Checked math overflow in balance, percentage, price, or liquidity calculations."
+   },
+   "6001": {
+    "cause": "`offset_amount_in + 8` exceeds `payload_data.length`."
+   },
+   "6002": {
+    "cause": "`percentage` is `0` or greater than `100`."
+   },
+   "6003": {
+    "cause": "A checked conversion from a wider integer failed."
+   },
+   "6004": {
+    "cause": "Payload discriminator and `amm_program` are not in the Zap whitelist."
+   },
+   "6005": {
+    "cause": "DLMM uninitialized-position zap-in received an already initialized account or a position equal to owner/rent payer."
+   },
+   "6006": {
+    "cause": "DAMM v2 post-swap square-root price moved beyond `max_sqrt_price_change_bps`."
+   },
+   "6007": {
+    "cause": "`min_delta_id > max_delta_id`."
+   },
+   "6008": {
+    "cause": "DAMM v2 liquidity handler cannot handle the pool fee mode."
+   }
+  }
+ },
+ "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": {
+  "pages": [],
+  "docsRelease": null,
+  "source": {
+   "repo": "raydium-io/raydium-cp-swap",
+   "commit": "b3187ae53a1b95a201f855a59024a12ca8f5b51a",
+   "release": "0.2.0",
+   "file": "programs/cp-swap/src/error.rs"
+  },
+  "errors": {
+   "6000": {
+    "line": 7
+   },
+   "6001": {
+    "line": 11
+   },
+   "6002": {
+    "line": 14
+   },
+   "6003": {
+    "line": 17
+   },
+   "6004": {
+    "line": 20
+   },
+   "6005": {
+    "line": 23
+   },
+   "6006": {
+    "line": 26
+   },
+   "6007": {
+    "line": 28
+   },
+   "6008": {
+    "line": 30
+   },
+   "6009": {
+    "line": 32
+   },
+   "6010": {
+    "line": 34
+   },
+   "6011": {
+    "line": 36
+   },
+   "6012": {
+    "line": 38
+   },
+   "6013": {
+    "line": 40
+   },
+   "6014": {
+    "line": 42
+   }
+  }
+ }
+};

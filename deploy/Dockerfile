@@ -25,5 +25,12 @@ RUN pnpm install --frozen-lockfile --filter "{./services/*}..." --prod=false \
     && pnpm store prune \
     && chown -R node:node /app
 
+# After the install, so a changed document does not reinstall the dependencies. The documents the docs service serves and the commit they were read at, which it
+# reports with every answer: deploy/pack.sh puts in only the Markdown documents and a .git/HEAD that names the commit, so build from the packed tree (ship.sh does),
+# not from a working repository, whose docs/ and .git/ are far larger.
+COPY --chown=node:node docs ./docs
+COPY --chown=node:node README.md ./README.md
+COPY --chown=node:node .git ./.git
+
 USER node
 EXPOSE 8080

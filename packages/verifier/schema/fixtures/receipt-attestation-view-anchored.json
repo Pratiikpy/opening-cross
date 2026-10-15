@@ -1,0 +1,60 @@
+{
+  "cluster": "devnet",
+  "cross": "2gS3tViAZu8se7AwBBBdSy6ty6517m7cCZg5ncbT1ReZ",
+  "attestation": {
+    "body": {
+      "cross": "2gS3tViAZu8se7AwBBBdSy6ty6517m7cCZg5ncbT1ReZ",
+      "state": "Finalized",
+      "schema": "opening-cross/receipt-attestation/v1",
+      "cluster": "devnet",
+      "statement": "The signer fetched the receipt with this hash for this cross, found its bytes canonical and its recorded result equal to the cross account on chain, and found its recomputation flag true. It attests the hash of the receipt, not that the clearing rule was applied correctly: that is for anyone to recompute.",
+      "receiptSchema": "opening-cross/receipt/v1",
+      "receiptSha256": "1dedb31d71b2a2c7460367445422ceb9205017ce6de24e863b4efe39333f2108"
+    },
+    "id": "0509fa3c5dab9647a41369b80c672d8c16d1d577526a65a87540844a45b676f6",
+    "signer": "2KyN6qVvWWzr1jmKrks158B9P5bFni9zqiExtBSQPvBY",
+    "signature": "a0796b73ceda2db411c565322d2b7abe9e6101fb24ccb423c26860e37c4df8e17922e05677f72364aa5b15dbfc3cd6f266b6035febaf15df84b96c131c083205"
+  },
+  "recordedAt": 1792093907,
+  "attestations": 1,
+  "publishedSigner": "2KyN6qVvWWzr1jmKrks158B9P5bFni9zqiExtBSQPvBY",
+  "signerIsPublished": true,
+  "anchor": {
+    "root": "90cc85b175e55290aa261836694f09a018a0c4e52e4b8c04684dbbfeee0693b7",
+    "count": 100,
+    "signature": "5WWavLP6ZGhQpgomK2ngTXeLC5j9aj9HMqCVozhdfB4o84oiHFySdr9Xcnh6E3GfSw3KujiSiDWKn6DoEWiF3erm",
+    "slot": 511462428,
+    "blockTime": 1792094316,
+    "memo": "opening-cross/receipts/v1 root=90cc85b175e55290aa261836694f09a018a0c4e52e4b8c04684dbbfeee0693b7 n=100",
+    "proof": [
+      {
+        "hash": "49f4e7e5becb264f9b67510843139a087b4aa6c232a7ee1dba208f8953aac7a7",
+        "side": "L"
+      },
+      {
+        "hash": "e601a3d7e98e3a7a5f125b667c66ad812d23bbc0a65749594d2d820c39998568",
+        "side": "L"
+      },
+      {
+        "hash": "7425a32f54e9752dc7a32aac60bfdbecde822e928da9ec2aca1f1c100f7c3cbd",
+        "side": "R"
+      },
+      {
+        "hash": "947f34daf9dc92b2b0efabb2b6677c2410a0feb492b150db3bff1de8ab9b7bb6",
+        "side": "R"
+      },
+      {
+        "hash": "cf6d69a911f7bab85229438c3e0efc9473591e76e956fc3c7344489b970e063a",
+        "side": "R"
+      },
+      {
+        "hash": "d8fd1590dc2799769780b9dc6a00a65be37c9e346c99bcf7201ba135913b3c3f",
+        "side": "R"
+      },
+      {
+        "hash": "974585401fb965ed15c1db206ec48b8cfae385901083817974578315a579ab43",
+        "side": "R"
+      }
+    ]
+  }
+}

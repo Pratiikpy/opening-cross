@@ -22,7 +22,7 @@ import {
 import { migrate } from '@opening-cross/indexer';
 import { decodeTreasuryLogs, ingestTreasuryTransaction } from '../../indexer/src/treasury.js';
 import { buildServer } from '../src/server.js';
-import { parseAttestation, registerTreasury } from '../src/routes/treasury.js';
+import { parseAttestation } from '../src/routes/treasury.js';
 import {
   type MemoTx,
   type UpdateBody,
@@ -257,10 +257,10 @@ describe.skipIf(!url)('treasury ingest and routes', () => {
     lapsedCoin = (await generateKeyPairSigner()).address;
     treasury = await seed(coin);
     lapsedTreasury = await seed(lapsedCoin, { lapsedSince: BigInt(NOW - 50) });
-    app = await buildServer({ db, account: async (a) => accounts.get(a) ?? null, lifetime: async () => ({ blockhash: '1'.repeat(32), lastValidBlockHeight: 1n }) as never, clock: () => clock });
-    registerTreasury(app, {
-      db, account: async (a) => accounts.get(a) ?? null, clock: () => clock, network: 'devnet',
-      memoTx: async (s) => memoTxs.get(s) ?? null, memoAttempts: 1, upgradeAuthority: async () => 'Upg11111111111111111111111111111111111111111',
+    // The server registers the treasury routes itself; the test supplies the seams that would read the cluster.
+    app = await buildServer({
+      db, account: async (a) => accounts.get(a) ?? null, lifetime: async () => ({ blockhash: '1'.repeat(32), lastValidBlockHeight: 1n }) as never, clock: () => clock, network: 'devnet',
+      treasury: { memoTx: async (s) => memoTxs.get(s) ?? null, memoAttempts: 1, upgradeAuthority: async () => 'Upg11111111111111111111111111111111111111111' },
     });
     // History for the first treasury: created 10 days before NOW, two spends.
     const coinKey = coin;

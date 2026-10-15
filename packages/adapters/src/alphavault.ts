@@ -6,7 +6,7 @@
 // oversubscribed; first-come mode closes the vault at its cap. The vault is bound to one pool and one pair of mints at creation.
 //
 // Layouts are from the program's published IDL (`idls/alpha_vault.json`, Meteora damm-v2 `tests/helpers/idl`, Apache-2.0).
-// This file covers DAMM v2 pools (pool type 2). The DLMM fill (`fill_dlmm`) is not built.
+// This file covers DAMM v2 pools (pool type 2); the DLMM fill (pool type 0), the depositor's withdraw and the escrow close are in `alphavault-dlmm.ts`.
 import { createHash } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
 import { AccountRole, type Address, type Instruction, type TransactionSigner, address } from '@solana/kit';

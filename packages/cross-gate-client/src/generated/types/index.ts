@@ -6,5 +6,11 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './affiliateLimit.js';
+export * from './countryPolicy.js';
+export * from './lockPolicy.js';
 export * from './mode.js';
+export * from './rules.js';
 export * from './sasRequirement.js';
+export * from './termsData.js';
+export * from './timeWindow.js';

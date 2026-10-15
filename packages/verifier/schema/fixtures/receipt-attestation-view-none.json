@@ -1,0 +1,6 @@
+{
+  "cluster": "devnet",
+  "cross": "BYAZwuKnRyCvgiDcFU2puKC2t6ELUc7hktB7XTJ8brfM",
+  "attestation": null,
+  "note": "no attestation exists for this cross yet: a receipt is signed and anchored some minutes after the cross has settled for good"
+}

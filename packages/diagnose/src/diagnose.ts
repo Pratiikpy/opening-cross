@@ -1,7 +1,7 @@
 // Explains why a transaction failed. The facts come from the transaction's own error and logs; the words for a custom error
 // code come from the program's IDL (see tables.generated.ts), and when the program also logged its own error name the two are
 // compared, so a table that has gone stale against the deployed program is reported instead of silently wrong.
-import { ANCHOR_FRAMEWORK, ANCHOR_VERSION, PROGRAMS, type ProgramTable } from './tables.generated.js';
+import { ANCHOR_FRAMEWORK, ANCHOR_VERSION, DOCS, PROGRAMS, type ProgramTable } from './tables.generated.js';
 
 export type Category = 'slippage' | 'balance' | 'account' | 'authority' | 'compute' | 'blockhash' | 'state' | 'math' | 'program-rule' | 'network' | 'unknown';
 
@@ -18,6 +18,8 @@ export interface Diagnosis {
     /** The table the words came from, so a reader can judge how current they are. */
     table: { label: string; version: string | null; source: string } | null;
   };
+  /** The program's own documentation and source for this error, with the releases they describe, or null when none is held for the program. */
+  docs: DiagnosisDocs | null;
   /** What the program itself logged about the error, when it logged one (Anchor programs do). */
   programLog: { name: string; number: number; message: string; account: string | null; file: string | null } | null;
   /** True when the table and the program's own log name the same error, false when they disagree (the table is stale), null when there is nothing to compare. */
@@ -25,6 +27,30 @@ export interface Diagnosis {
   advice: string[];
   /** The log lines the diagnosis rests on. */
   evidence: string[];
+}
+
+export interface DiagnosisDocs {
+  /** Pages of the program's published documentation. */
+  pages: { title: string; url: string }[];
+  /** The documentation's own explanation of this error (its "common cause"), when it lists the error under this code and name. */
+  cause: string | null;
+  /** For a program that lists where each error is raised: the instructions that can return it. */
+  raisedIn: string | null;
+  /** A link to the line that defines the error, in the program's source at a pinned commit, or null when no source is held. */
+  sourceLink: string | null;
+  versions: {
+    /** The version of the IDL the error words came from. */
+    idl: string | null;
+    /** The release the documentation's changelog lists first. */
+    docs: string | null;
+    /** The release in the Cargo.toml of the source commit the link points into. */
+    source: string | null;
+    /** True when the release is the IDL's, false when it is not, null when there is nothing to compare. */
+    docsMatchIdl: boolean | null;
+    sourceMatchesIdl: boolean | null;
+  };
+  /** Plain words on how far to trust the match. */
+  note: string;
 }
 
 export interface FailedTransaction {
@@ -76,6 +102,32 @@ export function failingFrame(logs: readonly string[]): { frame: Frame; reason: s
 }
 
 const table = (address: string): ProgramTable | undefined => PROGRAMS.find((p) => p.address === address);
+
+/**
+ * The documentation and source this package holds for an error of a program, and whether they describe the release the error words
+ * came from. Matching is by release number: a documentation page or source commit for another release is still shown, and says so.
+ */
+export function docsFor(programAddress: string, code: number | null): DiagnosisDocs | null {
+  const d = DOCS[programAddress];
+  const t = table(programAddress);
+  if (!d || !t) return null;
+  const entry = code === null ? undefined : d.errors[code];
+  const cmp = (other: string | null): boolean | null => (other === null || t.version === null ? null : other === t.version);
+  const docsMatchIdl = cmp(d.docsRelease);
+  const sourceMatchesIdl = cmp(d.source?.release ?? null);
+  const notes: string[] = [];
+  if (d.pages.length > 0) notes.push(docsMatchIdl === true ? `The documentation lists release ${d.docsRelease}, the IDL's.` : docsMatchIdl === false ? `The documentation's latest release is ${d.docsRelease} but the IDL is ${t.version}: the page may describe a different release than the program you called.` : 'The documentation has no changelog to compare with the IDL.');
+  if (d.source) notes.push(sourceMatchesIdl === true ? `The source link is release ${d.source.release}, the IDL's.` : sourceMatchesIdl === false ? `The source link is release ${d.source.release} but the IDL is ${t.version}: line numbers may have moved.` : 'The source release could not be compared with the IDL.');
+  if (code !== null && !entry) notes.push('Neither the documentation nor the source names this code the way the IDL does, so no explanation is attached.');
+  return {
+    pages: d.pages.map((p) => ({ ...p })),
+    cause: entry?.cause ?? null,
+    raisedIn: entry?.raisedIn ?? null,
+    sourceLink: d.source && entry?.line !== undefined ? `https://github.com/${d.source.repo}/blob/${d.source.commit}/${d.source.file}#L${entry.line}` : null,
+    versions: { idl: t.version, docs: d.docsRelease, source: d.source?.release ?? null, docsMatchIdl, sourceMatchesIdl },
+    note: notes.join(' '),
+  };
+}
 
 // InstructionError variants that carry no code, in plain words.
 const RUNTIME: Record<string, { text: string; category: Category; advice: string[] }> = {
@@ -174,7 +226,7 @@ export function diagnose(tx: FailedTransaction): Diagnosis {
   const errName = typeof tx.err === 'string' ? tx.err : tx.err && typeof tx.err === 'object' ? Object.keys(tx.err as object)[0] : undefined;
   if (!ie && errName && TRANSACTION[errName]) {
     const t = TRANSACTION[errName]!;
-    return { summary: t.text, category: t.category, where, error: { source: 'transaction', code: null, name: errName, message: t.text, table: null }, programLog: null, tableAgreesWithProgram: null, advice: [...t.advice, FOOTER], evidence: [] };
+    return { summary: t.text, category: t.category, where, error: { source: 'transaction', code: null, name: errName, message: t.text, table: null }, docs: null, programLog: null, tableAgreesWithProgram: null, advice: [...t.advice, FOOTER], evidence: [] };
   }
 
   // 2. A custom program error: look the code up.
@@ -201,6 +253,7 @@ export function diagnose(tx: FailedTransaction): Diagnosis {
       category,
       where,
       error: { source, code, name, message, table: source === 'anchor-framework' ? { label: 'Anchor framework', version: ANCHOR_VERSION, source: 'anchor/lang/error' } : prog && own ? { label: prog.label, version: prog.version, source: prog.source } : null },
+      docs: programId && prog && !framework ? docsFor(programId, code) : null,
       programLog,
       tableAgreesWithProgram: agrees,
       advice: [...advice, FOOTER],
@@ -216,11 +269,11 @@ export function diagnose(tx: FailedTransaction): Diagnosis {
   if (key) {
     const r = RUNTIME[key]!;
     const who = where.program && where.program.label !== 'an unlisted program' ? ` in ${where.program.label}` : '';
-    return { summary: `${r.text.replace(/\.$/, '')}${who}.`, category: r.category, where, error: { source: 'runtime', code: null, name: key, message: r.text, table: null }, programLog, tableAgreesWithProgram: null, advice: [...r.advice, FOOTER], evidence };
+    return { summary: `${r.text.replace(/\.$/, '')}${who}.`, category: r.category, where, error: { source: 'runtime', code: null, name: key, message: r.text, table: null }, docs: null, programLog, tableAgreesWithProgram: null, advice: [...r.advice, FOOTER], evidence };
   }
   if (found && /exceeded CUs meter|Computational budget exceeded|exceeded maximum number of instructions/i.test(found.reason)) {
     const r = RUNTIME.ComputationalBudgetExceeded!;
-    return { summary: r.text, category: 'compute', where, error: { source: 'runtime', code: null, name: 'ComputationalBudgetExceeded', message: r.text, table: null }, programLog, tableAgreesWithProgram: null, advice: [...r.advice, FOOTER], evidence };
+    return { summary: r.text, category: 'compute', where, error: { source: 'runtime', code: null, name: 'ComputationalBudgetExceeded', message: r.text, table: null }, docs: null, programLog, tableAgreesWithProgram: null, advice: [...r.advice, FOOTER], evidence };
   }
 
   return {
@@ -228,6 +281,7 @@ export function diagnose(tx: FailedTransaction): Diagnosis {
     category: 'unknown',
     where,
     error: { source: 'unmapped', code: null, name: runtimeName ?? errName ?? null, message: found?.reason ?? null, table: null },
+    docs: null,
     programLog,
     tableAgreesWithProgram: null,
     advice: ['Read the program logs of the transaction; the lines above are the ones nearest the failure.', FOOTER],

@@ -73,6 +73,23 @@ describe('rules, treasury and settlement tools', () => {
     expect(tool('oc_get_alpha_vault').request({ cross: MINT, owner: MINT }).path).toBe(`/v1/crosses/${MINT}/alpha-vault?owner=${MINT}`);
   });
 
+  it('oc_list_treasury_movements reads the movements route, sends only the filters it is given and leaves a team-outflow false in', () => {
+    const t = tool('oc_list_treasury_movements');
+    expect(t.kind).toBe('read');
+    expect(t.request({ treasury: MINT })).toEqual({ method: 'GET', path: `/v1/treasuries/${MINT}/movements` });
+    expect(t.request({ treasury: MINT, kind: 'spend,sweep', direction: 'out', asset: 'quote', teamOutflow: true, counterparty: MINT, minAmount: '5000', sinceSlot: '100', before: '42', limit: 20 }).path).toBe(
+      `/v1/treasuries/${MINT}/movements?kind=spend%2Csweep&direction=out&asset=quote&teamOutflow=true&counterparty=${MINT}&minAmount=5000&sinceSlot=100&before=42&limit=20`,
+    );
+    expect(t.request({ treasury: MINT, teamOutflow: false }).path).toBe(`/v1/treasuries/${MINT}/movements?teamOutflow=false`);
+    expect(t.inputSchema).toMatchObject({ additionalProperties: false, required: ['treasury'] });
+  });
+
+  it('oc_quote_route says the Meteora pools are priced, not that they are not', () => {
+    const d = tool('oc_quote_route').description;
+    expect(d).toMatch(/DAMM v2 pool and DLMM pair/);
+    expect(d).not.toMatch(/not priced/);
+  });
+
   it('oc_get_lockups adds the cross filter only when given one', () => {
     expect(tool('oc_get_lockups').request({ owner: MINT, cross: MINT }).path).toBe(`/v1/owners/${MINT}/lockups?cross=${MINT}`);
   });

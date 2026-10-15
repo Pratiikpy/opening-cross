@@ -109,6 +109,20 @@ services:
       # the cluster, so the compose file refuses to start without it.
       KEEPER_CREATORS: ${KEEPER_CREATORS:?set KEEPER_CREATORS (comma-separated creator addresses) in .env}
       PASS_MS: ${KEEPER_PASS_MS:-15000}
+      # Which optional duties to do (docs/CONFIGURATION.md): default, all, none, or a list. Add partner-fees to claim the protocol's DBC trading fees to the fee recipient,
+      # locks to release vested locked fills, series to spawn recurring crosses. The default value is spelled out because an empty one would mean "none".
+      KEEPER_DUTIES: ${KEEPER_DUTIES:-default}
+      KEEPER_MIN_RELEASE: ${KEEPER_MIN_RELEASE:-1}
+      KEEPER_PARTNER_FEE_EVERY_SECS: ${KEEPER_PARTNER_FEE_EVERY_SECS:-3600}
+      KEEPER_MIN_PARTNER_QUOTE: ${KEEPER_MIN_PARTNER_QUOTE:-1}
+      KEEPER_MIN_PARTNER_BASE: ${KEEPER_MIN_PARTNER_BASE:-1}
+      # Issuer subscriptions: when KEEPER_BILLING_URL is set (the billing profile's service, http://billing:8791), the series duty spawns only for issuers with a paid period,
+      # except the authorities in KEEPER_ENTITLEMENT_EXEMPT. Empty means every series in scope is served.
+      KEEPER_BILLING_URL: ${KEEPER_BILLING_URL:-}
+      KEEPER_ENTITLEMENT_EXEMPT: ${KEEPER_ENTITLEMENT_EXEMPT:-}
+      KEEPER_BREAKER_FEEDS: ${KEEPER_BREAKER_FEEDS:-}
+      # 1 plans every action and sends nothing, and logs what would have been sent.
+      KEEPER_DRY_RUN: ${KEEPER_DRY_RUN:-}
     volumes:
       - ./.secrets/keeper.json:/run/secrets/keeper.json:ro
     depends_on:
@@ -124,6 +138,10 @@ services:
       PROMISE_KEYPAIR: /run/secrets/promiser.json
       ROUND_MS: ${PROMISER_ROUND_MS:-15000}
       ANCHOR_EVERY_MS: ${PROMISER_ANCHOR_MS:-600000}
+      # The web app's public address. Set, the promiser also signs and anchors the receipt of every cross that has settled for good (ADR-0941); blank leaves that off.
+      RECEIPT_URL: ${RECEIPT_URL:-}
+      RECEIPT_PER_ROUND: ${RECEIPT_PER_ROUND:-20}
+      RECEIPT_RECHECK_MS: ${RECEIPT_RECHECK_MS:-21600000}
     volumes:
       - ./.secrets/promiser.json:/run/secrets/promiser.json:ro
     depends_on:
@@ -187,7 +205,47 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Operations console API (services/ops): listing queue, incidents, cases, hash-chained audit log. Not exposed through Caddy.
+  # Gate upkeep (services/keeper, src/main-gate.ts): closes the cross_gate passes anyone may close (terms lapsed, attestation gone, no longer conforming, wallet denied). The
+  # rent goes to the pass owner; the keeper wallet pays only fees. It reads every Terms account of the gate program, so RPC_URL must allow getProgramAccounts, and it does
+  # nothing until a gate has rules (the deployed cross_gate has none yet, HG5). It uses the keeper's key.
+  gate-keeper:
+    <<: *service
+    profiles: ["gate"]
+    working_dir: /app/services/keeper
+    command: ["node", "--import", "tsx", "src/main-gate.ts"]
+    environment:
+      <<: *env
+      KEEPER_KEYPAIR: /run/secrets/keeper.json
+      PASS_MS: ${GATE_KEEPER_PASS_MS:-60000}
+      # 1 names what would be closed and sends nothing.
+      KEEPER_DRY_RUN: ${GATE_KEEPER_DRY_RUN:-}
+    volumes:
+      - ./.secrets/keeper.json:/run/secrets/keeper.json:ro
+
+  # The documentation service (services/docs-mcp): the repository's documents as a searchable site, over MCP at /mcp and as JSON. Read-only: no key, no database. It reads
+  # the Markdown documents the image holds (deploy/pack.sh puts them in), and by default leaves out runbooks and security notes. Caddy serves it on DOCS_SITE_HOST.
+  docs:
+    <<: *service
+    profiles: ["docs"]
+    working_dir: /app/services/docs-mcp
+    command: ["node", "--import", "tsx", "src/main.ts"]
+    environment:
+      DOCS_HOST: 0.0.0.0
+      DOCS_DIR: /app
+      DOCS_KINDS: ${DOCS_KINDS:-}
+      DOCS_PUBLIC_URL: ${DOCS_PUBLIC_URL:-}
+      DOCS_RATE_PER_MINUTE: ${DOCS_RATE_PER_MINUTE:-120}
+      # Caddy is the only client the service sees; read the real client from the address it forwards.
+      DOCS_TRUST_PROXY: "1"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8793/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 8s
+      retries: 4
+      start_period: 30s
+
+  # Operations console API (services/ops): listing queue, incidents, cases, hash-chained audit log. It binds to loopback on the host and is never reachable through the
+  # SITE_HOST block of the Caddyfile. A web app on another host reaches it only through the OPS_SITE_HOST block, which allows OPS_ALLOWED_IPS alone (deploy/README.md).
   ops:
     <<: *service
     profiles: ["ops"]
@@ -238,6 +296,11 @@ services:
       - "443:443/udp"
     environment:
       SITE_HOST: ${SITE_HOST:?set SITE_HOST in .env}
+      # Unset, these two names are the .localhost ones: served with Caddy's own certificate and unreachable from outside, so the docs service and the ops console API
+      # are not public until a hostname is chosen on purpose.
+      DOCS_SITE_HOST: ${DOCS_SITE_HOST:-docs.localhost}
+      OPS_SITE_HOST: ${OPS_SITE_HOST:-ops.localhost}
+      OPS_ALLOWED_IPS: ${OPS_ALLOWED_IPS:-127.0.0.1}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

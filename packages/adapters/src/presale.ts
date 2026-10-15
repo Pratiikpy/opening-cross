@@ -7,6 +7,7 @@
 import { type Address, type Instruction, type TransactionSigner, address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import { getOpenFixedPricePresaleInstruction } from '@opening-cross/cross-settle-client';
 import { type CrossView, type ProgramIssue, ata } from '@opening-cross/sdk';
+import { gateHookAccounts } from './partner.js';
 
 export const PRESALE_PROGRAM_ADDRESS = address('presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj');
 /** The vault's authority PDA (Meteora's `presale_authority`). */
@@ -118,8 +119,14 @@ export type OpenFixedPricePresaleInput = {
   terms: FixedPriceTerms;
   /** Whether the presale forbids withdrawing a deposit before the end (Meteora's `disable_withdraw`; default false). */
   disableWithdraw?: boolean;
-  /** Borsh of an empty `RemainingAccountsInfo` (four zero bytes) unless the base token has a transfer hook; that path is built and not exercised. */
+  /** Borsh of an empty `RemainingAccountsInfo` (four zero bytes); for a base token with the cross_gate hook set `transferHook`, which adds the accounts and the slice. */
   hook?: Uint8Array;
+  /**
+   * The base token carries the cross_gate transfer hook (a launch minted through the DBC continuation): the supply moves into the vault through a hooked transfer, so the hook's
+   * accounts are added and the slice that names them is written (`TransferHookBase`, five accounts). Proved on the real binaries in `tests/core/test/meteora-tranche-hook.test.ts`.
+   * Ignores `hook`.
+   */
+  transferHook?: boolean;
 };
 
 /** `open_fixed_price_presale`. The tranche is priced at exactly the cross's clearing price. */
@@ -131,7 +138,9 @@ export async function buildOpenFixedPricePresale(input: OpenFixedPricePresaleInp
   if (issues.length > 0) throw new Error(issues.map((i) => `${i.field}: ${i.message}`).join('; '));
   const qPrice = fixedPriceQ64(c.clearing.value.price, c.priceScale);
   const addresses = await presaleAddresses(input.base.address, c.baseMint, c.quoteMint);
-  const instruction = getOpenFixedPricePresaleInstruction({
+  const extras = input.transferHook ? await gateHookAccounts(c.baseMint, input.creator.address, PRESALE_AUTHORITY) : [];
+  const hookBytes = input.transferHook ? Uint8Array.from([1, 0, 0, 0, 0, extras.length]) : (input.hook ?? new Uint8Array(4));
+  const original = getOpenFixedPricePresaleInstruction({
     creator: input.creator,
     cross: input.cross.address,
     base: input.base,
@@ -149,8 +158,9 @@ export async function buildOpenFixedPricePresale(input: OpenFixedPricePresaleInp
     args: encodePresaleArgs(input.terms),
     qPrice,
     disableWithdraw: input.disableWithdraw ? 1 : 0,
-    hook: input.hook ?? new Uint8Array(4),
+    hook: hookBytes,
   });
+  const instruction = extras.length ? ({ ...original, accounts: [...(original.accounts ?? []), ...extras] } as Instruction) : original;
   // A presale is not a graduation venue and the vote does not gate it (ADR-0663), so a governed cross takes no outcome account here.
   return { instruction, qPrice, addresses, clearingPrice: c.clearing.value.price };
 }

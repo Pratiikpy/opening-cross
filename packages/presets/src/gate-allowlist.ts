@@ -2,6 +2,10 @@
 //   leaf = sha256(0x00 || mint || owner)      node = sha256(0x01 || min(a, b) || max(a, b))
 // Inner nodes are hashed over the byte-wise sorted pair, so a proof is only the list of sibling hashes. An odd node at any
 // level is carried up unchanged. The program accepts proofs of at most 32 hashes.
+//
+// A second leaf kind carries a wallet's terms (`claim_pass_merkle_terms`, ADR-0900):
+//   leaf = sha256(0x02 || mint || owner || identity || country u16 || tier u8 || flags u8 || cap u64 || expires i64)
+// with the same inner nodes, so an inner node (0x01) is never a plain leaf (0x00) or a terms leaf (0x02).
 import { sha256 } from '@noble/hashes/sha2.js';
 import { type Address, getAddressEncoder, isAddress } from '@solana/kit';
 
@@ -77,14 +81,12 @@ export type Allowlist = {
   has(owner: Address): boolean;
 };
 
-/**
- * Builds the tree for a mint. The leaves are sorted by hash, so the same set of addresses always gives the same root
- * whatever order the issuer pasted it in.
- */
-export function buildAllowlist(mint: Address, addresses: readonly Address[]): Allowlist {
-  const unique = [...new Set(addresses)];
-  if (unique.length === 0) throw new Error('an allowlist needs at least one address');
-  const leaves = unique.map((owner) => ({ owner, leaf: allowlistLeaf(mint, owner) })).sort((a, b) => compare(a.leaf, b.leaf));
+type Keyed = { key: string; leaf: Uint8Array };
+type Tree = { root: Uint8Array; levels: Uint8Array[][]; index: Map<string, number> };
+
+/** Sorts the leaves by hash (so the root does not depend on input order) and builds every level. */
+function buildTree(items: readonly Keyed[]): Tree {
+  const leaves = [...items].sort((x, y) => compare(x.leaf, y.leaf));
   const levels: Uint8Array[][] = [leaves.map((l) => l.leaf)];
   while (levels[levels.length - 1]!.length > 1) {
     const cur = levels[levels.length - 1]!;
@@ -93,26 +95,95 @@ export function buildAllowlist(mint: Address, addresses: readonly Address[]): Al
     levels.push(next);
   }
   if (levels.length - 1 > MAX_PROOF_LENGTH) throw new Error(`an allowlist this large needs a proof longer than ${MAX_PROOF_LENGTH} hashes`);
-  const root = levels[levels.length - 1]![0]!;
-  const index = new Map(leaves.map((l, i) => [l.owner as string, i]));
+  return { root: levels[levels.length - 1]![0]!, levels, index: new Map(leaves.map((l, i) => [l.key, i])) };
+}
+
+function proofIn(tree: Tree, key: string): Uint8Array[] | null {
+  let at = tree.index.get(key);
+  if (at === undefined) return null;
+  const proof: Uint8Array[] = [];
+  for (let lvl = 0; lvl < tree.levels.length - 1; lvl++) {
+    const sibling = tree.levels[lvl]![at ^ 1];
+    if (sibling) proof.push(sibling);
+    at >>= 1;
+  }
+  return proof;
+}
+
+/**
+ * Builds the tree for a mint. The leaves are sorted by hash, so the same set of addresses always gives the same root
+ * whatever order the issuer pasted it in.
+ */
+export function buildAllowlist(mint: Address, addresses: readonly Address[]): Allowlist {
+  const unique = [...new Set(addresses)];
+  if (unique.length === 0) throw new Error('an allowlist needs at least one address');
+  const tree = buildTree(unique.map((owner) => ({ key: owner, leaf: allowlistLeaf(mint, owner) })));
   return {
     mint,
-    root,
-    rootHex: toHex(root),
+    root: tree.root,
+    rootHex: toHex(tree.root),
     count: unique.length,
-    has: (owner) => index.has(owner),
-    proofFor(owner) {
-      let at = index.get(owner);
-      if (at === undefined) return null;
-      const proof: Uint8Array[] = [];
-      for (let lvl = 0; lvl < levels.length - 1; lvl++) {
-        const sibling = levels[lvl]![at ^ 1];
-        if (sibling) proof.push(sibling);
-        at >>= 1;
-      }
-      return proof;
-    },
+    has: (owner) => tree.index.has(owner),
+    proofFor: (owner) => proofIn(tree, owner),
   };
+}
+
+/** What a pass carries (`TermsData` in the program), as the terms-bearing allowlist commits to it. */
+export type GateTerms = {
+  /** 32 opaque bytes, unique per person per attester (all zero = none). */
+  identity: Uint8Array;
+  /** ISO 3166-1 numeric (0 = unknown). */
+  country: number;
+  tier: number;
+  flags: number;
+  /** Quote atoms per cross (0 = the gate's default). */
+  cap: bigint;
+  /** Unix seconds the pass lapses at (0 = never). */
+  expiresTs: bigint;
+};
+
+const le = (bytes: 2 | 8, v: bigint, signed = false): Uint8Array => {
+  const out = new Uint8Array(bytes);
+  const dv = new DataView(out.buffer);
+  if (bytes === 2) dv.setUint16(0, Number(v), true);
+  else if (signed) dv.setBigInt64(0, v, true);
+  else dv.setBigUint64(0, v, true);
+  return out;
+};
+
+/** `sha256(0x02 || mint || owner || identity || country || tier || flags || cap || expires)`: what `claim_pass_merkle_terms` recomputes. */
+export function termsLeaf(mint: Address, owner: Address, t: GateTerms): Uint8Array {
+  if (t.identity.length !== 32) throw new Error('identity must be 32 bytes');
+  if (!Number.isInteger(t.country) || t.country < 0 || t.country > 999) throw new Error('country must be an ISO 3166-1 numeric code (0 to 999)');
+  if (!Number.isInteger(t.tier) || t.tier < 0 || t.tier > 255 || !Number.isInteger(t.flags) || t.flags < 0 || t.flags > 255) throw new Error('tier and flags are one byte each');
+  if (t.cap < 0n || t.cap > 0xffff_ffff_ffff_ffffn) throw new Error('cap must fit in a u64');
+  return sha256(
+    cat(Uint8Array.of(2), new Uint8Array(enc.encode(mint)), new Uint8Array(enc.encode(owner)), t.identity, le(2, BigInt(t.country)), Uint8Array.of(t.tier, t.flags), le(8, t.cap), le(8, t.expiresTs, true)),
+  );
+}
+
+export type TermsAllowlistEntry = { owner: Address; terms: GateTerms };
+
+export type TermsAllowlist = {
+  mint: Address;
+  root: Uint8Array;
+  rootHex: string;
+  count: number;
+  /** The proof for a listed wallet (to submit with exactly the terms it was listed with), or null. */
+  proofFor(owner: Address): Uint8Array[] | null;
+  has(owner: Address): boolean;
+};
+
+/** The terms-bearing allowlist: the root for `set_rules` (`allowlistRoot`) and each wallet's proof. One entry per wallet. */
+export function buildTermsAllowlist(mint: Address, entries: readonly TermsAllowlistEntry[]): TermsAllowlist {
+  if (entries.length === 0) throw new Error('an allowlist needs at least one entry');
+  const seen = new Set<string>();
+  for (const e of entries) {
+    if (seen.has(e.owner)) throw new Error(`${e.owner} is listed twice`);
+    seen.add(e.owner);
+  }
+  const tree = buildTree(entries.map((e) => ({ key: e.owner, leaf: termsLeaf(mint, e.owner, e.terms) })));
+  return { mint, root: tree.root, rootHex: toHex(tree.root), count: entries.length, has: (owner) => tree.index.has(owner), proofFor: (owner) => proofIn(tree, owner) };
 }
 
 /** Checks a proof the way the program does. */

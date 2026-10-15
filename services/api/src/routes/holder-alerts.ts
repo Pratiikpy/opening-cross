@@ -1,7 +1,8 @@
 // Alerts (ROADMAP M7, Z6, T2; ADR-0400): browser push, email and Telegram reminders, and an in-app feed.
 //
 //   GET  /v1/alerts/config             which channels this deployment can really deliver on (a channel is absent, not faked, when its keys are not set)
-//   GET  /v1/alerts/feed               what needs attention now for a wallet and the crosses and markets it follows (no subscription needed)
+//   GET  /v1/alerts/feed               what needs attention now for a wallet and the crosses, markets, tokens and treasuries it follows (no subscription needed)
+//   GET  /v1/alerts/subject            what an address is to alerts (a cross, a token, a treasury, a market) and which insider wallets would be watched for it (row F5)
 //   POST /v1/alerts/push/subscribe     a browser's push subscription; answers { id, token } for managing it
 //   POST /v1/alerts/email/subscribe    an address; a confirmation mail is sent and nothing else until it is confirmed (double opt-in)
 //   POST /v1/alerts/email/confirm      { id, token } from the link in that mail
@@ -10,7 +11,7 @@
 //   POST /v1/alerts/update             { id, token, wallet, topics, watch }
 //   POST /v1/alerts/unsubscribe        { id, token } deletes the subscription and its delivery record
 //
-// A subscription watches a public wallet address (optional) and a list of crosses and market calendars. The delivery loop runs in
+// A subscription watches a public wallet address (optional) and a list of crosses, market calendars, token mints and treasuries. The delivery loop runs in
 // this process every 30 seconds, derives due events from the indexer's tables, records each under a stable key before sending, and
 // so sends each at most once. It is off unless a channel is configured.
 import type { FastifyInstance, FastifyReply } from 'fastify';
@@ -19,11 +20,17 @@ import {
   AlertInputError,
   type AlertItem,
   FEED_HORIZON_SECONDS,
+  FEED_LOOKBACK_SECONDS,
   type Facts,
   LEAD_SECONDS,
+  MOVEMENT_LOOKBACK_SECONDS,
+  type MovementFact,
+  type Scope,
   TOPICS,
+  type Topic,
   hashToken,
   isAddressLike,
+  isMovementTopic,
   itemsFor,
   mailToken,
   newId,
@@ -36,6 +43,7 @@ import {
   tokenMatches,
 } from './holder-alerts-core.js';
 import { type AlertStore, type Db, type Subscription, alertStore } from './holder-alerts-store.js';
+import { DEFAULT_MIN_PPM, type Rpc, envRpc, readMint, scanner } from './holder-alerts-watch.js';
 import { RequestError } from '../tx.js';
 
 const json = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? x.toString() : x));
@@ -53,6 +61,10 @@ export type HolderAlertDeps = {
     mail?: (m: Mail) => Promise<Sent>;
     telegram?: Pick<ReturnType<typeof telegramClient>, 'send' | 'updates' | 'username'>;
   };
+  /** Solana RPC for the insider and team scan. Defaults to RPC_URL; `null` turns the scan off (the topics are then reported unavailable, not faked). */
+  rpc?: Rpc | null;
+  /** A fall of at least this share of a token's supply is an alert, in parts per million. Default 1000 (0.1%). */
+  minMovementPpm?: number;
   /** Start the delivery loop (default true when any channel is configured). Tests call `tick` themselves. */
   run?: boolean;
   /** How often the loop wakes, in ms. */
@@ -65,6 +77,9 @@ const MAX_PER_WALLET = 10;
 const CONFIRM_MAIL_GAP = 600;
 const UNCONFIRMED_TTL = 86_400;
 const TELEGRAM_CODE_TTL = 900;
+/** Tokens a feed reader looked at stay in the scan for this long, so the feed has something to show without a subscription. */
+const FEED_INTEREST_SECONDS = 3600;
+const FEED_INTEREST_MAX = 200;
 
 export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps): HolderAlerts {
   const clock = deps.clock ?? (() => Math.floor(Date.now() / 1000));
@@ -74,6 +89,10 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
   const sendMail = deps.senders?.mail ?? (cfg.email && cfg.webUrl ? mailSender(cfg.email) : null);
   const telegram = deps.senders?.telegram ?? (cfg.telegram ? telegramClient(cfg.telegram) : null);
   const web = cfg.webUrl;
+  const rpc = deps.rpc === undefined ? envRpc() : deps.rpc;
+  const watcher = rpc ? scanner(store, rpc, deps.minMovementPpm !== undefined ? { minPpm: deps.minMovementPpm } : {}) : null;
+  const minPpm = deps.minMovementPpm ?? DEFAULT_MIN_PPM;
+  const feedInterest = new Map<string, number>();
   const manageUrl = (kind: 'confirm' | 'unsubscribe', id: string, token: string) => `${web}/alerts/${kind}?id=${id}&token=${token}`;
 
   const body = (v: unknown): Record<string, unknown> => {
@@ -89,6 +108,22 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     }
   };
   const unavailable = (reply: FastifyReply, what: string, how: string) => send(reply, { error: `${what} are not configured on this deployment`, how }, 503);
+
+  /** Which topics this deployment can really serve. A topic that needs data the deployment lacks is reported off, never accepted and then silent. */
+  async function availability(): Promise<Record<Topic, boolean>> {
+    const treasury = (await store.hasTable('treasury_movements')) && (await store.hasTable('treasuries'));
+    return { claimable: true, closing: true, opening: true, insider: rpc !== null, team: rpc !== null, treasury };
+  }
+  const WHY: Partial<Record<Topic, string>> = {
+    insider: 'this deployment has no Solana RPC (RPC_URL) to read wallet balances with',
+    team: 'this deployment has no Solana RPC (RPC_URL) to read wallet balances with',
+    treasury: 'this deployment has not run the indexer migration that records treasury movements (020)',
+  };
+  async function requireAvailable(topics: readonly Topic[]): Promise<void> {
+    const a = await availability();
+    const off = topics.filter((t) => !a[t]);
+    if (off.length > 0) throw new RequestError(422, `alerts for ${off.join(', ')} are not available on this deployment: ${[...new Set(off.map((t) => WHY[t]))].join('; ')}`, { unavailable: off });
+  }
 
   /** The subscription an id and management token name, or a 404 that does not say which of the two was wrong. */
   async function owned(b: Record<string, unknown>): Promise<Subscription> {
@@ -106,15 +141,37 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
       telegram: telegram ? { enabled: true, bot: telegram.username } : { enabled: false },
       leadSeconds: LEAD_SECONDS,
       topics: TOPICS,
-      note: 'A channel that is not enabled has no keys on this deployment; nothing is sent through it.',
+      available: await availability(),
+      movementThresholdPercent: minPpm / 10_000,
+      note: 'A channel that is not enabled has no keys on this deployment; nothing is sent through it. A topic with available false cannot be subscribed to here.',
     }),
   );
 
-  async function factsFor(wallets: readonly string[], watch: readonly string[]): Promise<Facts> {
+  /** The movement facts for what is followed, from the scan's record and the indexer's treasury movements. */
+  async function movementFacts(scope: ReadonlyMap<string, Scope>, since: number): Promise<MovementFact[]> {
+    const mints = [...new Set([...scope.values()].flatMap((s) => s.mints))];
+    const treasuries = [...new Set([...scope.values()].flatMap((s) => s.treasuries))];
+    return [...(await store.walletMovements(mints, since)), ...(await store.treasuryOutflows(treasuries, since))];
+  }
+
+  async function factsFor(wallets: readonly string[], watch: readonly string[], movement?: { now: number; lookback: number }): Promise<Facts> {
     const orders = await store.openOrders(wallets);
     const addrs = [...new Set([...orders.map((o) => o.cross), ...watch])];
     const [crosses, calendars] = await Promise.all([store.crosses(addrs), store.calendars(watch)]);
-    return { crosses: new Map(crosses.map((c) => [c.address, c])), orders, calendars };
+    const base: Facts = { crosses: new Map(crosses.map((c) => [c.address, c])), orders, calendars };
+    if (!movement || watch.length === 0) return base;
+    const scope = await store.scopes(watch);
+    return { ...base, scope, movements: await movementFacts(scope, movement.now - movement.lookback) };
+  }
+
+  /** Remembers the tokens a feed reader looked at, so the scan covers them for a while. */
+  function noteInterest(scope: ReadonlyMap<string, Scope>, now: number) {
+    for (const [m, until] of feedInterest) if (until <= now) feedInterest.delete(m);
+    for (const s of scope.values())
+      for (const m of s.mints) {
+        if (!feedInterest.has(m) && feedInterest.size >= FEED_INTEREST_MAX) feedInterest.delete(feedInterest.keys().next().value as string);
+        feedInterest.set(m, now + FEED_INTEREST_SECONDS);
+      }
   }
 
   app.get('/v1/alerts/feed', async (req, reply) => {
@@ -123,9 +180,52 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     const watch = wrap(() => parseWatch(q.watch ? q.watch.split(',').filter(Boolean) : []));
     if (!wallet && watch.length === 0) throw new RequestError(400, 'give a wallet, a list of watched crosses or markets (watch=a,b), or both');
     const now = clock();
-    const facts = await factsFor(wallet ? [wallet] : [], watch);
-    const items = itemsFor({ wallet, topics: TOPICS, watch }, facts, now, FEED_HORIZON_SECONDS);
-    return send(reply, { asOf: now, horizonSeconds: FEED_HORIZON_SECONDS, items });
+    const avail = await availability();
+    const facts = await factsFor(wallet ? [wallet] : [], watch, { now, lookback: FEED_LOOKBACK_SECONDS });
+    if (facts.scope && rpc) noteInterest(facts.scope, now);
+    const topics = TOPICS.filter((t) => avail[t]);
+    const items = itemsFor({ wallet, topics, watch }, facts, now, FEED_HORIZON_SECONDS, FEED_LOOKBACK_SECONDS);
+    return send(reply, { asOf: now, horizonSeconds: FEED_HORIZON_SECONDS, lookbackSeconds: FEED_LOOKBACK_SECONDS, items });
+  });
+
+  // What an address is to alerts, and which wallets would be watched for it: so a person sees what following it really covers before turning anything on.
+  const subjects = new Map<string, { at: number; body: unknown }>();
+  app.get('/v1/alerts/subject', async (req, reply) => {
+    const address = (req.query as { address?: string }).address;
+    if (!isAddressLike(address)) throw new RequestError(400, 'address must be a base58 Solana address');
+    const now = clock();
+    const hit = subjects.get(address);
+    if (hit && now - hit.at < 60) return send(reply, hit.body);
+    const scope = (await store.scopes([address])).get(address) ?? { mints: [], treasuries: [] };
+    const avail = await availability();
+    const tokens = [];
+    for (const mint of scope.mints) {
+      if (!rpc || !watcher) {
+        tokens.push({ mint, isToken: null, insiders: null, note: WHY.insider });
+        continue;
+      }
+      const info = await readMint(rpc, mint).catch(() => null);
+      if (!info) {
+        tokens.push({ mint, isToken: false, insiders: [], note: 'No token mint exists at this address on this cluster.' });
+        continue;
+      }
+      const list = (await watcher.insiders(mint, now)) ?? [];
+      tokens.push({ mint, isToken: true, insiders: list.map((i) => ({ wallet: i.wallet, topic: i.topic, basis: i.basis })), note: list.length === 0 ? 'Nothing on chain ties a wallet to this token yet, and the issuer has declared no team: there is no insider wallet to watch.' : undefined });
+    }
+    const known = await store.kindOf(address);
+    const kind = known !== 'other' ? known : tokens.some((t) => t.isToken === true) ? 'token' : tokens.some((t) => t.isToken === null) ? 'unknown' : 'none';
+    const body = {
+      address,
+      kind,
+      tokens,
+      treasuries: scope.treasuries,
+      available: avail,
+      movementThresholdPercent: minPpm / 10_000,
+      note: 'Insider wallets are those the chain or a signed declaration ties to the token. A wallet nobody declared is not found by this.',
+    };
+    subjects.set(address, { at: now, body });
+    if (subjects.size > 500) subjects.delete(subjects.keys().next().value as string);
+    return send(reply, body);
   });
 
   // -------------------------------------------------------------- subscribe
@@ -137,6 +237,7 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     const wallet = wrap(() => parseWallet(b.wallet));
     const topics = wrap(() => parseTopics(b.topics));
     const watch = wrap(() => parseWatch(b.watch));
+    await requireAvailable(topics);
     const existing = await store.byDestination('push', s.endpoint);
     if (wallet && (await store.countForWallet(wallet)) >= MAX_PER_WALLET && existing?.wallet !== wallet) throw new RequestError(409, `a wallet can have at most ${MAX_PER_WALLET} subscriptions`);
     const token = newToken();
@@ -153,6 +254,7 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     const wallet = wrap(() => parseWallet(b.wallet));
     const topics = wrap(() => parseTopics(b.topics));
     const watch = wrap(() => parseWatch(b.watch));
+    await requireAvailable(topics);
     const now = clock();
     const existing = await store.byDestination('email', email);
     // The answer never says whether the address was already known, so this route cannot be used to find out who has subscribed.
@@ -186,6 +288,7 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     const wallet = wrap(() => parseWallet(b.wallet));
     const topics = wrap(() => parseTopics(b.topics));
     const watch = wrap(() => parseWatch(b.watch));
+    await requireAvailable(topics);
     const now = clock();
     const token = newToken();
     const id = newId();
@@ -208,6 +311,7 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
     const wallet = b.wallet === undefined ? s.wallet : wrap(() => parseWallet(b.wallet));
     const topics = b.topics === undefined ? s.topics : wrap(() => parseTopics(b.topics));
     const watch = b.watch === undefined ? s.watch : wrap(() => parseWatch(b.watch));
+    if (b.topics !== undefined) await requireAvailable(topics.filter((t) => !s.topics.includes(t)));
     await store.setInterest(s.id, wallet, topics, watch);
     return send(reply, { id: s.id, channel: s.channel, confirmed: s.confirmed, wallet, topics, watch });
   });
@@ -231,16 +335,30 @@ export function registerHolderAlerts(app: FastifyInstance, deps: HolderAlertDeps
   async function tick(now = clock()): Promise<{ sent: number; failed: number }> {
     await store.pruneUnconfirmed(now - UNCONFIRMED_TTL);
     await store.pruneDeliveries(now - 2 * 86_400);
+    await store.pruneBalances(now - 7 * 86_400);
     const subs = await store.listConfirmed();
     let sent = 0;
     let failed = 0;
+    const everything = [...new Set(subs.flatMap((s) => s.watch))];
+    const wantsMovement = subs.some((s) => s.topics.some(isMovementTopic));
+    const wantsScan = subs.filter((s) => s.topics.some((t) => t === 'insider' || t === 'team'));
+    for (const [m, until] of feedInterest) if (until <= now) feedInterest.delete(m);
+    if (watcher && (wantsScan.length > 0 || feedInterest.size > 0)) {
+      try {
+        const scope = await store.scopes([...new Set(wantsScan.flatMap((s) => s.watch))]);
+        const mints = [...new Set([...[...scope.values()].flatMap((x) => x.mints), ...feedInterest.keys()])];
+        await watcher.scanDue(mints, now);
+      } catch (e) {
+        console.error(JSON.stringify({ at: new Date().toISOString(), alerts: 'scan failed', error: String(e) }));
+      }
+    }
     if (subs.length === 0) return { sent, failed };
-    const facts = await factsFor([...new Set(subs.map((s) => s.wallet).filter((w): w is string => w !== null))], [...new Set(subs.flatMap((s) => s.watch))]);
+    const facts = await factsFor([...new Set(subs.map((s) => s.wallet).filter((w): w is string => w !== null))], everything, wantsMovement ? { now, lookback: MOVEMENT_LOOKBACK_SECONDS } : undefined);
     for (const sub of subs) {
       const hold = strikes.get(sub.id);
       if (hold && hold.until > now) continue;
       const mine: Facts = { ...facts, orders: facts.orders.filter((o) => o.owner === sub.wallet) };
-      for (const item of itemsFor({ wallet: sub.wallet, topics: sub.topics, watch: sub.watch }, mine, now)) {
+      for (const item of itemsFor({ wallet: sub.wallet, topics: sub.topics, watch: sub.watch, since: sub.createdAt }, mine, now)) {
         if (!(await store.claimDelivery(sub.id, item.key, now))) continue;
         const out = await deliver(sub, item);
         if (out === 'ok') {

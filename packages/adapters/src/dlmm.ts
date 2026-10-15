@@ -142,6 +142,11 @@ const SYSTEM_PROGRAM = address('11111111111111111111111111111111');
 const RENT_SYSVAR = address('SysvarRent111111111111111111111111111111111');
 
 const disc = (name: string) => createHash('sha256').update(`global:${name}`).digest().subarray(0, 8);
+const i32le = (v: number) => {
+  const b = Buffer.alloc(4);
+  b.writeInt32LE(v);
+  return b;
+};
 /** Index of the DLMM bin array that holds `binId` (floor division, so negative ids work). */
 export const binArrayIndex = (binId: number): number => Math.floor(binId / BIN_ARRAY_SIZE);
 export function binArrayAddress(lbPair: Address, index: number): Address {
@@ -170,10 +175,18 @@ export type ConvictionLadderInput = {
   existingBinArrays?: number[];
   /** Also put part of the ladder on the active bin itself, at P*. */
   includeActive?: boolean;
+  /** How many bins the active bin may have moved from `activeId` when the transaction lands. Zero (the default) suits a pair opened a moment ago; a rebalance of a live pair sets a few. */
+  maxActiveBinSlippage?: number;
+  /**
+   * Lock the ladder until this unix time (the pair counts seconds): the position is made with Meteora's `initialize_position_by_operator`, whose `lock_release_point`
+   * DLMM enforces on every withdrawal, the owner's included. The position's address is then a PDA of `position` (its "base" key), the lower bin and the width, and
+   * `position` signs once as that key. Until the time passes DLMM refuses to remove liquidity from it (`LiquidityLocked`), so the depth is a commitment, not a promise.
+   */
+  lockUntil?: bigint;
 };
 
 /** Instructions that open a position on the bins above the active bin and fill it with base tokens only. */
-export async function buildDlmmConvictionLadder(input: ConvictionLadderInput): Promise<{ instructions: Instruction[]; lowerBinId: number; upperBinId: number }> {
+export async function buildDlmmConvictionLadder(input: ConvictionLadderInput): Promise<{ instructions: Instruction[]; lowerBinId: number; upperBinId: number; /** The position's address: `input.position` itself, or its PDA when `lockUntil` is set. */ position: Address }> {
   const c = input.cross.data;
   const a = dlmmAddresses(c.baseMint, c.quoteMint);
   const lower = input.includeActive ? input.activeId : input.activeId + 1;
@@ -202,31 +215,63 @@ export async function buildDlmmConvictionLadder(input: ConvictionLadderInput): P
       data: new Uint8Array(d),
     });
   }
-  const pos = Buffer.alloc(16);
-  disc('initialize_position').copy(pos, 0);
-  pos.writeInt32LE(lower, 8);
-  pos.writeInt32LE(input.bins, 12);
-  instructions.push({
-    programAddress: DLMM_PROGRAM_ADDRESS,
-    accounts: [
-      { address: input.creator.address, role: AccountRole.WRITABLE_SIGNER, signer: input.creator } as never,
-      { address: input.position.address, role: AccountRole.WRITABLE_SIGNER, signer: input.position } as never,
-      { address: a.lbPair, role: AccountRole.READONLY },
-      { address: input.creator.address, role: AccountRole.READONLY_SIGNER, signer: input.creator } as never,
-      { address: SYSTEM_PROGRAM, role: AccountRole.READONLY },
-      { address: RENT_SYSVAR, role: AccountRole.READONLY },
-      { address: a.eventAuthority, role: AccountRole.READONLY },
-      { address: DLMM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
-    ],
-    data: new Uint8Array(pos),
-  });
+  const locked = input.lockUntil !== undefined;
+  if (locked && input.lockUntil! <= 0n) throw new Error('lockUntil is a unix time in seconds');
+  // A locked position is a PDA of the pair, the base key, the lower bin and the width; an unlocked one is the keypair itself.
+  const positionAddress = locked ? toKit(pda([Buffer.from('position'), new PublicKey(a.lbPair).toBuffer(), new PublicKey(input.position.address).toBuffer(), i32le(lower), i32le(input.bins)])) : input.position.address;
+  if (locked) {
+    const lockData = Buffer.alloc(8 + 4 + 4 + 32 + 8);
+    let at = disc('initialize_position_by_operator').copy(lockData, 0);
+    lockData.writeInt32LE(lower, at); at += 4;
+    lockData.writeInt32LE(input.bins, at); at += 4;
+    new PublicKey(input.creator.address).toBuffer().copy(lockData, at); at += 32; // fee_owner: the issuer
+    lockData.writeBigUInt64LE(input.lockUntil!, at);
+    instructions.push({
+      programAddress: DLMM_PROGRAM_ADDRESS,
+      accounts: [
+        { address: input.creator.address, role: AccountRole.WRITABLE_SIGNER, signer: input.creator } as never,
+        { address: input.position.address, role: AccountRole.READONLY_SIGNER, signer: input.position } as never,
+        { address: positionAddress, role: AccountRole.WRITABLE },
+        { address: a.lbPair, role: AccountRole.READONLY },
+        { address: input.creator.address, role: AccountRole.READONLY },
+        { address: input.creator.address, role: AccountRole.READONLY_SIGNER, signer: input.creator } as never,
+        { address: await ata(input.creator.address, c.baseMint, c.baseTokenProgram), role: AccountRole.READONLY },
+        { address: await ata(input.creator.address, c.baseMint, c.baseTokenProgram), role: AccountRole.READONLY },
+        { address: SYSTEM_PROGRAM, role: AccountRole.READONLY },
+        { address: a.eventAuthority, role: AccountRole.READONLY },
+        { address: DLMM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      ],
+      data: new Uint8Array(lockData),
+    });
+  } else {
+    const pos = Buffer.alloc(16);
+    disc('initialize_position').copy(pos, 0);
+    pos.writeInt32LE(lower, 8);
+    pos.writeInt32LE(input.bins, 12);
+    instructions.push({
+      programAddress: DLMM_PROGRAM_ADDRESS,
+      accounts: [
+        { address: input.creator.address, role: AccountRole.WRITABLE_SIGNER, signer: input.creator } as never,
+        { address: input.position.address, role: AccountRole.WRITABLE_SIGNER, signer: input.position } as never,
+        { address: a.lbPair, role: AccountRole.READONLY },
+        { address: input.creator.address, role: AccountRole.READONLY_SIGNER, signer: input.creator } as never,
+        { address: SYSTEM_PROGRAM, role: AccountRole.READONLY },
+        { address: RENT_SYSVAR, role: AccountRole.READONLY },
+        { address: a.eventAuthority, role: AccountRole.READONLY },
+        { address: DLMM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      ],
+      data: new Uint8Array(pos),
+    });
+  }
   // add_liquidity_by_strategy2: base only, over [lower, upper], with Meteora's imbalanced strategy for the chosen shape.
   const add = Buffer.alloc(8 + 8 + 8 + 4 + 4 + 4 + 4 + 1 + 64 + 4);
   let o = disc('add_liquidity_by_strategy2').copy(add, 0);
   add.writeBigUInt64LE(input.baseAmount, o); o += 8;
   add.writeBigUInt64LE(0n, o); o += 8;
   add.writeInt32LE(input.activeId, o); o += 4;
-  add.writeInt32LE(0, o); o += 4; // max_active_bin_slippage: the pair was just opened at this bin
+  const slippage = input.maxActiveBinSlippage ?? 0;
+  if (!Number.isInteger(slippage) || slippage < 0) throw new Error('maxActiveBinSlippage is a whole number of bins');
+  add.writeInt32LE(slippage, o); o += 4; // max_active_bin_slippage: zero for a pair opened a moment ago at this bin
   add.writeInt32LE(lower, o); o += 4;
   add.writeInt32LE(upper, o); o += 4;
   add.writeUInt8(STRATEGY[input.shape ?? 'flat'], o); o += 1;
@@ -235,7 +280,7 @@ export async function buildDlmmConvictionLadder(input: ConvictionLadderInput): P
   instructions.push({
     programAddress: DLMM_PROGRAM_ADDRESS,
     accounts: [
-      { address: input.position.address, role: AccountRole.WRITABLE },
+      { address: positionAddress, role: AccountRole.WRITABLE },
       { address: a.lbPair, role: AccountRole.WRITABLE },
       { address: DLMM_PROGRAM_ADDRESS, role: AccountRole.READONLY }, // no bitmap extension
       { address: await ata(input.creator.address, c.baseMint, c.baseTokenProgram), role: AccountRole.WRITABLE },
@@ -253,5 +298,5 @@ export async function buildDlmmConvictionLadder(input: ConvictionLadderInput): P
     ],
     data: new Uint8Array(add),
   });
-  return { instructions, lowerBinId: lower, upperBinId: upper };
+  return { instructions, lowerBinId: lower, upperBinId: upper, position: positionAddress };
 }

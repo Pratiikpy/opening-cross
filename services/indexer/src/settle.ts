@@ -13,6 +13,8 @@ import {
   DBC_MINT_BOUND_EVENT_DISCRIMINATOR,
   DBC_POOL_OPENED_EVENT_DISCRIMINATOR,
   DLMM_PAIR_OPENED_EVENT_DISCRIMINATOR,
+  FIXED_PRICE_PRESALE_OPENED_EVENT_DISCRIMINATOR,
+  FUTARCHY_DAO_SEEDED_EVENT_DISCRIMINATOR,
   GREENSHOE_BID_PLACED_EVENT_DISCRIMINATOR,
   GREENSHOE_CREATED_EVENT_DISCRIMINATOR,
   GREENSHOE_FINISHED_EVENT_DISCRIMINATOR,
@@ -27,6 +29,8 @@ import {
   type DbcMintBoundEvent,
   type DbcPoolOpenedEvent,
   type DlmmPairOpenedEvent,
+  type FixedPricePresaleOpenedEvent,
+  type FutarchyDaoSeededEvent,
   type GreenshoeBidPlacedEvent,
   type GreenshoeCreatedEvent,
   type GreenshoeFinishedEvent,
@@ -41,6 +45,8 @@ import {
   getDbcMintBoundEventDecoder,
   getDbcPoolOpenedEventDecoder,
   getDlmmPairOpenedEventDecoder,
+  getFixedPricePresaleOpenedEventDecoder,
+  getFutarchyDaoSeededEventDecoder,
   getGreenshoeBidPlacedEventDecoder,
   getGreenshoeCreatedEventDecoder,
   getGreenshoeFinishedEventDecoder,
@@ -70,7 +76,9 @@ export type SettleEventRecord =
   | { name: 'GreenshoeCreated'; data: GreenshoeCreatedEvent }
   | { name: 'GreenshoeBidPlaced'; data: GreenshoeBidPlacedEvent }
   | { name: 'GreenshoeLevelSettled'; data: GreenshoeLevelSettledEvent }
-  | { name: 'GreenshoeFinished'; data: GreenshoeFinishedEvent };
+  | { name: 'GreenshoeFinished'; data: GreenshoeFinishedEvent }
+  | { name: 'FutarchyDaoSeeded'; data: FutarchyDaoSeededEvent }
+  | { name: 'FixedPricePresaleOpened'; data: FixedPricePresaleOpenedEvent };
 
 const DECODERS: [Uint8Array, SettleEventRecord['name'], { decode(b: Uint8Array): unknown }][] = [
   [DBC_POOL_OPENED_EVENT_DISCRIMINATOR as Uint8Array, 'DbcPoolOpened', getDbcPoolOpenedEventDecoder()],
@@ -87,6 +95,8 @@ const DECODERS: [Uint8Array, SettleEventRecord['name'], { decode(b: Uint8Array):
   [GREENSHOE_BID_PLACED_EVENT_DISCRIMINATOR as Uint8Array, 'GreenshoeBidPlaced', getGreenshoeBidPlacedEventDecoder()],
   [GREENSHOE_LEVEL_SETTLED_EVENT_DISCRIMINATOR as Uint8Array, 'GreenshoeLevelSettled', getGreenshoeLevelSettledEventDecoder()],
   [GREENSHOE_FINISHED_EVENT_DISCRIMINATOR as Uint8Array, 'GreenshoeFinished', getGreenshoeFinishedEventDecoder()],
+  [FUTARCHY_DAO_SEEDED_EVENT_DISCRIMINATOR as Uint8Array, 'FutarchyDaoSeeded', getFutarchyDaoSeededEventDecoder()],
+  [FIXED_PRICE_PRESALE_OPENED_EVENT_DISCRIMINATOR as Uint8Array, 'FixedPricePresaleOpened', getFixedPricePresaleOpenedEventDecoder()],
 ];
 
 const INVOKE = /^Program (\w+) invoke \[\d+\]$/;
@@ -142,7 +152,7 @@ export async function ingestSettleTransaction(db: pg.Pool, tx: ChainTx): Promise
         [tx.signature, seq, tx.slot.toString(), tx.blockTime?.toString() ?? null, ev.name, cross, JSON.stringify(toJson(ev.data))],
       );
       if (res.rowCount === 0) continue;
-      await apply(client, ev, tx.slot.toString());
+      await apply(client, ev, tx.slot.toString(), tx.signature);
       applied++;
     }
     await client.query('COMMIT');
@@ -164,7 +174,7 @@ async function partner(db: pg.PoolClient, cross: string, slot: string, set: stri
   await db.query(`UPDATE settle_partner SET ${set}, updated_slot = $2 WHERE cross_address = $1`, [cross, slot, ...values]);
 }
 
-async function apply(db: pg.PoolClient, ev: SettleEventRecord, slot: string): Promise<void> {
+async function apply(db: pg.PoolClient, ev: SettleEventRecord, slot: string, signature: string): Promise<void> {
   switch (ev.name) {
     case 'DbcPoolOpened':
       return venue(db, ev.data.cross, 'dbc', ev.data.pool, ev.data.clearingPrice, { config: ev.data.config, baseMint: ev.data.baseMint, sqrtStartPrice: ev.data.sqrtStartPrice }, slot);
@@ -186,6 +196,19 @@ async function apply(db: pg.PoolClient, ev: SettleEventRecord, slot: string): Pr
       return partner(db, ev.data.cross, slot, 'pool_creation_lamports = pool_creation_lamports + $3::numeric', ev.data.lamports.toString());
     case 'PolFeesClaimed':
       return partner(db, ev.data.cross, slot, 'pol_token_a = pol_token_a + $3::numeric, pol_token_b = pol_token_b + $4::numeric, pol_claims = pol_claims + 1', ev.data.tokenA.toString(), ev.data.tokenB.toString());
+    // A market opened without a pool (ADR-0657, ADR-0663). They are not a `settle_venues` row: a cross can have a venue and a tranche, and more than one of either.
+    case 'FutarchyDaoSeeded':
+      await db.query(
+        `INSERT INTO settle_futarchy_daos (dao, cross_address, clearing_price, base_amount, quote_amount, signature, slot) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`,
+        [ev.data.dao, ev.data.cross, ev.data.clearingPrice.toString(), ev.data.baseAmount.toString(), ev.data.quoteAmount.toString(), signature, slot],
+      );
+      return;
+    case 'FixedPricePresaleOpened':
+      await db.query(
+        `INSERT INTO settle_presales (presale, cross_address, clearing_price, q_price, signature, slot) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+        [ev.data.presale, ev.data.cross, ev.data.clearingPrice.toString(), ev.data.qPrice.toString(), signature, slot],
+      );
+      return;
     case 'GreenshoeCreated': {
       const d = ev.data;
       await db.query(

@@ -2,7 +2,7 @@
 // gate allowlists. A subscription holds only what is needed to reach the person: a browser push endpoint, an email address or a
 // Telegram chat, the public wallet address it watches (optional), and the topics and followed crosses. The management token is
 // stored hashed. Deleting a subscription deletes its delivery record with it.
-import type { CalendarFact, Channel, CrossFact, OrderFact, Topic } from './holder-alerts-core.js';
+import type { CalendarFact, Channel, CrossFact, OrderFact, Scope, Topic, TreasuryOutflow, WalletMovement } from './holder-alerts-core.js';
 
 export type Db = { query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }> };
 
@@ -53,6 +53,30 @@ const SCHEMA = [
      expires bigint NOT NULL
    )`,
   `CREATE TABLE IF NOT EXISTS alert_telegram_cursor (id smallint PRIMARY KEY CHECK (id = 1), next_update bigint NOT NULL)`,
+  // Insider and team watching (ADR-0940): the balance last accepted as the baseline for each wallet tied to a token, and the falls that were seen.
+  `CREATE TABLE IF NOT EXISTS alert_insider_balances (
+     mint         text NOT NULL,
+     owner        text NOT NULL,
+     topic        text NOT NULL CHECK (topic IN ('insider', 'team')),
+     basis        text NOT NULL,
+     amount       numeric NOT NULL,
+     observed_at  bigint NOT NULL,
+     PRIMARY KEY (mint, owner)
+   )`,
+  `CREATE TABLE IF NOT EXISTS alert_movements (
+     id           text PRIMARY KEY,
+     mint         text NOT NULL,
+     owner        text NOT NULL,
+     topic        text NOT NULL CHECK (topic IN ('insider', 'team')),
+     basis        text NOT NULL,
+     before_ppm   integer NOT NULL,
+     after_ppm    integer NOT NULL,
+     moved_ppm    integer NOT NULL,
+     detected_at  bigint NOT NULL,
+     latest_tx    text,
+     href         text NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS alert_movements_mint ON alert_movements (mint, detected_at DESC)`,
 ];
 
 const num = (v: unknown): number => Number(v);
@@ -89,8 +113,12 @@ export function alertStore(db: Db) {
     return (await db.query(text, params)).rows;
   };
 
+  /** Whether a table exists in this database. The treasury and integrity tables belong to the indexer's migrations, which a deployment may not have run. */
+  const hasTable = async (name: string): Promise<boolean> => Boolean((await q('SELECT to_regclass($1) IS NOT NULL AS ok', [name]))[0]?.ok);
+
   return {
     init,
+    hasTable,
 
     async get(id: string): Promise<Subscription | null> {
       const rows = await q('SELECT * FROM alert_subscriptions WHERE id = $1', [id]);
@@ -209,6 +237,154 @@ export function alertStore(db: Db) {
 
     async setTelegramCursor(next: number): Promise<void> {
       await q('INSERT INTO alert_telegram_cursor (id, next_update) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET next_update = EXCLUDED.next_update', [next]);
+    },
+
+    // ---- movements (ADR-0940)
+
+    /** For each followed address, the mints and treasuries it stands for: a cross its base token, a treasury its ownership coin, anything else itself as a possible token mint. */
+    async scopes(watch: readonly string[]): Promise<Map<string, Scope>> {
+      const out = new Map<string, Scope>();
+      if (watch.length === 0) return out;
+      const crosses = new Map((await q('SELECT address, base_mint FROM crosses WHERE address = ANY($1::text[])', [watch])).map((r) => [String(r.address), String(r.base_mint)]));
+      const calendars = new Set((await q('SELECT address FROM calendars WHERE address = ANY($1::text[])', [watch])).map((r) => String(r.address)));
+      const candidates = [...new Set([...watch, ...crosses.values()])];
+      const trs = (await hasTable('treasuries')) ? await q('SELECT address, coin_mint FROM treasuries WHERE address = ANY($1::text[]) OR coin_mint = ANY($1::text[])', [candidates]) : [];
+      const byAddress = new Map(trs.map((r) => [String(r.address), String(r.coin_mint)]));
+      const byCoin = new Map<string, string[]>();
+      for (const r of trs) byCoin.set(String(r.coin_mint), [...(byCoin.get(String(r.coin_mint)) ?? []), String(r.address)]);
+      for (const w of watch) {
+        if (calendars.has(w) && !crosses.has(w) && !byAddress.has(w)) {
+          out.set(w, { mints: [], treasuries: [] });
+          continue;
+        }
+        const mints = new Set<string>();
+        const treasuries = new Set<string>();
+        const base = crosses.get(w);
+        if (base) mints.add(base);
+        else if (byAddress.has(w)) {
+          treasuries.add(w);
+          mints.add(byAddress.get(w)!);
+        } else mints.add(w);
+        for (const m of [...mints]) for (const t of byCoin.get(m) ?? []) treasuries.add(t);
+        out.set(w, { mints: [...mints], treasuries: [...treasuries] });
+      }
+      return out;
+    },
+
+    /** What the index knows an address to be. `other` covers an address the index has never seen (it may still be a token mint on chain). */
+    async kindOf(address: string): Promise<'cross' | 'treasury' | 'market' | 'other'> {
+      if ((await q('SELECT 1 FROM crosses WHERE address = $1', [address])).length > 0) return 'cross';
+      if ((await hasTable('treasuries')) && (await q('SELECT 1 FROM treasuries WHERE address = $1', [address])).length > 0) return 'treasury';
+      if ((await q('SELECT 1 FROM calendars WHERE address = $1', [address])).length > 0) return 'market';
+      return 'other';
+    },
+
+    async balanceOf(mint: string, owner: string): Promise<{ amount: bigint; observedAt: number } | null> {
+      const rows = await q('SELECT amount::text AS amount, observed_at FROM alert_insider_balances WHERE mint = $1 AND owner = $2', [mint, owner]);
+      return rows[0] ? { amount: BigInt(String(rows[0].amount)), observedAt: num(rows[0].observed_at) } : null;
+    },
+
+    async setBalance(mint: string, owner: string, topic: 'insider' | 'team', basis: string, amount: bigint, now: number): Promise<void> {
+      await q(
+        `INSERT INTO alert_insider_balances (mint, owner, topic, basis, amount, observed_at) VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (mint, owner) DO UPDATE SET topic = EXCLUDED.topic, basis = EXCLUDED.basis, amount = EXCLUDED.amount, observed_at = EXCLUDED.observed_at`,
+        [mint, owner, topic, basis, amount.toString(), now],
+      );
+    },
+
+    /** Marks a baseline as still current without changing it (no change, or a fall below the threshold). */
+    async touchBalance(mint: string, owner: string, now: number): Promise<void> {
+      await q('UPDATE alert_insider_balances SET observed_at = $3 WHERE mint = $1 AND owner = $2', [mint, owner, now]);
+    },
+
+    async pruneBalances(before: number): Promise<void> {
+      await q('DELETE FROM alert_insider_balances WHERE observed_at < $1', [before]);
+      await q('DELETE FROM alert_movements WHERE detected_at < $1', [before]);
+    },
+
+    /** Records a fall once: the id is derived from the wallet, the two balances and the time, so a repeat of the same scan adds nothing. */
+    async recordMovement(m: WalletMovement): Promise<boolean> {
+      const rows = await q(
+        `INSERT INTO alert_movements (id, mint, owner, topic, basis, before_ppm, after_ppm, moved_ppm, detected_at, latest_tx, href)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (id) DO NOTHING RETURNING id`,
+        [m.id, m.subject, m.wallet, m.topic, m.basis, m.beforePpm, m.afterPpm, m.movedPpm, m.at, m.latestTx, m.href],
+      );
+      return rows.length > 0;
+    },
+
+    async walletMovements(mints: readonly string[], since: number): Promise<WalletMovement[]> {
+      if (mints.length === 0) return [];
+      const rows = await q('SELECT * FROM alert_movements WHERE mint = ANY($1::text[]) AND detected_at >= $2 ORDER BY detected_at DESC LIMIT 200', [mints, since]);
+      return rows.map((r) => ({
+        topic: r.topic as 'insider' | 'team',
+        id: String(r.id),
+        subject: String(r.mint),
+        at: num(r.detected_at),
+        wallet: String(r.owner),
+        basis: String(r.basis),
+        beforePpm: num(r.before_ppm),
+        afterPpm: num(r.after_ppm),
+        movedPpm: num(r.moved_ppm),
+        latestTx: (r.latest_tx as string | null) ?? null,
+        href: String(r.href),
+      }));
+    },
+
+    /** The latest cross selling a token, for the link an insider alert carries. */
+    async latestCrossFor(mint: string): Promise<string | null> {
+      const rows = await q('SELECT address FROM crosses WHERE base_mint = $1 ORDER BY created_slot DESC LIMIT 1', [mint]);
+      return rows[0] ? String(rows[0].address) : null;
+    },
+
+    /** The crosses that sell a token, newest first, with their creators. */
+    async crossesSelling(mint: string): Promise<{ address: string; creator: string }[]> {
+      return (await q('SELECT address, creator FROM crosses WHERE base_mint = $1 ORDER BY created_slot DESC LIMIT 20', [mint])).map((r) => ({ address: String(r.address), creator: String(r.creator) }));
+    },
+
+    /** Treasuries of an ownership coin, with their authority. */
+    async treasuriesOfCoin(mint: string): Promise<{ address: string; authority: string }[]> {
+      if (!(await hasTable('treasuries'))) return [];
+      return (await q('SELECT address, authority FROM treasuries WHERE coin_mint = $1', [mint])).map((r) => ({ address: String(r.address), authority: String(r.authority) }));
+    },
+
+    /** The issuer's latest signed document of a schema for a token, as stored, or null. */
+    async signedDocument(mint: string, schema: string): Promise<unknown | null> {
+      if (!(await hasTable('integrity_documents'))) return null;
+      const rows = await q('SELECT doc FROM integrity_documents WHERE mint = $1 AND schema = $2 ORDER BY as_of DESC, received_at DESC LIMIT 1', [mint, schema]);
+      const doc = rows[0]?.doc;
+      return doc === undefined ? null : typeof doc === 'string' ? JSON.parse(doc) : doc;
+    },
+
+    /**
+     * Value that left these treasuries since `since`, from the indexer's `treasury_movements`. Holders' own redemptions are not an alert. A counterparty is named when it is the
+     * treasury's authority or a wallet already known as an insider or team wallet of the ownership coin.
+     */
+    async treasuryOutflows(treasuries: readonly string[], since: number): Promise<TreasuryOutflow[]> {
+      if (treasuries.length === 0 || !(await hasTable('treasury_movements')) || !(await hasTable('treasuries'))) return [];
+      const rows = await q(
+        `SELECT m.id::text AS id, m.signature, m.seq, extract(epoch FROM m.block_time)::bigint AS at, m.treasury, m.kind, m.asset, m.amount::text AS amount, m.counterparty, m.team_outflow,
+                (m.counterparty IS NOT NULL AND m.counterparty = t.authority) AS is_authority, b.topic AS known_topic, b.basis AS known_basis
+           FROM treasury_movements m
+           LEFT JOIN treasuries t ON t.address = m.treasury
+           LEFT JOIN alert_insider_balances b ON b.mint = t.coin_mint AND b.owner = m.counterparty
+          WHERE m.treasury = ANY($1::text[]) AND m.direction = 'out' AND m.kind NOT IN ('redemption', 'nav_redemption') AND m.block_time IS NOT NULL AND m.block_time >= to_timestamp($2)
+          ORDER BY m.id DESC LIMIT 200`,
+        [treasuries, since],
+      );
+      return rows.map((r) => ({
+        topic: 'treasury' as const,
+        id: `t:${String(r.signature)}:${num(r.seq)}`,
+        subject: String(r.treasury),
+        at: num(r.at),
+        kind: String(r.kind),
+        asset: r.asset as 'quote' | 'coin',
+        amount: String(r.amount),
+        counterparty: (r.counterparty as string | null) ?? null,
+        counterpartyBasis: r.is_authority ? 'the authority of this treasury' : r.known_topic === 'team' ? 'a wallet the issuer declared as team' : r.known_topic === 'insider' ? `a wallet tied to the issuer: it ${String(r.known_basis)}` : null,
+        teamOutflow: Boolean(r.team_outflow),
+        signature: String(r.signature),
+        href: `/treasury/${String(r.treasury)}`,
+      }));
     },
 
     /** Unconfirmed subscriptions are dropped after a day, so an address nobody confirmed is not kept. */

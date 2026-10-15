@@ -1,0 +1,22 @@
+# ADR-0955: The weekend risk engine is validated against tokenized stocks' own weekend prices
+
+Date: 2026-10-16 · Status: accepted · Implements PRODUCT_FEATURES [K2]; closes the "NOT VERIFIED against on-chain stock-token weekend prices" caveat of ADR-0210
+
+## Context
+ADR-0210's engine bounds the underlying's close-to-open gap. A tokenized stock trades all weekend, so a lender sees a weekend price the underlying does not have, may be tempted to act on it, and faces a path the gap never shows. Two questions: does the token's weekend move anticipate Monday's open (so it can be a fair-value input), and does the engine's loan survive the token's actual weekend path?
+
+## Decision
+`packages/risk/src/tokenized.ts` and `tools/tokenized-validate.ts`: per closure of two to four and a half days between regular sessions, the underlying's last hourly price (Friday close) and first (Monday open), the token's price at the close, at the last hour before the open, and its lowest and highest price in between. Statistics: the token's basis to the underlying at the close; the token-implied Monday open (`Friday x tokenPreOpen / tokenClose`) against doing nothing (`Friday`); direction agreement on gaps of at least 50 bps; and the OLS slope and R-squared. Breaches use the engine's own loan for that weekend (walk-forward, only earlier gaps) and the same underwater test as the backtest: the loan is underwater below `LTV / (1 - 5%) - 1` of the close value. Three counts: the underlying's Monday gap, the token's pre-open print, the token's lowest weekend print.
+
+Sources: the genuine xStock mint of each ticker from Jupiter's token list (Backed metadata icon, a mint beginning `Xs`, the deepest liquidity; impostors with the same icon and almost no liquidity exist, and a mint under 100,000 USD of liquidity is not used), its deepest USDC pool's hourly bars from GeckoTerminal (the public API serves 180 days), and the underlying's hourly bars from Yahoo. Raw prices are cached under `.tmp` (git-ignored) and never committed; `data/tokenized-weekends-2026-10-15.json` holds derived statistics, mints and pools only.
+
+## Result (280 closures, 12 tokens, late April to 12 October 2026)
+- The token's weekend move anticipates Monday: median error of the token-implied open 35 bps against 77 bps for assuming no move (p95 168 against 368); closer in 70% of closures; the same direction on 93% of the 181 gaps of at least 50 bps; slope 0.93, R-squared 0.79. Per token the benefit ranges from 20% (AAPLx, 5 closures only) to 88% (MSFTx).
+- The token trades above the underlying at the close by a median of 19 bps (p95 92), largest in SPYx, MSFTx, AAPLx (about 40 to 47 bps). The cause is NOT VERIFIED (a timestamp convention against the official closing print, the token's dividend accrual, or a real premium).
+- Of 236 closures with an engine-set loan (mean LTV 71.8%): 0 breaches by the underlying's gap (worst gap -6.8%), 0 by the token's pre-open print, and 3 by the token's lowest weekend print (QQQx 2026-07-20 at -28.5%, METAx 2026-07-13 at -25.7%, MSFTx 2026-08-10 at -20.0%). All three are single-hour wicks that reversed fully within one to two hours (QQQx: low 499.61 inside an hour that opened at 698.56 and closed at 695.47), on a Monday gap of +1.0%, -1.2% and +0.7%: a bad print in a thin hour, not a price.
+- Replaying those three through `fairValue` and `decide` with the print as a reference source and the Friday close as the only other: a rule that liquidates on the spot price liquidates all three (LTV 100% to 108% against thresholds 85%); the band rule waits on all three (sources disagree by 25% to 40%, limit 4%). The band rule is therefore not optional.
+
+## Consequences
+- The engine's gap guarantee held on tokenized stocks over this window and the token's pre-open price is a usable, better-than-nothing input to the band. A lender must not liquidate on a single pool print.
+- One regime, 180 days, 12 liquid tokens, hours with no trade carried forward (coverage 0.49 to 0.98, lowest in COINx and HOODx). NFLX, AMD and JPM have no genuine xStock mint above the liquidity floor and are not covered. This is not a test of a lending market, of a stressed weekend, or of liquidity: a pool of 0.3 to 3 million USD cannot absorb a liquidation, and the engine does not model that.
+- Reproduce: `pnpm --filter @opening-cross/risk exec tsx tools/tokenized-validate.ts` (about 30 minutes, paced for GeckoTerminal's 30 requests a minute).

@@ -58,20 +58,46 @@ function assemble(cluster: string, role: StatementRole, party: string, periodSta
 
 const inPeriod = (at: number | null, start: number, end: number): boolean => at !== null && at >= start && at < end;
 
-/** The statement a role receives from finalized crosses. Escrow-mode issuers pay no fee (their sellers do), so they have no line. */
-export function statementFromEntries(cluster: string, role: Exclude<StatementRole, 'referrer'>, party: string, entries: readonly LedgerEntry[], periodStart: number, periodEnd: number): StatementBody {
+/**
+ * The statement a role receives from finalized crosses. Escrow-mode issuers pay no fee (their sellers do), so they have no line.
+ *
+ * A cross that names a referrer (ADR-0460) pays the referrer a share of the protocol fee out of that fee, so the roles read it as follows. The protocol
+ * statement shows what the fee recipient was paid, the protocol fee less the referral. The integrator and issuer statements are unchanged: the referral
+ * moves nothing on their side. The `referrer` role shows the referral each cross paid it, one line per cross; payouts of the earlier off-chain router
+ * (`referrerStatement`) are per order and are a different basis, which `referrerStatementWithRouter` puts side by side.
+ */
+export function statementFromEntries(cluster: string, role: StatementRole, party: string, entries: readonly LedgerEntry[], periodStart: number, periodEnd: number): StatementBody {
   const lines: StatementLine[] = [];
   for (const e of entries) {
     if (!inPeriod(e.recorded.blockTime, periodStart, periodEnd)) continue;
     const f = e.facts;
     let amount: bigint | null = null;
     if (role === 'integrator' && f.integrator === party) amount = e.recorded.integratorFee;
-    else if (role === 'protocol' && f.feeRecipient === party) amount = e.recorded.protocolFee;
+    else if (role === 'protocol' && f.feeRecipient === party) amount = e.recorded.protocolFee - e.referral;
     else if (role === 'issuer' && f.creator === party && f.supplyMode !== 'escrow') amount = e.recorded.protocolFee + e.recorded.integratorFee;
+    else if (role === 'referrer' && e.referrer === party && e.referral > 0n) amount = e.referral;
     if (amount === null) continue;
     lines.push({ ref: f.cross, signature: e.recorded.signature, at: e.recorded.blockTime, quoteMint: f.quoteMint, amount: amount.toString(), verdict: e.verdict });
   }
   return assemble(cluster, role, party, periodStart, periodEnd, lines);
+}
+
+/**
+ * One referrer's statement over both ways a referrer is paid: the referral a cross pays at finalize (a line per cross, MATCH once the finalize transaction's
+ * balances agree) and the per-order payouts of the off-chain router (a line per order, MATCH only once a transfer is recorded). The two never cover the same
+ * cross: `referralLines` yields nothing for a cross that names a referrer on chain.
+ */
+export function referrerStatementWithRouter(
+  cluster: string,
+  party: string,
+  entries: readonly LedgerEntry[],
+  routerLines: readonly (ReferralLine & { readonly quoteMint: string; readonly at: number | null; readonly paidBy: string | null })[],
+  periodStart: number,
+  periodEnd: number,
+): StatementBody {
+  const onChain = statementFromEntries(cluster, 'referrer', party, entries, periodStart, periodEnd).lines;
+  const router = referrerStatement(cluster, party, routerLines, periodStart, periodEnd).lines;
+  return assemble(cluster, 'referrer', party, periodStart, periodEnd, [...onChain, ...router]);
 }
 
 /** A referrer's statement: payout lines, each with the transfer that paid it (`paidBy`), and verdict MATCH only once that transfer is confirmed. */

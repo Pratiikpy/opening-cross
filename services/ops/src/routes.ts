@@ -3,7 +3,8 @@
 //
 //   GET  /v1/ops/me
 //   POST /v1/ops/listings                   reviewer   { mint?, cross?, note }  open a listing review; the console gathers evidence
-//   GET  /v1/ops/listings[?status=]         viewer
+//   GET  /v1/ops/listings[?status=]         viewer     each row names the evidence sources that failed
+//   GET  /v1/ops/listings/:id               viewer     one review with the evidence gathered when it was opened
 //   POST /v1/ops/listings/:id/decision      reviewer   { decision: approve|reject|needs-info, reason, acknowledgeMissingEvidence? }
 //   POST /v1/ops/incidents                  reviewer   { title, severity, detail? }
 //   GET  /v1/ops/incidents[?state=]         viewer
@@ -16,7 +17,7 @@
 //   POST /v1/ops/cases/:id/notes            reviewer   { text }   notes are never edited or removed
 //   POST /v1/ops/cases/:id/close            admin      { resolution }
 //   GET  /v1/ops/review/cross/:address      viewer     the evidence pack on one cross
-//   GET  /v1/ops/log[?after=&limit=]        viewer     the audit log
+//   GET  /v1/ops/log[?after=&limit=]        viewer     the audit log, oldest first from `after`; `?order=desc[&before=<seq>]` reads the newest first
 //   GET  /v1/ops/log/verify                 admin      recompute the hash chain
 //   GET  /v1/ops/log/head                   admin      the chain head, signed when a key is configured
 import { randomUUID } from 'node:crypto';
@@ -24,7 +25,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { type Json } from '@opening-cross/promises';
 import { type Principal, type Role, type TokenEntry, allows, authenticate, secretMatches } from './auth.js';
-import { append, entries, signedHead, verifyChain } from './log.js';
+import { append, entries, entriesNewestFirst, signedHead, verifyChain } from './log.js';
 
 export interface OpsOptions {
   tokens: readonly TokenEntry[];
@@ -124,8 +125,21 @@ export function registerOps(app: FastifyInstance, d: { db: pg.Pool }, o: OpsOpti
     as(req, 'viewer');
     const status = (req.query as { status?: string }).status;
     if (status !== undefined) pick(status, 'status', ['pending', 'approved', 'rejected', 'needs-info']);
-    const { rows } = await db.query('SELECT id, mint, cross_address, requested_by, note, status, reason, created_at::text, decided_at::text, decided_by FROM ops_listings WHERE ($1::text IS NULL OR status = $1) ORDER BY ops_listings.created_at DESC LIMIT 200', [status ?? null]);
+    // `evidence_failed` names the sources that could not be gathered, so the queue shows which reviews would need an acknowledgement to approve.
+    const { rows } = await db.query(
+      "SELECT id, mint, cross_address, requested_by, note, status, reason, created_at::text, decided_at::text, decided_by, ARRAY(SELECT e.key FROM jsonb_each(ops_listings.evidence) AS e WHERE e.value->>'ok' IS DISTINCT FROM 'true' ORDER BY e.key) AS evidence_failed FROM ops_listings WHERE ($1::text IS NULL OR status = $1) ORDER BY ops_listings.created_at DESC LIMIT 200",
+      [status ?? null],
+    );
     return send(reply, { listings: rows });
+  });
+
+  // The person who decides a review is not the person who opened it, so they read the evidence from here: what the console gathered when the review was opened.
+  app.get('/v1/ops/listings/:id', async (req, reply) => {
+    as(req, 'viewer');
+    const id = (req.params as { id: string }).id;
+    const row = (await db.query('SELECT id, mint, cross_address, requested_by, note, status, reason, evidence, created_at::text, decided_at::text, decided_by FROM ops_listings WHERE id = $1', [id])).rows[0];
+    if (!row) throw new OpsError(404, 'no such listing review');
+    return send(reply, row);
   });
 
   app.post('/v1/ops/listings/:id/decision', async (req, reply) => {
@@ -296,10 +310,17 @@ export function registerOps(app: FastifyInstance, d: { db: pg.Pool }, o: OpsOpti
 
   app.get('/v1/ops/log', async (req, reply) => {
     as(req, 'viewer');
-    const q = req.query as { after?: string; limit?: string };
+    const q = req.query as { after?: string; before?: string; limit?: string; order?: string };
     const after = q.after === undefined ? 0 : Number(q.after);
+    const before = q.before === undefined ? undefined : Number(q.before);
     const limit = q.limit === undefined ? 100 : Number(q.limit);
-    if (!Number.isInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1) throw new OpsError(400, 'after and limit must be whole numbers');
+    if (!Number.isInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1 || (before !== undefined && (!Number.isInteger(before) || before < 1))) throw new OpsError(400, 'after, before and limit must be whole numbers');
+    if (q.order !== undefined && q.order !== 'asc' && q.order !== 'desc') throw new OpsError(400, 'order must be asc or desc');
+    if (q.order === 'asc' && before !== undefined) throw new OpsError(400, 'before reads backward; it cannot be combined with order=asc');
+    if (q.order === 'desc' || before !== undefined) {
+      if (q.after !== undefined) throw new OpsError(400, 'after reads forward and before reads backward; give one of them');
+      return send(reply, { entries: await entriesNewestFirst(db, { ...(before !== undefined ? { before } : {}), limit }) });
+    }
     return send(reply, { entries: await entries(db, { after, limit }) });
   });
 

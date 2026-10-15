@@ -8,7 +8,7 @@ A cross opens liquidity on Meteora at P*. The pools earn trading fees in the quo
 
 ## Decision
 
-Use Meteora's own Dynamic Fee Sharing program (`dfsdo2UqvwfN8DuUVrMRNfQe11VaiNoKcMqLHVvDPzh`). `packages/adapters/src/feeshare.ts` builds its three instructions directly, so the adapters package takes no new dependency: `buildCreateFeeShareVault` (the PDA variant, one to five recipients, share weights), `buildFundFeeShareVault` (anyone can fund) and `buildClaimFeeShare` (a recipient claims its part). The builder rejects an empty list, more than five recipients, duplicates and zero shares before anything is sent.
+Use Meteora's own Dynamic Fee Sharing program (`dfsdo2UqvwfN8DuUVrMRNfQe11VaiNoKcMqLHVvDPzh`). `packages/adapters/src/feeshare.ts` builds its three instructions directly, so the adapters package takes no new dependency: `buildCreateFeeShareVault` (the PDA variant, two to five recipients, share weights), `buildFundFeeShareVault` (anyone can fund) and `buildClaimFeeShare` (a recipient claims its part). The builder rejects fewer than two recipients, more than five, duplicates and zero shares before anything is sent. (It first allowed one recipient; the real program refuses a vault with fewer than two, `ExceededUser`, which ADR-0912 found by running the binary and corrected.)
 
 ## Consequences
 
